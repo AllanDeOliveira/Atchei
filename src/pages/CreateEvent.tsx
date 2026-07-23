@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { storage } from '../lib/storage';
 import type { AppProfile, TicketType } from '../lib/storage';
 import { cn } from '../lib/utils';
+import { PIX_ENABLED } from '../lib/flags';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import gsap from 'gsap';
 import {
@@ -777,7 +778,7 @@ const CreateEventContent = () => {
             </div>
 
             {/* PIX Section — Admin Only */}
-            {userRole === 'admin' && (
+            {PIX_ENABLED && userRole === 'admin' && (
               <div className="create-anim space-y-2.5 md:space-y-3.5 surface rounded-2xl p-3.5 md:p-5 text-left">
                 <div className="flex items-center justify-between">
                   <label className="text-xs md:text-sm font-display font-semibold text-textLight flex items-center gap-1.5 md:gap-2">

@@ -7,7 +7,7 @@
     @apply bg-background text-textLight font-sans antialiased;
     margin: 0;
     overflow-x: hidden;
-    background-color: #FCFAF7;
+    background-color: #FFFCF8;
     /* Reserva a área segura do topo (notch/status bar) em PWA iOS standalone com
        status bar black-translucent. Em outras plataformas o inset é 0 (sem efeito). */
     padding-top: env(safe-area-inset-top, 0px);
@@ -19,21 +19,21 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #FCFAF7;
+    background: #FFFCF8;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(90, 18, 46, 0.3);
+    background: rgba(255, 179, 77, 0.6);
     border-radius: 10px;
     transition: background 0.2s ease;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(90, 18, 46, 0.6);
+    background: rgba(255, 179, 77, 0.9);
   }
 
   /* Selection Sunset Orange */
   ::selection {
-    background: rgba(90, 18, 46, 0.15);
-    color: #1C1917;
+    background: rgba(255, 179, 77, 0.35);
+    color: #000000;
   }
 
   /* ─── Foco visível por teclado (acessibilidade global) ───
@@ -41,7 +41,7 @@
      focus-visible:ring sobrescrevem sem conflito. Elementos com
      `outline-none` (Button/Input do DS) anulam este outline e usam o anel. */
   :where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
-    outline: 2px solid rgba(90, 18, 46, 0.55);
+    outline: 2px solid rgba(0, 0, 0, 0.6);
     outline-offset: 2px;
     border-radius: 8px;
   }
@@ -103,7 +103,7 @@
   /* Badge de Status (único uppercase+tracking aceitável: estado) */
   .badge-open {
     background: rgba(16, 185, 129, 0.08);
-    color: #0B4F48;
+    color: #065F46;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -128,7 +128,7 @@
     box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.05);
   }
   .surface-cream {
-    background: #FCFAF7;
+    background: #FFFCF8;
     border: 1px solid rgba(28, 25, 23, 0.07);
   }
   .surface-hover {
@@ -154,7 +154,7 @@
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   }
   .glass-hover:hover {
-    border-color: rgba(90, 18, 46, 0.2);
+    border-color: rgba(255, 179, 77, 0.7);
     box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
     transform: translateY(-2px);
   }
@@ -162,7 +162,7 @@
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   }
   .glass-hover-accent:hover {
-    border-color: rgba(11, 79, 72, 0.2);
+    border-color: rgba(166, 99, 0, 0.35);
     box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
     transform: translateY(-2px);
   }
@@ -182,25 +182,25 @@
   }
   .brutal-card-primary {
     background: #FFFFFF;
-    border: 1px solid rgba(90, 18, 46, 0.14);
+    border: 1px solid rgba(255, 179, 77, 0.5);
     box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.05);
     border-radius: 16px;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   }
   .brutal-card-primary:hover {
-    border-color: rgba(90, 18, 46, 0.28);
+    border-color: rgba(255, 179, 77, 0.9);
     box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
     transform: translateY(-2px);
   }
   .brutal-card-accent {
     background: #FFFFFF;
-    border: 1px solid rgba(11, 79, 72, 0.14);
+    border: 1px solid rgba(166, 99, 0, 0.25);
     box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.05);
     border-radius: 16px;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   }
   .brutal-card-accent:hover {
-    border-color: rgba(11, 79, 72, 0.28);
+    border-color: rgba(166, 99, 0, 0.45);
     box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
     transform: translateY(-2px);
   }
@@ -222,9 +222,9 @@
     left: 0;
     transform: translateY(-100%);
     background: linear-gradient(
-      rgba(90, 18, 46, 0) 0%,
-      rgba(90, 18, 46, 0.03) 50%,
-      rgba(90, 18, 46, 0) 100%
+      rgba(255, 179, 77, 0) 0%,
+      rgba(255, 179, 77, 0.08) 50%,
+      rgba(255, 179, 77, 0) 100%
     );
     animation: scanline 2.5s linear infinite;
   }

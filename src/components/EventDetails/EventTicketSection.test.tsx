@@ -40,7 +40,6 @@ describe('EventTicketSection Component', () => {
   it('renders ticket price and action buttons for un-registered user', () => {
     render(<EventTicketSection {...mockProps} />);
     expect(screen.getByText('Confirmar presença')).toBeInTheDocument();
-    expect(screen.getByText('Comprar via Pix')).toBeInTheDocument();
     expect(screen.getByText('Gerar ingresso de teste (admin)')).toBeInTheDocument();
   });
 
@@ -49,10 +48,11 @@ describe('EventTicketSection Component', () => {
     expect(screen.getByText('Presença confirmada · ingresso garantido')).toBeInTheDocument();
   });
 
-  it('triggers onOpenPixModal when Pix button clicked', () => {
+  it('esconde compra via Pix enquanto PIX_ENABLED=false e cai para WhatsApp', () => {
     render(<EventTicketSection {...mockProps} />);
-    const pixBtn = screen.getByText('Comprar via Pix');
-    fireEvent.click(pixBtn);
-    expect(mockProps.onOpenPixModal).toHaveBeenCalled();
+    expect(screen.queryByText('Comprar via Pix')).toBeNull();
+    expect(screen.getByText('Comprar ingresso')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Comprar ingresso'));
+    expect(mockProps.onOpenPixModal).not.toHaveBeenCalled();
   });
 });

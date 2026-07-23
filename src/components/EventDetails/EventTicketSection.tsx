@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2, QrCode, Ticket, FlaskConical, Loader2 } from 'lucide-react';
 import type { EventItem, User } from '../../lib/storage';
+import { PIX_ENABLED } from '../../lib/flags';
 
 interface EventTicketSectionProps {
   event: EventItem;
@@ -91,7 +92,7 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
                 </button>
               )}
 
-              {event.hasPixTickets ? (
+              {PIX_ENABLED && event.hasPixTickets ? (
                 <button
                   onClick={onOpenPixModal}
                   className="rounded-xl px-5 py-4 shadow-sm flex items-center justify-center gap-2 transition-all duration-200 font-sans font-semibold text-sm border-0 cursor-pointer neo-click bg-success text-textDark hover:brightness-95"
@@ -99,7 +100,7 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
                   <QrCode size={16} />
                   <span>Comprar via Pix</span>
                 </button>
-              ) : event.hasTickets ? (
+              ) : (event.hasTickets || event.hasPixTickets) ? (
                 <button
                   onClick={handleWhatsAppClick}
                   className="w-full rounded-xl py-3.5 flex items-center justify-center gap-2 transition-all duration-200 font-sans font-semibold text-sm border-0 bg-success text-textDark hover:brightness-95 cursor-pointer neo-click"

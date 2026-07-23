@@ -158,7 +158,7 @@ export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModa
                 Ingresso oficial
               </p>
               <p className="relative text-white font-display font-extrabold text-2xl tracking-[0.25em] uppercase">
-                Atchêi
+                Chain
               </p>
             </div>
 

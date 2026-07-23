@@ -153,7 +153,7 @@ export const AdminDashboard = () => {
 
   const handleGenerateMockEvents = async () => {
     const toastId = toast.loading('Gerando 10 eventos de Cáceres...');
-    const creatorId = currentUser?.profileId || currentUser?.id || 'IWxWyDNYPYfLBCACvNPoVcUVATV2'; // Theo ou Logado
+    const creatorId = currentUser?.profileId || currentUser?.id || 'admin'; // usuário logado
     
     const eventsToCreate = [
       {
@@ -169,11 +169,11 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5565996097252",
-        whatsappName: "Theo",
+        whatsappNumber: "5500000000000",
+        whatsappName: "Contato",
         whatsappContacts: [
-          { name: "Theo", phone: "(65) 99609-7252" },
-          { name: "Allan", phone: "(69) 9258-9818" }
+          { name: "Contato 1", phone: "(00) 00000-0000" },
+          { name: "Contato 2", phone: "(00) 00000-0000" }
         ],
         isTestEvent: false,
         hasPresence: true,
@@ -195,11 +195,11 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5565996097252",
-        whatsappName: "Theo",
+        whatsappNumber: "5500000000000",
+        whatsappName: "Contato",
         whatsappContacts: [
-          { name: "Theo", phone: "(65) 99609-7252" },
-          { name: "Allan", phone: "(69) 9258-9818" }
+          { name: "Contato 1", phone: "(00) 00000-0000" },
+          { name: "Contato 2", phone: "(00) 00000-0000" }
         ],
         isTestEvent: false,
         hasPresence: true,
@@ -221,11 +221,11 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5565996097252",
-        whatsappName: "Theo",
+        whatsappNumber: "5500000000000",
+        whatsappName: "Contato",
         whatsappContacts: [
-          { name: "Theo", phone: "(65) 99609-7252" },
-          { name: "Allan", phone: "(69) 9258-9818" }
+          { name: "Contato 1", phone: "(00) 00000-0000" },
+          { name: "Contato 2", phone: "(00) 00000-0000" }
         ],
         isTestEvent: false,
         hasPresence: true,
@@ -247,11 +247,11 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5565996097252",
-        whatsappName: "Theo",
+        whatsappNumber: "5500000000000",
+        whatsappName: "Contato",
         whatsappContacts: [
-          { name: "Theo", phone: "(65) 99609-7252" },
-          { name: "Allan", phone: "(69) 9258-9818" }
+          { name: "Contato 1", phone: "(00) 00000-0000" },
+          { name: "Contato 2", phone: "(00) 00000-0000" }
         ],
         isTestEvent: false,
         hasPresence: true,
@@ -273,11 +273,11 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5565996097252",
-        whatsappName: "Theo",
+        whatsappNumber: "5500000000000",
+        whatsappName: "Contato",
         whatsappContacts: [
-          { name: "Theo", phone: "(65) 99609-7252" },
-          { name: "Allan", phone: "(69) 9258-9818" }
+          { name: "Contato 1", phone: "(00) 00000-0000" },
+          { name: "Contato 2", phone: "(00) 00000-0000" }
         ],
         isTestEvent: false,
         hasPresence: true,
@@ -299,11 +299,11 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5565996097252",
-        whatsappName: "Theo",
+        whatsappNumber: "5500000000000",
+        whatsappName: "Contato",
         whatsappContacts: [
-          { name: "Theo", phone: "(65) 99609-7252" },
-          { name: "Allan", phone: "(69) 9258-9818" }
+          { name: "Contato 1", phone: "(00) 00000-0000" },
+          { name: "Contato 2", phone: "(00) 00000-0000" }
         ],
         isTestEvent: false,
         hasPresence: true,
@@ -325,11 +325,11 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5565996097252",
-        whatsappName: "Theo",
+        whatsappNumber: "5500000000000",
+        whatsappName: "Contato",
         whatsappContacts: [
-          { name: "Theo", phone: "(65) 99609-7252" },
-          { name: "Allan", phone: "(69) 9258-9818" }
+          { name: "Contato 1", phone: "(00) 00000-0000" },
+          { name: "Contato 2", phone: "(00) 00000-0000" }
         ],
         isTestEvent: false,
         hasPresence: true,
@@ -351,11 +351,11 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5565996097252",
-        whatsappName: "Theo",
+        whatsappNumber: "5500000000000",
+        whatsappName: "Contato",
         whatsappContacts: [
-          { name: "Theo", phone: "(65) 99609-7252" },
-          { name: "Allan", phone: "(69) 9258-9818" }
+          { name: "Contato 1", phone: "(00) 00000-0000" },
+          { name: "Contato 2", phone: "(00) 00000-0000" }
         ],
         isTestEvent: false,
         hasPresence: true,
@@ -377,11 +377,11 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5565996097252",
-        whatsappName: "Theo",
+        whatsappNumber: "5500000000000",
+        whatsappName: "Contato",
         whatsappContacts: [
-          { name: "Theo", phone: "(65) 99609-7252" },
-          { name: "Allan", phone: "(69) 9258-9818" }
+          { name: "Contato 1", phone: "(00) 00000-0000" },
+          { name: "Contato 2", phone: "(00) 00000-0000" }
         ],
         isTestEvent: false,
         hasPresence: true,
@@ -403,11 +403,11 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5565996097252",
-        whatsappName: "Theo",
+        whatsappNumber: "5500000000000",
+        whatsappName: "Contato",
         whatsappContacts: [
-          { name: "Theo", phone: "(65) 99609-7252" },
-          { name: "Allan", phone: "(69) 9258-9818" }
+          { name: "Contato 1", phone: "(00) 00000-0000" },
+          { name: "Contato 2", phone: "(00) 00000-0000" }
         ],
         isTestEvent: false,
         hasPresence: true,
@@ -477,7 +477,7 @@ export const AdminDashboard = () => {
   const handleAddPartner = async (e: React.FormEvent) => {
     e.preventDefault();
     // Remove acentos e espaços do nome para gerar e-mail válido no Firebase Auth
-    const email = `${newPartner.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '')}@atche.com.br`;
+    const email = `${newPartner.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '')}@chain.app`;
     const password = generateSecurePassword();
 
     setIsSavingPartner(true);

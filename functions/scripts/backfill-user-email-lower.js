@@ -1,5 +1,5 @@
 /**
- * Backfill de `userEmailLower` nas inscrições - Atchêi
+ * Backfill de `userEmailLower` nas inscrições - Chain
  *
  * A recuperação de ingressos por email-link busca por `userEmailLower` (e-mail
  * normalizado em minúsculas). Inscrições criadas ANTES dessa mudança não têm o

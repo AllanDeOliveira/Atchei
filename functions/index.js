@@ -151,7 +151,7 @@ exports.criarCobrancaPix = onCall({ cors: true }, async (request) => {
         const clienteNome = data.clienteNome || "Comprador Ficticio";
         const nameParts = clienteNome.trim().split(/\s+/);
         const firstName = nameParts[0] || "Comprador";
-        const lastName = nameParts.slice(1).join(" ") || "Atchêi";
+        const lastName = nameParts.slice(1).join(" ") || "Chain";
 
         // Extrai e formata o telefone
         const clienteTelefone = data.clienteTelefone || "11999999999";
@@ -177,7 +177,7 @@ exports.criarCobrancaPix = onCall({ cors: true }, async (request) => {
         const city = payerAddress.city || 'Sao Paulo';
         const federalUnit = payerAddress.federalUnit || 'SP';
 
-        const eventTitle = data.eventTitle || "Ingresso Atchêi";
+        const eventTitle = data.eventTitle || "Ingresso Chain";
         const eventDescription = data.eventDescription || `Ingresso para o evento ID ${eventId}`;
 
         // Gerar statement_descriptor dinâmico e seguro de no máximo 13 caracteres alfanuméricos
@@ -187,7 +187,7 @@ exports.criarCobrancaPix = onCall({ cors: true }, async (request) => {
             .replace(/[^a-zA-Z0-9\s]/g, "")  // Remove caracteres especiais exceto espaços
             .replace(/\s+/g, "")             // Remove espaços
             .toUpperCase();
-        const statementDescriptor = `ATCHEI*${cleanTitleForDescriptor}`.substring(0, 13);
+        const statementDescriptor = `CHAIN*${cleanTitleForDescriptor}`.substring(0, 13);
 
         logger.info("Statement Descriptor gerado:", statementDescriptor, "Comprimento:", statementDescriptor.length);
 
@@ -244,7 +244,7 @@ exports.criarCobrancaPix = onCall({ cors: true }, async (request) => {
 
         const body = {
             transaction_amount: valorTotal,
-            description: `Ingresso Atchêi - Pedido ${pedidoId}`.substring(0, 60),
+            description: `Ingresso Chain - Pedido ${pedidoId}`.substring(0, 60),
             payment_method_id: 'pix',
             external_reference: pedidoId,
             statement_descriptor: statementDescriptor,

@@ -8,7 +8,7 @@ let testEnv: RulesTestEnvironment;
 describe('Firestore Security Rules', () => {
   beforeAll(async () => {
     testEnv = await initializeTestEnvironment({
-      projectId: 'atche-sistemas-test',
+      projectId: 'chain-test',
       firestore: {
         rules: readFileSync('firestore.rules', 'utf8'),
         host: '127.0.0.1',
@@ -64,13 +64,13 @@ describe('Firestore Security Rules', () => {
     });
 
     it('allows admin to write any profile', async () => {
-      const db = testEnv.authenticatedContext('admin', { email: 'admin@atche.com.br', admin: true }).firestore();
+      const db = testEnv.authenticatedContext('admin', { email: 'admin@chain.app', admin: true }).firestore();
       const ref = doc(db, 'profiles/alice');
       await setDoc(ref, { name: 'Alice Modificada por Admin', type: 'atletica' });
     });
 
     it('denies admin email without admin claim (fallback por e-mail removido)', async () => {
-      const db = testEnv.authenticatedContext('impostor', { email: 'admin@atche.com.br' }).firestore();
+      const db = testEnv.authenticatedContext('impostor', { email: 'admin@chain.app' }).firestore();
       const ref = doc(db, 'profiles/alice');
       try {
         await setDoc(ref, { name: 'Alice Modificada', type: 'atletica' });

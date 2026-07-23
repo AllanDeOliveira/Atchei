@@ -97,7 +97,7 @@ function bindForeground(messaging: ReturnType<typeof getMessaging>) {
   if (foregroundBound) return;
   foregroundBound = true;
   onMessage(messaging, (payload) => {
-    const title = payload.notification?.title || 'Atchêi';
+    const title = payload.notification?.title || 'Chain';
     const body = payload.notification?.body || '';
     toast(body ? `${title}\n${body}` : title, { duration: 6000, icon: '🔔' });
   });

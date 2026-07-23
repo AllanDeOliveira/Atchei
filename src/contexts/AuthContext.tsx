@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const currentRole = isAppAdmin ? 'admin' : localUser.role;
           if (localUser.role !== currentRole) {
             localUser.role = currentRole;
-            localStorage.setItem('@atche:user', JSON.stringify(localUser));
+            localStorage.setItem('@chain:user', JSON.stringify(localUser));
           }
           setUser(localUser);
           setIsLoading(false);
@@ -85,14 +85,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
           if (hasChanges) {
             setUser(updatedUser);
-            localStorage.setItem('@atche:user', JSON.stringify(updatedUser));
+            localStorage.setItem('@chain:user', JSON.stringify(updatedUser));
           }
         } catch (error) {
           console.error("Erro ao sincronizar perfil do Firestore:", error);
         }
       } else {
         setUser(null);
-        localStorage.removeItem('@atche:user');
+        localStorage.removeItem('@chain:user');
       }
       setIsLoading(false);
     });
@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const handleUpdateUser = (newUser: User) => {
     setUser(newUser);
-    localStorage.setItem('@atche:user', JSON.stringify(newUser));
+    localStorage.setItem('@chain:user', JSON.stringify(newUser));
   };
 
   return (

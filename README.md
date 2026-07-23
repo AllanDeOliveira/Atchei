@@ -1,35 +1,6 @@
-# Atchêi — Plataforma de Eventos 🎟️
+# Chain — Plataforma de Eventos 🎟️
 
-**Atchêi** é uma plataforma de descoberta, venda e validação de ingressos para eventos, festivais, casas noturnas e atléticas em **Cáceres-MT**. Cobre o ciclo inteiro: o cliente descobre o evento no feed, paga por PIX, recebe o ingresso, e a portaria valida por QR Code.
-
-👉 **[atche-sistemas.web.app](https://atche-sistemas.web.app/)**
-
----
-
-> [!IMPORTANT]
-> **AVISO ACADÊMICO:** Este projeto é um trabalho acadêmico em desenvolvimento.
-> Por estar em um repositório público para fins de avaliação e demonstração, pedimos gentilmente que **não realizem alterações, não enviem Pull Requests não solicitados e não "baguncem" o código ou a estrutura**, pois ele está sendo utilizado para entrega oficial. Agradecemos a compreensão! 🙏
-
----
-
-## 🤝 Para Estabelecimentos e Organizadores
-
-Você é proprietário de uma casa noturna, organizador de festivais ou líder de atlética? O **Atchêi** foi desenhado para elevar o nível da sua marca.
-
-- **Visibilidade Premium** — seu evento em destaque num feed pensado para gerar desejo.
-- **Painel de Gestão** — controle sobre seus eventos, lotes, preços e descrições.
-- **Venda por PIX** — cobrança gerada na hora, com baixa automática e controle de estoque por lote.
-- **Portaria digital** — validação por QR Code ou código curto, sem papel e sem lista impressa.
-- **Painel financeiro** — acompanhamento das vendas dos seus próprios eventos.
-- **Localização Inteligente** — integração com Google Maps para direcionar seu público.
-
-### 📩 Tem interesse?
-
-Estamos abertos a novas parcerias e expansões da plataforma:
-
-- **Instagram**: [@theocarvalho.dev](https://instagram.com/theo_carvalho.09)
-- **WhatsApp**: [Conversar com Theo](https://wa.me/5565996097252)
-- **GitHub**: [TheoCarvalhoDEV](https://github.com/TheoCarvalhoDEV)
+**Chain** é uma plataforma de descoberta, venda e validação de ingressos para eventos, festivais, casas noturnas e atléticas. Cobre o ciclo inteiro: o cliente descobre o evento no feed, paga por PIX, recebe o ingresso, e a portaria valida por QR Code.
 
 ---
 
@@ -77,13 +48,11 @@ Autorização de admin é **100% via custom claim** do Firebase Auth — não ex
 `react-hook-form` + `zod` (formulários) · `@vis.gl/react-google-maps` · `@zxing/browser` (leitura de QR) · `react-easy-crop` · `html-to-image` · `vite-plugin-pwa`
 
 **Backend** — Cloud Functions gen2 (Node 22) · `firebase-admin` · SDK do Mercado Pago
-
-**Firebase** — Authentication · Firestore · Cloud Functions · Hosting · Storage · Cloud Messaging · Analytics
-Projeto: `atche-sistemas`
+Serviços Firebase usados pelo app: Authentication · Firestore · Cloud Functions · Storage · Cloud Messaging · Analytics
 
 **Testes** — Vitest + Testing Library + jsdom, no frontend e nas functions. Regras do Firestore testadas com `@firebase/rules-unit-testing`.
 
-**Identidade visual** — tema claro, vinho `#6B1D1D` sobre bege `#F5EDE3`, tipografia Plus Jakarta Sans.
+**Identidade visual** — tema claro, âmbar `#FFB34D` e preto `#000000` sobre off-white `#FFFCF8`, tipografia Plus Jakarta Sans.
 
 ---
 
@@ -111,7 +80,7 @@ Método **exclusivamente PIX**, via Mercado Pago. Não há cartão.
 O scanner aceita duas entradas:
 
 - **QR Code** — o id completo do documento de inscrição
-- **Código curto** — formato `ATX-XXXX-XXXX`, para digitar quando a câmera falha
+- **Código curto** — formato `CHN-XXXX-XXXX`, para digitar quando a câmera falha (o prefixo legado `ATX-` continua aceito)
 
 O código curto é derivado do id por FNV-1a → base32 Crockford, sem campo extra no banco. Se mais de uma inscrição casar com o mesmo código, o sistema **recusa a validação** em vez de arriscar liberar a pessoa errada. Check-ins não podem ser revertidos.
 
@@ -119,11 +88,9 @@ O código curto é derivado do id por FNV-1a → base32 Crockford, sem campo ext
 
 ## 🔧 Rodando localmente
 
-**Pré-requisitos:** Node 22+, conta Firebase, credenciais do Mercado Pago (para testar pagamento).
+**Pré-requisitos:** Node 22+, projeto Firebase próprio, credenciais do Mercado Pago (para testar pagamento).
 
 ```bash
-git clone https://github.com/TheoCarvalhoDEV/athc-.git
-cd athc-
 npm install
 ```
 
@@ -158,37 +125,17 @@ npm run lint
 npm run test:run     # suíte usada no CI
 ```
 
-**Emuladores** — Functions em `:5001`, Firestore em `:8080`:
-
-```bash
-cd functions && npm run serve
-```
-
-O frontend só conecta nos emuladores se o host for `localhost`/`127.0.0.1` **e** `VITE_USE_EMULATORS` for `true`.
+O frontend só conecta nos emuladores do Firebase se o host for `localhost`/`127.0.0.1` **e** `VITE_USE_EMULATORS` for `true`.
 
 **Testes das regras do Firestore** ficam em `tests/rules/` e exigem o emulador Firestore ativo. Estão fora da suíte padrão do Vitest e não rodam no CI.
 
 ---
 
-## 🚢 Deploy
+## 🚢 CI e deploy
 
-CI em `.github/workflows/ci.yml`, disparado em push e PR para `master`.
+CI em `.github/workflows/ci.yml`, disparado em push e PR para `main`: build + testes do frontend e das functions. O deploy é feito na hospedagem de sua escolha — o build gera um site estático em `dist/` (SPA: configure rewrite de todas as rotas para `/index.html`).
 
-- **`build-test`** — build, testes do frontend e testes das functions
-- **`deploy`** — só em push para `master`; publica hosting, functions, regras do Firestore e do Storage
-
-Secrets necessários no repositório:
-
-| Secret | Uso |
-|---|---|
-| `FIREBASE_SERVICE_ACCOUNT` | conta de serviço com permissão de deploy |
-| `MP_ACCESS_TOKEN` | token do Mercado Pago (runtime) |
-| `MP_WEBHOOK_SECRET` | segredo de assinatura do webhook |
-| `ENV_FILE` | conteúdo completo do `.env` do frontend |
-
-> O job de deploy **recria o `functions/.env`** a partir dos secrets. Isso não é opcional: o deploy gen2 define o ambiente do Cloud Run a partir desse arquivo, e sem ele o `MP_WEBHOOK_SECRET` sumiria — o webhook passaria a rejeitar todas as notificações.
-
-Sem `FIREBASE_SERVICE_ACCOUNT` configurado, o deploy é pulado com job verde (caso de fork ou PR externo).
+Secret necessário no repositório: `ENV_FILE` (conteúdo completo do `.env` do frontend).
 
 ---
 
@@ -211,11 +158,3 @@ tests/rules/     testes das security rules
 ## 📄 Licença
 
 Software proprietário. Todos os direitos reservados — veja [LICENSE](LICENSE).
-
-O código está visível para fins de avaliação acadêmica e demonstração. Isso **não** concede permissão de uso, cópia, modificação ou redistribuição.
-
----
-
-*Desenvolvido por Theo Carvalho e Allan de Oliveira.*
-#   C h a i n  
- 

@@ -18,11 +18,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['logo.png'],
       manifest: {
-        name: 'Atchêi - A cena acontece aqui',
-        short_name: 'Atchêi',
+        name: 'Chain - Eventos e ingressos',
+        short_name: 'Chain',
         description: 'Descubra e crie os melhores eventos, festas e encontros na sua região.',
-        theme_color: '#6B1D1D',
-        background_color: '#F5EDE3',
+        theme_color: '#FFB34D',
+        background_color: '#FFFCF8',
         display: 'standalone',
         start_url: '/',
         icons: [

@@ -12,7 +12,7 @@ describe('storage helpers', () => {
 
   it('getCurrentUser deve retornar o usuário armazenado no localStorage', () => {
     const mockUser = { id: 'u1', name: 'Teste', username: 'teste@exemplo.com', role: 'user' as const };
-    localStorage.setItem('@atche:user', JSON.stringify(mockUser));
+    localStorage.setItem('@chain:user', JSON.stringify(mockUser));
     expect(storage.getCurrentUser()).toEqual(mockUser);
   });
 });

@@ -14,7 +14,7 @@ type RecoveredTicket = { registration: Registration; event: EventItem };
 
 // Onde guardamos o e-mail entre o "enviar link" e o retorno pelo link mágico.
 // Necessário porque o clique no e-mail recarrega o app numa nova aba/sessão.
-const STORAGE_KEY = '@atche:recoveryEmail';
+const STORAGE_KEY = '@chain:recoveryEmail';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
