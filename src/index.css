@@ -1,0 +1,418 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-textLight font-sans antialiased;
+    margin: 0;
+    overflow-x: hidden;
+    background-color: #FCFAF7;
+    /* Reserva a área segura do topo (notch/status bar) em PWA iOS standalone com
+       status bar black-translucent. Em outras plataformas o inset é 0 (sem efeito). */
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Custom Warm Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #FCFAF7;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(90, 18, 46, 0.3);
+    border-radius: 10px;
+    transition: background 0.2s ease;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(90, 18, 46, 0.6);
+  }
+
+  /* Selection Sunset Orange */
+  ::selection {
+    background: rgba(90, 18, 46, 0.15);
+    color: #1C1917;
+  }
+
+  /* ─── Foco visível por teclado (acessibilidade global) ───
+     Especificidade 0 via :where(), então componentes com seu próprio
+     focus-visible:ring sobrescrevem sem conflito. Elementos com
+     `outline-none` (Button/Input do DS) anulam este outline e usam o anel. */
+  :where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+    outline: 2px solid rgba(90, 18, 46, 0.55);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+
+  /* Remove o outline para cliques de mouse, mantendo-o para teclado */
+  :where(button, [role="button"]):focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/* ─── Utilitários de Superfície, Sombra e Interação ─── */
+@layer utilities {
+  /* Transições e efeitos de clique suaves */
+  .neo-click {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+  }
+  .neo-click:active {
+    transform: scale(0.97) translateY(1px);
+  }
+
+  /* Micro-interação de cartão (sutil, ancorada) */
+  .beat-hover {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .beat-hover:hover {
+    transform: translateY(-2px);
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+  }
+  @supports (scrollbar-width: none) {
+    .scrollbar-hide {
+      scrollbar-width: none;
+    }
+  }
+
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(28, 25, 23, 0.03),
+        transparent);
+    animation: shimmer-slide 2.5s infinite;
+  }
+
+  /* Badge de Status (único uppercase+tracking aceitável: estado) */
+  .badge-open {
+    background: rgba(16, 185, 129, 0.08);
+    color: #0B4F48;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.65rem;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    display: inline-block;
+  }
+
+  /* Modal Backdrop Claro Suave */
+  .modal-backdrop {
+    background: rgba(28, 25, 23, 0.45);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+
+  /* Superfície ancorada padrão de card (sólida, hairline real, sombra suave) */
+  .surface {
+    background: #FFFFFF;
+    border: 1px solid rgba(28, 25, 23, 0.08);
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.05);
+  }
+  .surface-cream {
+    background: #FCFAF7;
+    border: 1px solid rgba(28, 25, 23, 0.07);
+  }
+  .surface-hover {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .surface-hover:hover {
+    border-color: rgba(28, 25, 23, 0.14);
+    box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
+    transform: translateY(-2px);
+  }
+
+  /* Glass: RESERVADO para navegação e overlays de modal (ancorado, menos blur) */
+  .glass {
+    background: rgba(255, 255, 255, 0.82);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(28, 25, 23, 0.08);
+    box-shadow: 0 4px 16px -6px rgba(28, 25, 23, 0.08);
+  }
+
+  /* Hover de card: sutil, sem troca de opacidade de vidro nem salto exagerado */
+  .glass-hover {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .glass-hover:hover {
+    border-color: rgba(90, 18, 46, 0.2);
+    box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
+    transform: translateY(-2px);
+  }
+  .glass-hover-accent {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .glass-hover-accent:hover {
+    border-color: rgba(11, 79, 72, 0.2);
+    box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
+    transform: translateY(-2px);
+  }
+
+  /* Aliases legados → superfícies sólidas (mantidos durante a varredura) */
+  .brutal-card {
+    background: #FFFFFF;
+    border: 1px solid rgba(28, 25, 23, 0.08);
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.05);
+    border-radius: 16px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .brutal-card:hover {
+    border-color: rgba(28, 25, 23, 0.14);
+    box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
+    transform: translateY(-2px);
+  }
+  .brutal-card-primary {
+    background: #FFFFFF;
+    border: 1px solid rgba(90, 18, 46, 0.14);
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.05);
+    border-radius: 16px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .brutal-card-primary:hover {
+    border-color: rgba(90, 18, 46, 0.28);
+    box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
+    transform: translateY(-2px);
+  }
+  .brutal-card-accent {
+    background: #FFFFFF;
+    border: 1px solid rgba(11, 79, 72, 0.14);
+    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.05);
+    border-radius: 16px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .brutal-card-accent:hover {
+    border-color: rgba(11, 79, 72, 0.28);
+    box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
+    transform: translateY(-2px);
+  }
+
+  /* Skeleton Loading Cor de Papel/Osso */
+  .skeleton-dark {
+    background: rgba(239, 236, 230, 0.6);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(28, 25, 23, 0.04);
+    border-radius: 12px;
+  }
+  .skeleton-dark::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateY(-100%);
+    background: linear-gradient(
+      rgba(90, 18, 46, 0) 0%,
+      rgba(90, 18, 46, 0.03) 50%,
+      rgba(90, 18, 46, 0) 100%
+    );
+    animation: scanline 2.5s linear infinite;
+  }
+
+  @keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+
+  /* Linha de leitura do scanner de QR (percorre o quadro de mira via `top`) */
+  @keyframes scan-sweep {
+    0% { top: 4%; opacity: 0; }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { top: 96%; opacity: 0; }
+  }
+  .animate-scan-sweep {
+    animation: scan-sweep 2.2s ease-in-out infinite;
+  }
+
+  /* Ambient Glow desativado (decoração "template" removida) */
+  .ambient-glow {
+    display: none;
+  }
+
+  .card-lift {
+    @apply glass-hover;
+  }
+  .card-lift-accent {
+    @apply glass-hover-accent;
+  }
+
+  /* Fix inline styles on BottomNav */
+  .bottom-nav-container {
+    transform: translate3d(-50%, 0, 0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+}
+
+/* ─── Correções de Data e Hora para iOS Safari ─── */
+input[type="date"],
+input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 2.75rem; /* ~ h-11 no mobile */
+}
+
+@media (min-width: 768px) {
+  input[type="date"],
+  input[type="time"] {
+    min-height: 3.5rem; /* ~ h-14 no desktop */
+  }
+}
+
+/* Garante visibilidade e alinhamento do texto interno do date/time no WebKit */
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  min-height: 1.5em;
+  display: block;
+  text-align: left;
+  color: inherit;
+}
+
+/* ─── Animações Premium de Confirmação de Pagamento ─── */
+.payment-success-icon-wrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.payment-success-pulse-ring {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  background-color: rgba(16, 185, 129, 0.15);
+  border-radius: 50%;
+  z-index: 0;
+  opacity: 0;
+  animation: pulseGlowPremium 2s cubic-bezier(0.4, 0, 0.6, 1) 0.5s infinite;
+}
+
+.payment-success-checkmark {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: block;
+  stroke-width: 3;
+  stroke: #10B981;
+  stroke-miterlimit: 10;
+  z-index: 1;
+  box-shadow: inset 0px 0px 0px #10B981;
+  animation: fillBackgroundPremium 0.5s ease-in-out 0.4s forwards;
+}
+
+.payment-success-checkmark-circle {
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  stroke-width: 3;
+  stroke-miterlimit: 10;
+  stroke: #10B981;
+  fill: none;
+  animation: strokeDrawPremium 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.payment-success-checkmark-check {
+  transform-origin: 50% 50%;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: strokeDrawPremium 0.4s cubic-bezier(0.65, 0, 0.45, 1) 0.5s forwards;
+}
+
+@keyframes strokeDrawPremium {
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes fillBackgroundPremium {
+  0% {
+    box-shadow: inset 0px 0px 0px 0px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: inset 0px 0px 0px 40px rgba(16, 185, 129, 0.1);
+  }
+}
+
+@keyframes pulseGlowPremium {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* ─── Impressão: imprime SOMENTE o cartão do ingresso (.printable-ticket) ─── */
+@media print {
+  /* Esconde toda a página (mantém o layout, só não pinta) */
+  body * {
+    visibility: hidden !important;
+  }
+  /* Revela apenas o ingresso e seu conteúdo */
+  .printable-ticket,
+  .printable-ticket * {
+    visibility: visible !important;
+  }
+  /* Posiciona o ingresso sozinho no topo da folha */
+  .printable-ticket {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-color: #e7e5e4 !important;
+  }
+  /* Neutraliza o fundo/blur do modal para não gerar páginas extras */
+  .modal-backdrop {
+    background: #ffffff !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  @page {
+    margin: 14mm;
+  }
+}
+
+/* GPU accelerated container classes to avoid hardware rendering bugs on Android */
+.gpu-container {
+  isolation: isolate;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+.gpu-video {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+

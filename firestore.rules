@@ -1,0 +1,176 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Função auxiliar para verificar autenticação básica
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    // Função auxiliar para verificar se o usuário é administrador.
+    // Exclusivamente via Custom Claims (admin: true), definidos pela Cloud
+    // Function setAdminClaim ou pelo script functions/scripts/set-admins.js.
+    function isAdmin() {
+      return isAuthed() && 'admin' in request.auth.token && request.auth.token.admin == true;
+    }
+
+    // Função auxiliar para verificar se o usuário é parceiro ou administrador
+    function isPartnerOrAdmin() {
+      return isAuthed() && (
+        isAdmin() ||
+        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.type in ['atletica', 'estabelecimento', 'admin']
+      );
+    }
+
+    // Verifica se o usuário autenticado é o criador (dono) de um evento.
+    function isEventOwner(eventId) {
+      return isAuthed() &&
+        exists(/databases/$(database)/documents/events/$(eventId)) &&
+        get(/databases/$(database)/documents/events/$(eventId)).data.creatorId == request.auth.uid;
+    }
+
+    // Verifica se um evento aceita presença gratuita. Um evento sem o campo
+    // `hasPresence` (undefined) é tratado como habilitado — espelha a UI, que usa
+    // `hasPresence !== false`. Eventos exclusivamente pagos gravam hasPresence=false
+    // e, portanto, NÃO permitem a criação de inscrições gratuitas pelo cliente.
+    function eventAllowsPresence(eventId) {
+      return exists(/databases/$(database)/documents/events/$(eventId)) &&
+        get(/databases/$(database)/documents/events/$(eventId)).data.hasPresence != false;
+    }
+
+    match /profiles/{profileId} {
+      // Perfis são públicos para visualização
+      allow read: if true;
+      
+      // Permitir criação se o próprio usuário estiver criando seu perfil com tipo 'user'
+      // ou se o solicitante for um administrador
+      allow create: if isAuthed() && (
+        (request.auth.uid == profileId && request.resource.data.type == 'user') || 
+        isAdmin()
+      );
+      
+      // Permitir atualização ao dono (do seu próprio perfil, identificado por email autenticado)
+      // se não alterar tipo ou e-mail, ou se for um administrador
+      allow update: if isAuthed() && (
+        (
+          request.auth.token.email.lower() == resource.data.email.lower() &&
+          request.resource.data.type == resource.data.type &&
+          request.resource.data.email == resource.data.email
+        ) ||
+        isAdmin()
+      );
+
+      // Apenas admins podem deletar perfis
+      allow delete: if isAdmin();
+    }
+
+    match /events/{eventId} {
+      // Eventos são públicos para visualização
+      allow read: if true;
+      // Somente parceiros ou administradores podem criar eventos, e o creatorId deve ser o próprio UID
+      allow create: if isPartnerOrAdmin() && request.resource.data.creatorId == request.auth.uid;
+      // Somente o criador do evento ou o administrador podem editar/excluir
+      allow update, delete: if isAuthed() && (resource.data.creatorId == request.auth.uid || isAdmin());
+    }
+
+    match /registrations/{registrationId} {
+      // Uma inscrição só pode ser lida se:
+      // 1. O solicitante for administrador
+      // 2. O solicitante for o dono da inscrição (userId)
+      // 3. O solicitante for o criador do evento associado
+      allow read: if isAuthed() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin() ||
+        (
+          exists(/databases/$(database)/documents/events/$(resource.data.eventId)) &&
+          get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.creatorId == request.auth.uid
+        )
+      );
+      // Criação de inscrição pelo cliente (a inscrição paga por Pix é criada pelo
+      // webhook via Admin SDK, que ignora estas regras). Dois caminhos legítimos:
+      //
+      // A) Dono do evento ou admin: registra participantes do PRÓPRIO evento com
+      //    qualquer status (cortesia, pago em dinheiro, Pix manual na portaria).
+      //
+      // B) Caminho público de PRESENÇA GRATUITA (usuário logado ou visitante):
+      //    1. O evento precisa aceitar presença gratuita — impede forjar um ingresso
+      //       "Gratuito" para um evento exclusivamente pago e passá-lo na portaria.
+      //    2. paymentStatus só pode ser 'Gratuito'/nulo — nunca 'Pago' pelo cliente.
+      //    3. A inscrição não pode nascer já validada (check-in é ação de portaria).
+      //    4. Usuário logado só cria inscrição em nome PRÓPRIO (userId == uid).
+      //       Visitante sem login precisa usar um userId de convidado ('guest-...'),
+      //       impedindo atribuir uma inscrição forjada ao UID de outra pessoa.
+      allow create: if
+        isAdmin() ||
+        isEventOwner(request.resource.data.eventId) ||
+        (
+          eventAllowsPresence(request.resource.data.eventId) &&
+          (
+            !('paymentStatus' in request.resource.data) ||
+            request.resource.data.paymentStatus == 'Gratuito' ||
+            request.resource.data.paymentStatus == null
+          ) &&
+          (
+            !('checkedIn' in request.resource.data) ||
+            request.resource.data.checkedIn == false
+          ) &&
+          (
+            (isAuthed() && request.resource.data.userId == request.auth.uid) ||
+            (
+              !isAuthed() &&
+              request.resource.data.userId is string &&
+              request.resource.data.userId.matches('guest-.*') &&
+              request.resource.data.userName is string && request.resource.data.userName.size() > 0 &&
+              request.resource.data.userEmail is string && request.resource.data.userEmail.size() > 0
+            )
+          )
+        );
+
+      // Atualização: admin (irrestrita) OU o dono do evento, mas SÓ para registrar
+      // o check-in na portaria — restrito aos campos de validação e sem permitir
+      // reverter um check-in (impede reabrir reentrada / apagar a trilha de auditoria).
+      allow update: if isAdmin() || (
+        isEventOwner(resource.data.eventId) &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['checkedIn', 'checkedInAt', 'checkedInBy']) &&
+        request.resource.data.checkedIn == true
+      );
+
+      // Apenas administradores podem deletar inscrições
+      allow delete: if isAdmin();
+    }
+
+    match /pedidos/{pedidoId} {
+      // Um pedido pode ser lido pelo dono do pedido, pelo admin, ou pelo criador do evento
+      // associado (necessário para o painel financeiro do parceiro). CPF/e-mail continuam
+      // protegidos de qualquer outro usuário.
+      allow read: if isAuthed() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin() ||
+        (
+          exists(/databases/$(database)/documents/events/$(resource.data.eventId)) &&
+          get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.creatorId == request.auth.uid
+        )
+      );
+      // Escrita direta pelo cliente é proibida (apenas Cloud Functions do backend criam/alteram)
+      allow write: if false;
+    }
+
+    // Tokens de push (FCM): cada dispositivo registra seu próprio token vinculado ao seu UID.
+    // A leitura é feita exclusivamente pelo backend (Admin SDK) ao enviar notificações.
+    match /fcmTokens/{token} {
+      allow read: if false;
+      // O usuário só pode criar/atualizar um token apontando para o seu próprio UID.
+      allow create, update: if isAuthed() && request.resource.data.userId == request.auth.uid;
+      // O dono do token pode removê-lo (ex.: ao desativar notificações ou sair).
+      allow delete: if isAuthed() && resource.data.userId == request.auth.uid;
+    }
+
+    // Coleção interna de rate limiting — acesso bloqueado para clientes
+    // Somente Cloud Functions (Admin SDK) podem ler/escrever
+    match /_rateLimits/{docId} {
+      allow read, write: if false;
+    }
+  }
+}

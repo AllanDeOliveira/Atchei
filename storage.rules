@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Função auxiliar para verificar se o usuário é administrador.
+    // Exclusivamente via Custom Claims (admin: true), definidos pela Cloud
+    // Function setAdminClaim ou pelo script functions/scripts/set-admins.js.
+    function isAdmin() {
+      return request.auth != null && 'admin' in request.auth.token && request.auth.token.admin == true;
+    }
+
+    // Regra para fotos de perfil
+    match /profiles/{userId}/{fileName} {
+      allow read: if true;
+      // Apenas o próprio usuário ou administradores podem subir/alterar fotos (somente imagens até 15MB)
+      allow write: if request.auth != null && 
+                      (request.auth.uid == userId || isAdmin()) && 
+                      request.resource.size < 15 * 1024 * 1024 &&
+                      request.resource.contentType.matches('image/.*');
+    }
+
+    // Regra para fotos/mídias de eventos
+    match /events/{userId}/{fileName} {
+      allow read: if true;
+      // Apenas o próprio criador do evento ou administradores podem subir/alterar fotos (somente imagens até 15MB)
+      allow write: if request.auth != null && 
+                      (request.auth.uid == userId || isAdmin()) && 
+                      request.resource.size < 15 * 1024 * 1024 &&
+                      request.resource.contentType.matches('image/.*');
+    }
+  }
+}
