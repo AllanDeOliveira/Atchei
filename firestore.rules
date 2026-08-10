@@ -172,5 +172,13 @@ service cloud.firestore {
     match /_rateLimits/{docId} {
       allow read, write: if false;
     }
+
+    // Recebedores do Asaas (split de pagamento): walletId de destino do repasse.
+    // Escrita pelo cliente permitiria apontar o split para a carteira de um terceiro
+    // e desviar as vendas — só o Admin SDK escreve aqui, via a callable de cadastro.
+    // O status chega ao frontend pela callable `asaasStatusRecebedor`.
+    match /asaasAccounts/{creatorId} {
+      allow read, write: if false;
+    }
   }
 }

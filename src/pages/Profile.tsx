@@ -7,6 +7,7 @@ import { User, LogOut, Calendar, MapPin, Clock, Trash2, Navigation, Ticket, Came
 import { InstagramIcon } from '../components/InstagramIcon';
 import { TicketModal } from '../components/TicketModal';
 import { NotificationToggle } from '../components/NotificationToggle';
+import { AsaasRecebedor } from '../components/AsaasRecebedor';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useAuth } from '../contexts/AuthContext';
 import { compressImage, dataURLtoBlob } from '../lib/imageUtils';
@@ -556,6 +557,13 @@ export const Profile = () => {
             </div>
             <ChevronRight size={18} className="text-textMuted group-hover:text-primary transition-colors shrink-0" />
           </button>
+        </div>
+      )}
+
+      {/* Conta de recebimento (split): organizador cadastra a subconta Asaas */}
+      {user && userRole !== 'user' && (
+        <div className="profile-el mx-5 mb-6 relative z-10">
+          <AsaasRecebedor />
         </div>
       )}
 

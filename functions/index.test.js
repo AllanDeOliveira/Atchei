@@ -36,8 +36,14 @@ const mockFirestore = {
 const mockAuthUpdateUser = vi.fn();
 const mockAuthSetCustomClaims = vi.fn();
 
-const mockMpCreate = vi.fn();
-const mockMpGet = vi.fn();
+// Mocks das chamadas de rede ao Asaas. `calcSplit` NÃO é mockada — a matemática do
+// dinheiro é exercitada de verdade através destes testes.
+const mockAsaasCliente = vi.fn();
+const mockAsaasCriarCobranca = vi.fn();
+const mockAsaasQrCode = vi.fn();
+const mockAsaasConsultar = vi.fn();
+const mockAsaasEstornar = vi.fn();
+const mockAsaasGetRecebedor = vi.fn();
 
 // Mock do firebase-admin
 const mockAdmin = {
@@ -53,24 +59,6 @@ const mockAdmin = {
   },
 };
 
-// Mock do mercadopago
-class MercadoPagoConfig {
-  constructor() {}
-}
-class Payment {
-  constructor() {}
-  create(data) {
-    return mockMpCreate(data);
-  }
-  get(data) {
-    return mockMpGet(data);
-  }
-}
-const mockMP = {
-  MercadoPagoConfig,
-  Payment,
-};
-
 // Mock do cors
 const mockCors = () => (req, res, callback) => {
   if (typeof callback === 'function') {
@@ -84,8 +72,19 @@ Module.prototype.require = function (id) {
   if (id === 'firebase-admin') {
     return mockAdmin;
   }
-  if (id === 'mercadopago') {
-    return mockMP;
+  if (id === './asaas') {
+    // Módulo real com só as chamadas de rede substituídas: o cofre e, principalmente,
+    // `calcSplit` continuam sendo os de produção.
+    const real = originalRequire.call(this, './asaas');
+    return {
+      ...real,
+      buscarOuCriarCliente: mockAsaasCliente,
+      criarCobrancaPix: mockAsaasCriarCobranca,
+      obterQrCodePix: mockAsaasQrCode,
+      consultarCobranca: mockAsaasConsultar,
+      estornarCobranca: mockAsaasEstornar,
+      getRecebedor: mockAsaasGetRecebedor,
+    };
   }
   if (id === 'cors') {
     return mockCors;
@@ -106,7 +105,7 @@ Module.prototype.require = function (id) {
 };
 
 // 3. Inicializar variáveis de ambiente e importar index.js
-process.env.MP_ACCESS_TOKEN = 'mock-access-token';
+process.env.ASAAS_API_KEY = 'mock-asaas-key';
 const requireLocal = createRequire(import.meta.url);
 const myFunctions = requireLocal('./index.js');
 const { ADMIN_EMAILS } = requireLocal('./adminEmails.js');
@@ -115,87 +114,180 @@ const fft = requireLocal('firebase-functions-test')();
 describe('Cloud Functions Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks NÃO esvazia as filas de mockResolvedValueOnce. Sem o reset explícito,
+    // um teste que falha no meio deixa respostas enfileiradas e derruba o teste seguinte
+    // por um motivo que nada tem a ver com ele.
+    mockDocGet.mockReset();
+    mockDocSet.mockReset();
+    mockDocUpdate.mockReset();
+    mockRunTransaction.mockReset();
+    mockQuery.get.mockReset();
+    mockAsaasCliente.mockReset();
+    mockAsaasCriarCobranca.mockReset();
+    mockAsaasQrCode.mockReset();
+    mockAsaasConsultar.mockReset();
+    mockAsaasEstornar.mockReset();
+    mockAsaasGetRecebedor.mockReset();
+
     mockQuery.get.mockResolvedValue({ empty: true, docs: [] });
+    mockQuery.limit.mockReturnValue(mockQuery);
+    // Padrões neutros: organizador sem recebedor e Asaas respondendo o mínimo viável.
+    mockAsaasGetRecebedor.mockResolvedValue(null);
+    mockAsaasCliente.mockResolvedValue('cus_mock');
+    mockAsaasCriarCobranca.mockResolvedValue({ id: 'pay_mock' });
+    mockAsaasQrCode.mockResolvedValue({ qr_code: 'copia-e-cola', qr_code_base64: 'base64' });
   });
 
   describe('criarCobrancaPix', () => {
+    const CPF_VALIDO = '52998224725';
+
+    const pedidoBase = (over = {}) => ({
+      valor: 50,
+      cpf: CPF_VALIDO,
+      email: 'comprador@teste.com',
+      clienteNome: 'Fulano de Tal',
+      clienteTelefone: '11988887777',
+      pedidoId: 'ped-123',
+      eventId: 'evt-123',
+      itensSelecionados: [{ id: 'lote-1', quantity: 1, price: 50, name: 'Lote VIP' }],
+      ...over,
+    });
+
+    // Leituras na ordem em que criarCobrancaPix as faz: evento -> guarda do pedido.
+    const filaPadrao = (eventoOver = {}) => {
+      mockDocGet.mockResolvedValueOnce({
+        exists: true,
+        data: () => ({
+          creatorId: 'org-1',
+          tickets: [{ id: 'lote-1', name: 'Lote VIP', capacity: 10, sold: 2, price: 50 }],
+          ...eventoOver,
+        }),
+      });
+      mockDocGet.mockResolvedValueOnce({ exists: false });
+    };
+
     it('deve falhar se dados incompletos forem fornecidos', async () => {
       const wrapped = fft.wrap(myFunctions.criarCobrancaPix);
-      
-      await expect(wrapped({
-        data: { valor: null }
-      })).rejects.toThrow('Dados incompletos para gerar o Pix.');
+      await expect(wrapped({ data: { valor: null } })).rejects.toThrow('Dados incompletos para gerar o Pix.');
+    });
+
+    it('recusa CPF/CNPJ invalido antes de falar com o Asaas', async () => {
+      const wrapped = fft.wrap(myFunctions.criarCobrancaPix);
+      filaPadrao();
+
+      await expect(wrapped({ data: pedidoBase({ cpf: '123' }) }))
+        .rejects.toThrow('Informe um CPF ou CNPJ válido para gerar o Pix.');
+      expect(mockAsaasCriarCobranca).not.toHaveBeenCalled();
     });
 
     it('deve criar cobranca pix com sucesso se houver estoque', async () => {
       const wrapped = fft.wrap(myFunctions.criarCobrancaPix);
-      
-      // 1ª leitura: doc do evento (validação de estoque + preço autoritativo)
-      mockDocGet.mockResolvedValueOnce({
-        exists: true,
-        data: () => ({
-          tickets: [{ id: 'lote-1', name: 'Lote VIP', capacity: 10, sold: 2, price: 50 }]
-        })
-      });
-      // 2ª leitura: guarda anti-duplicação do pedido (ainda não existe)
-      mockDocGet.mockResolvedValueOnce({ exists: false });
+      filaPadrao();
+      mockAsaasCriarCobranca.mockResolvedValueOnce({ id: 'pay_abc' });
+      mockAsaasQrCode.mockResolvedValueOnce({ qr_code: 'copia-e-cola', qr_code_base64: 'base64-img' });
 
-      mockMpCreate.mockResolvedValueOnce({
-        id: 'mp-pay-123',
-        point_of_interaction: {
-          transaction_data: {
-            qr_code: 'mock-qr-code',
-            qr_code_base64: 'mock-qr-base64'
-          }
-        }
-      });
+      const result = await wrapped({ data: pedidoBase() });
 
-      const result = await wrapped({
-        data: {
-          valor: 50,
-          email: 'comprador@teste.com',
-          pedidoId: 'ped-123',
-          eventId: 'evt-123',
-          itensSelecionados: [{ id: 'lote-1', quantity: 1, price: 50, name: 'Lote VIP' }]
-        }
-      });
+      const [corpo] = mockAsaasCriarCobranca.mock.calls[0];
+      expect(corpo.billingType).toBeUndefined(); // billingType é fixado dentro de asaas.js
+      expect(corpo.value).toBe(50);
+      expect(corpo.externalReference).toBe('ped-123');
 
-      expect(mockMpCreate).toHaveBeenCalled();
       expect(mockDocSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: 'ped-123',
-          valor: 50,
-          status: 'pendente',
-          mercadoPagoPaymentId: 'mp-pay-123'
-        }),
+        expect.objectContaining({ id: 'ped-123', valor: 50, status: 'pendente', asaasPaymentId: 'pay_abc' }),
         expect.anything()
       );
-      expect(result).toEqual({
-        id: 'mp-pay-123',
-        qr_code: 'mock-qr-code',
-        qr_code_base64: 'mock-qr-base64'
-      });
+      // Contrato com o frontend inalterado.
+      expect(result).toEqual({ id: 'pay_abc', qr_code: 'copia-e-cola', qr_code_base64: 'base64-img' });
     });
 
     it('deve falhar se a quantidade solicitada exceder o estoque', async () => {
       const wrapped = fft.wrap(myFunctions.criarCobrancaPix);
-
       mockDocGet.mockResolvedValueOnce({
         exists: true,
         data: () => ({
-          tickets: [{ id: 'lote-1', name: 'Lote VIP', capacity: 10, sold: 10, price: 50 }]
-        })
+          creatorId: 'org-1',
+          tickets: [{ id: 'lote-1', name: 'Lote VIP', capacity: 10, sold: 10, price: 50 }],
+        }),
       });
 
-      await expect(wrapped({
-        data: {
-          valor: 50,
-          email: 'comprador@teste.com',
-          pedidoId: 'ped-123',
-          eventId: 'evt-123',
-          itensSelecionados: [{ id: 'lote-1', quantity: 1, price: 50, name: 'Lote VIP' }]
-        }
-      })).rejects.toThrow('Desculpe, o ingresso "Lote VIP" esgotou ou não possui a quantidade solicitada disponível.');
+      await expect(wrapped({ data: pedidoBase() }))
+        .rejects.toThrow('Desculpe, o ingresso "Lote VIP" esgotou ou não possui a quantidade solicitada disponível.');
+    });
+
+    it('ignora o preco enviado pelo cliente e usa o do evento', async () => {
+      const wrapped = fft.wrap(myFunctions.criarCobrancaPix);
+      filaPadrao();
+
+      // Cliente tenta pagar R$ 1 por um ingresso de R$ 50.
+      await wrapped({ data: pedidoBase({ valor: 1, itensSelecionados: [{ id: 'lote-1', quantity: 1, price: 1 }] }) });
+
+      const [corpo] = mockAsaasCriarCobranca.mock.calls[0];
+      expect(corpo.value).toBe(50);
+    });
+
+    // ─── Split ───
+    it('reparte o valor com o organizador cadastrado e retem a comissao', async () => {
+      const feeOriginal = process.env.PLATFORM_FEE_PERCENT;
+      process.env.PLATFORM_FEE_PERCENT = '10';
+      const wrapped = fft.wrap(myFunctions.criarCobrancaPix);
+
+      mockAsaasGetRecebedor.mockResolvedValueOnce({ walletId: 'wal_org1' });
+      filaPadrao();
+      mockAsaasCriarCobranca.mockResolvedValueOnce({ id: 'pay_split' });
+
+      await wrapped({ data: pedidoBase({ pedidoId: 'ped-split' }) });
+
+      // Comissão de 10% => 90% do líquido vai para a carteira do organizador.
+      // Percentual, não valor fixo: fixedValue sobre o bruto estoura o teto do netValue.
+      const [corpo] = mockAsaasCriarCobranca.mock.calls[0];
+      expect(corpo.split).toEqual([{ walletId: 'wal_org1', percentualValue: 90 }]);
+
+      expect(mockDocSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          split: true,
+          sellerCreatorId: 'org-1',
+          sellerWalletId: 'wal_org1',
+          splitPercentualOrganizador: 90,
+          applicationFee: 5,
+          valorLiquidoOrganizador: 45,
+        }),
+        expect.anything()
+      );
+
+      process.env.PLATFORM_FEE_PERCENT = feeOriginal;
+    });
+
+    it('sem recebedor cadastrado, cobra sem split', async () => {
+      const feeOriginal = process.env.PLATFORM_FEE_PERCENT;
+      process.env.PLATFORM_FEE_PERCENT = '10';
+      const wrapped = fft.wrap(myFunctions.criarCobrancaPix);
+
+      mockAsaasGetRecebedor.mockResolvedValueOnce(null);
+      filaPadrao();
+
+      await wrapped({ data: pedidoBase({ pedidoId: 'ped-legado' }) });
+
+      const [corpo] = mockAsaasCriarCobranca.mock.calls[0];
+      expect(corpo.split).toBeUndefined();
+      expect(mockDocSet).toHaveBeenCalledWith(
+        expect.objectContaining({ split: false, applicationFee: 0 }),
+        expect.anything()
+      );
+
+      process.env.PLATFORM_FEE_PERCENT = feeOriginal;
+    });
+
+    it('nao regera cobranca para pedido ja pago', async () => {
+      const wrapped = fft.wrap(myFunctions.criarCobrancaPix);
+      mockDocGet.mockResolvedValueOnce({
+        exists: true,
+        data: () => ({ creatorId: 'org-1', tickets: [{ id: 'lote-1', name: 'Lote VIP', capacity: 10, sold: 0, price: 50 }] }),
+      });
+      mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ status: 'pago' }) });
+
+      await expect(wrapped({ data: pedidoBase() })).rejects.toThrow('Este pedido já foi processado.');
+      expect(mockAsaasCriarCobranca).not.toHaveBeenCalled();
     });
   });
 
@@ -243,190 +335,142 @@ describe('Cloud Functions Tests', () => {
     });
   });
 
-  describe('webhookMercadoPago', () => {
-    it('deve retornar 400 se ID de pagamento nao for fornecido', async () => {
-      const req = {
-        query: {},
-        body: {},
-        headers: {},
-      };
-      
+  describe('webhookAsaas', () => {
+    const TOKEN = 'token-webhook-teste';
+
+    // Captura a resposta do handler (que roda dentro do callback do cors).
+    const chamar = async (req) => {
       let resolveSend;
       const sendPromise = new Promise((resolve) => { resolveSend = resolve; });
       const res = {
+        set: vi.fn(),
         status: vi.fn().mockReturnThis(),
         send: vi.fn().mockImplementation((msg) => { resolveSend(msg); }),
       };
-
-      const wrapped = myFunctions.webhookMercadoPago;
-      wrapped(req, res);
+      myFunctions.webhookAsaas(req, res);
       await sendPromise;
+      return res;
+    };
 
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.send).toHaveBeenCalledWith('ID do pagamento não fornecido.');
+    const req = (over = {}) => ({
+      query: {},
+      body: { event: 'PAYMENT_RECEIVED', payment: { id: 'pay_1' } },
+      headers: { 'asaas-access-token': TOKEN },
+      ...over,
     });
 
-    it('deve processar webhook com sucesso se pagamento for aprovado', async () => {
-      // Configura o segredo e assina o payload corretamente (caminho positivo de validação).
-      const originalSecret = process.env.MP_WEBHOOK_SECRET;
-      process.env.MP_WEBHOOK_SECRET = 'segredo-teste';
-      const ts = '12345';
-      const requestId = 'req-789';
-      const manifest = `id:mp-pay-789;request-id:${requestId};ts:${ts};`;
-      const v1 = crypto.createHmac('sha256', 'segredo-teste').update(manifest).digest('hex');
+    let tokenOriginal;
+    beforeEach(() => {
+      tokenOriginal = process.env.ASAAS_WEBHOOK_TOKEN;
+      process.env.ASAAS_WEBHOOK_TOKEN = TOKEN;
+    });
 
-      const req = {
-        query: { id: 'mp-pay-789' },
-        body: {},
-        headers: {
-          'x-signature': `ts=${ts},v1=${v1}`,
-          'x-request-id': requestId,
-        },
-      };
+    const restaurar = () => {
+      if (tokenOriginal) process.env.ASAAS_WEBHOOK_TOKEN = tokenOriginal;
+      else delete process.env.ASAAS_WEBHOOK_TOKEN;
+    };
 
-      let resolveSend;
-      const sendPromise = new Promise((resolve) => { resolveSend = resolve; });
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        send: vi.fn().mockImplementation((msg) => { resolveSend(msg); }),
-      };
+    it('rejeita quando o token do webhook nao confere', async () => {
+      const res = await chamar(req({ headers: { 'asaas-access-token': 'errado' } }));
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(mockAsaasConsultar).not.toHaveBeenCalled();
+      restaurar();
+    });
 
-      mockMpGet.mockResolvedValueOnce({
-        status: 'approved',
-        external_reference: 'ped-789',
-      });
+    it('rejeita quando o header do token esta ausente', async () => {
+      const res = await chamar(req({ headers: {} }));
+      expect(res.status).toHaveBeenCalledWith(401);
+      restaurar();
+    });
 
+    it('rejeita em producao se o token nao estiver configurado (fail-closed)', async () => {
+      delete process.env.ASAAS_WEBHOOK_TOKEN;
+      const res = await chamar(req());
+      expect(res.status).toHaveBeenCalledWith(500);
+      restaurar();
+    });
+
+    it('devolve 400 sem id de pagamento', async () => {
+      const res = await chamar(req({ body: { event: 'PAYMENT_RECEIVED', payment: {} } }));
+      expect(res.status).toHaveBeenCalledWith(400);
+      restaurar();
+    });
+
+    // O ponto central: o status vem da API, não do corpo da requisição.
+    it('ignora um corpo que se diz pago quando a API do Asaas diz PENDING', async () => {
+      mockAsaasConsultar.mockResolvedValueOnce({ id: 'pay_1', status: 'PENDING', externalReference: 'ped-1' });
+
+      const res = await chamar(req());
+
+      expect(mockAsaasConsultar).toHaveBeenCalledWith('pay_1');
+      expect(mockRunTransaction).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.send).toHaveBeenCalledWith('Evento ignorado.');
+      restaurar();
+    });
+
+    it('processa o pagamento confirmado e emite o ingresso', async () => {
+      mockAsaasConsultar.mockResolvedValueOnce({ id: 'pay_1', status: 'RECEIVED', externalReference: 'ped-1' });
+      // Pedido localizado por externalReference.
       mockDocGet.mockResolvedValueOnce({
         exists: true,
-        data: () => ({
-          status: 'pendente',
-          eventId: 'evt-123',
-          userId: 'usr-123',
-          clienteNome: 'João',
-          clienteEmail: 'joao@example.com',
-          itensComprados: [{ id: 'lote-1', quantity: 2, price: 50, name: 'Lote VIP' }]
-        }),
-        id: 'ped-789'
+        id: 'ped-1',
+        data: () => ({ status: 'pendente', eventId: 'evt-1', userId: 'u1', itensComprados: [] }),
       });
 
       const mockTx = {
-        get: vi.fn().mockImplementation((ref) => {
-          if (ref && ref._path && ref._path.startsWith('pedidos/')) {
-            return Promise.resolve({
-              exists: true,
-              data: () => ({
-                status: 'pendente',
-                eventId: 'evt-123',
-                userId: 'usr-123',
-                clienteNome: 'João',
-                clienteEmail: 'joao@example.com',
-                itensComprados: [{ id: 'lote-1', quantity: 2, price: 50, name: 'Lote VIP' }]
-              }),
-              id: 'ped-789'
-            });
-          }
-          if (ref && ref._path && ref._path.startsWith('events/')) {
-            return Promise.resolve({
-              exists: true,
-              data: () => ({
-                tickets: [{ id: 'lote-1', name: 'Lote VIP', capacity: 10, sold: 2, status: 'active' }]
-              })
-            });
-          }
-          return Promise.resolve({ exists: false });
+        get: vi.fn().mockResolvedValue({
+          exists: true,
+          data: () => ({ status: 'pendente', eventId: 'evt-1', userId: 'u1', itensComprados: [] }),
         }),
         update: vi.fn(),
         set: vi.fn(),
+        delete: vi.fn(),
       };
-      
-      mockRunTransaction.mockImplementationOnce(async (callback) => {
-        await callback(mockTx);
-      });
+      mockRunTransaction.mockImplementation(async (cb) => cb(mockTx));
 
-      const wrapped = myFunctions.webhookMercadoPago;
-      wrapped(req, res);
-      await sendPromise;
+      const res = await chamar(req());
 
-      if (originalSecret) {
-        process.env.MP_WEBHOOK_SECRET = originalSecret;
-      } else {
-        delete process.env.MP_WEBHOOK_SECRET;
-      }
-
-      expect(mockMpGet).toHaveBeenCalledWith({ id: 'mp-pay-789' });
       expect(mockRunTransaction).toHaveBeenCalled();
       expect(mockTx.update).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ status: 'pago' })
       );
+      // Inscrição criada com id determinístico (idempotência preservada).
       expect(mockTx.set).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.send).toHaveBeenCalledWith('Webhook processado.');
+      restaurar();
     });
 
-    it('deve retornar 400 se MP_WEBHOOK_SECRET estiver configurado mas headers de assinatura estiverem ausentes', async () => {
-      const originalSecret = process.env.MP_WEBHOOK_SECRET;
-      process.env.MP_WEBHOOK_SECRET = 'segredo-teste';
+    it('trata cobranca removida no Asaas (404) como cancelamento', async () => {
+      const erro404 = new Error('not found');
+      erro404.status = 404;
+      mockAsaasConsultar.mockRejectedValueOnce(erro404);
+      mockDocGet.mockResolvedValueOnce({
+        exists: true,
+        id: 'ped-1',
+        data: () => ({ status: 'pendente', eventId: 'evt-1', userId: 'u1', itensComprados: [] }),
+      });
 
-      const req = {
-        query: { id: 'mp-pay-789' },
-        body: {},
-        headers: {},
+      const mockTx = {
+        get: vi.fn().mockResolvedValue({
+          exists: true,
+          data: () => ({ status: 'pendente', eventId: 'evt-1', userId: 'u1', itensComprados: [] }),
+        }),
+        update: vi.fn(),
+        set: vi.fn(),
+        delete: vi.fn(),
       };
-      
-      let resolveSend;
-      const sendPromise = new Promise((resolve) => { resolveSend = resolve; });
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        send: vi.fn().mockImplementation((msg) => { resolveSend(msg); }),
-      };
+      mockRunTransaction.mockImplementation(async (cb) => cb(mockTx));
 
-      const wrapped = myFunctions.webhookMercadoPago;
-      wrapped(req, res);
-      await sendPromise;
+      const res = await chamar(req({ body: { event: 'PAYMENT_DELETED', payment: { id: 'pay_1', externalReference: 'ped-1' } } }));
 
-      if (originalSecret) {
-        process.env.MP_WEBHOOK_SECRET = originalSecret;
-      } else {
-        delete process.env.MP_WEBHOOK_SECRET;
-      }
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.send).toHaveBeenCalledWith('Assinatura ausente ou inválida.');
-    });
-
-    it('deve retornar 401 se MP_WEBHOOK_SECRET estiver configurado mas assinatura calculada nao bater', async () => {
-      const originalSecret = process.env.MP_WEBHOOK_SECRET;
-      process.env.MP_WEBHOOK_SECRET = 'segredo-teste';
-
-      const req = {
-        query: { id: 'mp-pay-789' },
-        body: {},
-        headers: {
-          'x-signature': 'ts=12345678,v1=hash-invalida',
-          'x-request-id': 'req-123'
-        },
-      };
-      
-      let resolveSend;
-      const sendPromise = new Promise((resolve) => { resolveSend = resolve; });
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        send: vi.fn().mockImplementation((msg) => { resolveSend(msg); }),
-      };
-
-      const wrapped = myFunctions.webhookMercadoPago;
-      wrapped(req, res);
-      await sendPromise;
-
-      if (originalSecret) {
-        process.env.MP_WEBHOOK_SECRET = originalSecret;
-      } else {
-        delete process.env.MP_WEBHOOK_SECRET;
-      }
-
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.send).toHaveBeenCalledWith('Assinatura não autorizada.');
+      expect(mockTx.update).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ status: 'cancelado' })
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      restaurar();
     });
   });
 

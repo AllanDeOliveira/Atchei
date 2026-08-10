@@ -1,30 +1,24 @@
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 const { onDocumentCreated, onDocumentDeleted } = require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const { FieldValue } = require("firebase-admin/firestore");
-const { MercadoPagoConfig, Payment, PaymentRefund } = require("mercadopago");
 const cors = require("cors")({ origin: true });
 const { checkRateLimit, LIMITS } = require("./rateLimiter");
 const { isCallerAdmin } = require("./adminEmails");
+const asaas = require("./asaas");
 
 admin.initializeApp();
 const db = admin.firestore();
 
-let client;
-let payment;
-
-function getPaymentClient() {
-    if (!payment) {
-        const mpAccessToken = process.env.MP_ACCESS_TOKEN || "";
-        if (!mpAccessToken) {
-            logger.warn("AVISO: MP_ACCESS_TOKEN não está configurado no ambiente.");
-        }
-        client = new MercadoPagoConfig({ accessToken: mpAccessToken, options: { timeout: 10000 } });
-        payment = new Payment(client);
-    }
-    return payment;
-}
+// Credenciais do Asaas via Secret Manager, não via .env: um .env é empacotado no deploy
+// e fica legível para qualquer pessoa com acesso ao projeto. Declaradas aqui e ligadas
+// às funções que precisam delas — o Firebase injeta em process.env em tempo de execução,
+// então asaas.js continua lendo process.env.ASAAS_API_KEY sem saber a diferença.
+// Localmente o emulador cai no functions/.env (chave de sandbox).
+const ASAAS_API_KEY = defineSecret("ASAAS_API_KEY");
+const ASAAS_WEBHOOK_TOKEN = defineSecret("ASAAS_WEBHOOK_TOKEN");
 
 // Envia uma notificação push (FCM) para todos os dispositivos de um usuário.
 // Nunca lança erro: falha de notificação não pode comprometer o processamento do pagamento.
@@ -74,31 +68,30 @@ async function enviarNotificacaoPush(userId, title, body, link) {
     }
 }
 
-// Inicia o reembolso total de um pagamento no Mercado Pago (resolução automática de overbooking).
+// Inicia o estorno total de uma cobrança no Asaas (resolução automática de overbooking).
 // A reversão de estoque e a remoção das inscrições são feitas pelo próprio webhook quando o
-// Mercado Pago confirmar o estorno (status 'refunded'). Nunca lança erro.
+// Asaas confirmar o estorno (PAYMENT_REFUNDED). Nunca lança erro.
+//
+// Como a cobrança é da plataforma, o estorno usa a nossa chave — não há token de vendedor
+// para resolver. O Asaas desfaz o split junto com o estorno.
 async function reembolsarPagamentoAutomatico(paymentId) {
     if (!paymentId) return false;
     try {
-        getPaymentClient(); // garante que o client do Mercado Pago esteja inicializado
-        const refundClient = new PaymentRefund(client);
-        await refundClient.create({
-            payment_id: Number(paymentId),
-            requestOptions: { idempotencyKey: `refund-overbooking-${paymentId}` }
-        });
-        logger.info(`Reembolso automático (overbooking) iniciado para o pagamento ${paymentId}.`);
+        await asaas.estornarCobranca(paymentId);
+        logger.info(`Estorno automático (overbooking) iniciado para a cobrança ${paymentId}.`);
         return true;
     } catch (e) {
-        logger.error(`Falha ao reembolsar automaticamente o pagamento ${paymentId}:`, e);
+        logger.error(`Falha ao estornar automaticamente a cobrança ${paymentId}:`, e);
         return false;
     }
 }
 
-exports.criarCobrancaPix = onCall({ cors: true }, async (request) => {
+exports.criarCobrancaPix = onCall({ cors: true, secrets: [ASAAS_API_KEY] }, async (request) => {
     const data = request.data;
-    const { valor, cpf, email, pedidoId, deviceId } = data;
+    const { valor, cpf, email, pedidoId } = data;
     
-    logger.info("Criando cobrança Pix. Pedido:", pedidoId, "Valor:", valor, "CPF:", cpf, "Email:", email, "DeviceID:", deviceId);
+    // Sem CPF/e-mail no log: dado pessoal não precisa ficar retido no Cloud Logging.
+    logger.info("Criando cobrança Pix. Pedido:", pedidoId, "Valor:", valor);
     
     if (!valor || !email || !pedidoId) {
         throw new HttpsError('invalid-argument', 'Dados incompletos para gerar o Pix.');
@@ -130,6 +123,18 @@ exports.criarCobrancaPix = onCall({ cors: true }, async (request) => {
             throw new HttpsError('not-found', 'Evento correspondente não foi encontrado.');
         }
         const eventData = eventDoc.data();
+
+        // ─── SPLIT: para qual carteira vai a parte do organizador? ───
+        // A cobrança é sempre NOSSA (chave da plataforma); o split repassa a parte dele.
+        // Sem recebedor cadastrado não há split: fica tudo na plataforma, como antes.
+        // ponytail: retaguarda proposital. Para exigir cadastro, troque o logger.warn
+        // abaixo por um HttpsError('failed-precondition') — o resto do fluxo não muda.
+        const creatorId = eventData.creatorId || '';
+        const recebedor = await asaas.getRecebedor(creatorId);
+        if (!recebedor) {
+            logger.warn(`Organizador ${creatorId} do evento ${eventId} sem recebedor Asaas. Cobrando sem split.`);
+        }
+
         if (eventData.tickets && itensSelecionados.length > 0) {
             const tickets = eventData.tickets || [];
             for (const item of itensSelecionados) {
@@ -143,60 +148,22 @@ exports.criarCobrancaPix = onCall({ cors: true }, async (request) => {
             }
         }
 
-        // Chave de idempotência estável por pedido: garante que retries da mesma compra
-        // não gerem cobranças duplicadas no Mercado Pago.
-        const idempotencyKey = pedidoId;
-
-        // Extrai e formata o nome do comprador
-        const clienteNome = data.clienteNome || "Comprador Ficticio";
-        const nameParts = clienteNome.trim().split(/\s+/);
-        const firstName = nameParts[0] || "Comprador";
-        const lastName = nameParts.slice(1).join(" ") || "Chain";
-
-        // Extrai e formata o telefone
-        const clienteTelefone = data.clienteTelefone || "11999999999";
-        const cleanPhone = clienteTelefone.replace(/\D/g, "");
-        let areaCode = "11";
-        let phoneNumber = "999999999";
-        if (cleanPhone.length >= 10) {
-            areaCode = cleanPhone.substring(0, 2);
-            phoneNumber = cleanPhone.substring(2);
-        } else if (cleanPhone.length > 0) {
-            phoneNumber = cleanPhone;
+        const clienteNome = data.clienteNome || "Comprador";
+        const clienteTelefone = data.clienteTelefone || "";
+        const cleanCpf = (cpf || "").replace(/\D/g, "");
+        if (cleanCpf.length !== 11 && cleanCpf.length !== 14) {
+            // O Asaas recusa o cadastro do cliente sem CPF/CNPJ válido. Barrar aqui dá uma
+            // mensagem útil ao comprador em vez de um erro genérico vindo do gateway.
+            throw new HttpsError('invalid-argument', 'Informe um CPF ou CNPJ válido para gerar o Pix.');
         }
 
-        const cleanCpf = (cpf || "").replace(/\D/g, "") || "00000000000";
-        const docType = cleanCpf.length === 14 ? 'CNPJ' : 'CPF';
-
-        // Dados opcionais de endereço de cobrança enviados pelo frontend, com fallback padrão
-        const payerAddress = data.payerAddress || {};
-        const zipCode = (payerAddress.zipCode || '01001000').replace(/\D/g, "") || '01001000';
-        const streetName = payerAddress.streetName || 'Praca da Se';
-        const streetNumber = payerAddress.streetNumber ? Number(payerAddress.streetNumber) : 1;
-        const neighborhood = payerAddress.neighborhood || 'Se';
-        const city = payerAddress.city || 'Sao Paulo';
-        const federalUnit = payerAddress.federalUnit || 'SP';
-
         const eventTitle = data.eventTitle || "Ingresso Chain";
-        const eventDescription = data.eventDescription || `Ingresso para o evento ID ${eventId}`;
-
-        // Gerar statement_descriptor dinâmico e seguro de no máximo 13 caracteres alfanuméricos
-        const cleanTitleForDescriptor = eventTitle
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "") // Remove acentos
-            .replace(/[^a-zA-Z0-9\s]/g, "")  // Remove caracteres especiais exceto espaços
-            .replace(/\s+/g, "")             // Remove espaços
-            .toUpperCase();
-        const statementDescriptor = `CHAIN*${cleanTitleForDescriptor}`.substring(0, 13);
-
-        logger.info("Statement Descriptor gerado:", statementDescriptor, "Comprimento:", statementDescriptor.length);
 
         // Processar múltiplos ingressos (VIP, Camarote, etc.) e lotes selecionados.
         // SEGURANÇA: o preço é SEMPRE obtido do documento do evento no servidor.
         // O preço enviado pelo cliente é ignorado para impedir fraude de valor.
         const ticketsDoEvento = eventData.tickets || [];
         let valorTotal = Number(valor);
-        let itemsMP = [];
 
         if (itensSelecionados.length > 0) {
             let somaValores = 0;
@@ -208,17 +175,7 @@ exports.criarCobrancaPix = onCall({ cors: true }, async (request) => {
                 if (!ticketReal) {
                     throw new HttpsError('failed-precondition', `O ingresso "${item.name || item.id}" não está disponível neste evento.`);
                 }
-                const price = Number(ticketReal.price) || 0;
-                somaValores += price * qty;
-
-                itemsMP.push({
-                    id: ticketReal.id,
-                    title: (ticketReal.name || "Ingresso").substring(0, 30),
-                    description: `Ingresso do lote ${ticketReal.name}`.substring(0, 60),
-                    category_id: 'tickets',
-                    quantity: qty,
-                    unit_price: price
-                });
+                somaValores += (Number(ticketReal.price) || 0) * qty;
             }
             if (somaValores <= 0) {
                 throw new HttpsError('invalid-argument', 'Nenhum ingresso válido foi selecionado.');
@@ -232,75 +189,16 @@ exports.criarCobrancaPix = onCall({ cors: true }, async (request) => {
             if (precoEvento > 0) {
                 valorTotal = precoEvento;
             }
-            itemsMP.push({
-                id: eventId,
-                title: eventTitle.substring(0, 30),
-                description: eventDescription.substring(0, 60),
-                category_id: 'tickets',
-                quantity: 1,
-                unit_price: valorTotal
-            });
         }
 
-        const body = {
-            transaction_amount: valorTotal,
-            description: `Ingresso Chain - Pedido ${pedidoId}`.substring(0, 60),
-            payment_method_id: 'pix',
-            external_reference: pedidoId,
-            statement_descriptor: statementDescriptor,
-            payer: {
-                email: email,
-                first_name: firstName,
-                last_name: lastName,
-                phone: {
-                    area_code: areaCode,
-                    number: phoneNumber
-                },
-                identification: {
-                    type: docType,
-                    number: cleanCpf
-                },
-                address: {
-                    zip_code: zipCode,
-                    street_name: streetName,
-                    street_number: streetNumber,
-                    neighborhood: neighborhood,
-                    city: city,
-                    federal_unit: federalUnit
-                }
-            },
-            additional_info: {
-                items: itemsMP,
-                payer: {
-                    first_name: firstName,
-                    last_name: lastName,
-                    phone: {
-                        area_code: areaCode,
-                        number: phoneNumber
-                    },
-                    address: {
-                        zip_code: zipCode,
-                        street_name: streetName,
-                        street_number: streetNumber
-                    },
-                    registration_date: new Date().toISOString()
-                }
-            },
-            metadata: {
-                pedido_id: pedidoId,
-                event_id: eventId,
-                user_id: data.userId || ''
-            },
-            notification_url: 'https://webhookmercadopago-dfjumiogoq-uc.a.run.app'
-        };
-
-        const requestOptions = {
-            idempotencyKey
-        };
-
-        if (deviceId) {
-            requestOptions.meliSessionId = deviceId;
-        }
+        // Repartição do valor. Inverte a lógica do Mercado Pago: lá declarávamos a nossa
+        // comissão, aqui declaramos quanto vai para o organizador — o resto fica conosco.
+        // Percentual, não valor fixo: ver a justificativa em asaas.js (teto do netValue).
+        const { percentualOrganizador, feeEstimada, repasseEstimado } =
+            asaas.calcSplit(valorTotal, asaas.platformFeePercent());
+        const split = (recebedor && percentualOrganizador > 0)
+            ? [{ walletId: recebedor.walletId, percentualValue: percentualOrganizador }]
+            : undefined;
 
         // Evita rebaixar um pedido já processado: se o mesmo pedidoId for reusado após o pagamento,
         // o set merge abaixo sobrescreveria status='pago' por 'pendente'. Bloqueia antes de gerar o Pix.
@@ -309,10 +207,26 @@ exports.criarCobrancaPix = onCall({ cors: true }, async (request) => {
             throw new HttpsError('failed-precondition', 'Este pedido já foi processado.');
         }
 
-        const mpResponse = await getPaymentClient().create({
-            body,
-            requestOptions
+        // O Asaas exige um `customer` cadastrado — não aceita os dados do pagador inline.
+        const customerId = await asaas.buscarOuCriarCliente({
+            name: clienteNome,
+            cpfCnpj: cleanCpf,
+            email,
+            mobilePhone: clienteTelefone,
         });
+
+        const cobranca = await asaas.criarCobrancaPix({
+            customer: customerId,
+            value: valorTotal,
+            description: `${eventTitle} — pedido ${pedidoId}`.substring(0, 500),
+            // `externalReference` é o elo com o nosso pedido: é por ele que o webhook
+            // reencontra a compra, exatamente como o external_reference fazia no MP.
+            externalReference: pedidoId,
+            split,
+        });
+
+        // No Asaas o QR Code é uma segunda chamada; o POST /payments não o devolve.
+        const qr = await asaas.obterQrCodePix(cobranca.id);
 
         await db.collection('pedidos').doc(pedidoId).set({
             id: pedidoId,
@@ -326,14 +240,24 @@ exports.criarCobrancaPix = onCall({ cors: true }, async (request) => {
             userId: data.userId || '',
             status: 'pendente',
             itensComprados: itensSelecionados, // Grava os ingressos do lote para atualizar estoque na aprovação
-            mercadoPagoPaymentId: mpResponse.id,
+            asaasPaymentId: cobranca.id,
+            // Rastro do split. Os valores em reais são ESTIMATIVAS sobre o bruto: o Asaas
+            // reparte sobre o netValue (bruto − tarifa dele), então o repasse real chega
+            // no webhook. Servem para o painel não ficar mostrando só o bruto.
+            sellerCreatorId: creatorId,
+            sellerWalletId: recebedor?.walletId || null,
+            split: !!split,
+            splitPercentualOrganizador: split ? percentualOrganizador : 0,
+            applicationFee: split ? feeEstimada : 0,
+            valorLiquidoOrganizador: split ? repasseEstimado : 0,
             dataCriacao: FieldValue.serverTimestamp(),
         }, { merge: true });
 
+        // Formato de retorno inalterado: o frontend continua consumindo qr_code/qr_code_base64.
         return {
-            id: mpResponse.id,
-            qr_code: mpResponse.point_of_interaction?.transaction_data?.qr_code,
-            qr_code_base64: mpResponse.point_of_interaction?.transaction_data?.qr_code_base64
+            id: cobranca.id,
+            qr_code: qr.qr_code,
+            qr_code_base64: qr.qr_code_base64
         };
 
     } catch (error) {
@@ -345,11 +269,11 @@ exports.criarCobrancaPix = onCall({ cors: true }, async (request) => {
     }
 });
 
-exports.webhookMercadoPago = onRequest(async (req, res) => {
+exports.webhookAsaas = onRequest({ secrets: [ASAAS_API_KEY, ASAAS_WEBHOOK_TOKEN] }, async (req, res) => {
     cors(req, res, async () => {
         // Rate Limiting: 60 requests por minuto por IP
         const clientIp = req.headers['x-forwarded-for'] || req.ip || 'unknown';
-        const rlWebhook = await checkRateLimit(clientIp, 'webhookMercadoPago', LIMITS.WEBHOOK.max, LIMITS.WEBHOOK.windowSec);
+        const rlWebhook = await checkRateLimit(clientIp, 'webhookAsaas', LIMITS.WEBHOOK.max, LIMITS.WEBHOOK.windowSec);
         if (!rlWebhook.allowed) {
             const retryAfterSec = Math.ceil(rlWebhook.retryAfterMs / 1000);
             res.set('Retry-After', String(retryAfterSec));
@@ -357,97 +281,99 @@ exports.webhookMercadoPago = onRequest(async (req, res) => {
             return;
         }
 
-        const paymentId = req.query.id || req.body?.data?.id || req.body?.id;
-        logger.info("Webhook payload recebido. Query:", req.query, "Body:", req.body, "Parsed ID:", paymentId);
-
-        if (!paymentId) {
-            res.status(400).send('ID do pagamento não fornecido.');
-            return;
+        // ─── Autenticação do webhook ───
+        // DIFERENÇA IMPORTANTE EM RELAÇÃO AO MERCADO PAGO: o MP assinava cada payload com
+        // HMAC-SHA256, o que provava a integridade da mensagem. O Asaas oferece apenas um
+        // token estático, que você define ao cadastrar o webhook e ele devolve no header
+        // `asaas-access-token`. É segredo compartilhado, não assinatura — quem obtiver o
+        // token consegue forjar notificações. Daí o fail-closed abaixo e, mais adiante, a
+        // reconsulta da cobrança na API em vez de acreditar no corpo da requisição.
+        const tokenEsperado = process.env.ASAAS_WEBHOOK_TOKEN;
+        if (!tokenEsperado) {
+            if (process.env.FUNCTIONS_EMULATOR === 'true') {
+                logger.warn("ASAAS_WEBHOOK_TOKEN ausente — validação ignorada (apenas no emulador).");
+            } else {
+                logger.error("ASAAS_WEBHOOK_TOKEN não configurado em produção. Rejeitando webhook.");
+                res.status(500).send('Configuração de segurança ausente.');
+                return;
+            }
+        } else {
+            const crypto = require('crypto');
+            const recebido = Buffer.from(String(req.headers['asaas-access-token'] || ''));
+            const esperado = Buffer.from(tokenEsperado);
+            const tokenOk = recebido.length === esperado.length && crypto.timingSafeEqual(recebido, esperado);
+            if (!tokenOk) {
+                logger.error("Token do webhook do Asaas inválido. Acesso não autorizado.");
+                res.status(401).send('Token não autorizado.');
+                return;
+            }
         }
 
-        const signatureHeader = req.headers['x-signature'] || req.headers['X-Signature'] || '';
-        const requestIdHeader = req.headers['x-request-id'] || req.headers['X-Request-Id'] || '';
-        
-        // Obter o segredo do Webhook das variáveis de ambiente do Firebase Functions
-        const webhookSecret = process.env.MP_WEBHOOK_SECRET;
-        
-        if (webhookSecret) {
-            if (!signatureHeader || !requestIdHeader) {
-                logger.error("Validação de assinatura falhou: Cabeçalhos x-signature ou x-request-id ausentes.");
-                res.status(400).send('Assinatura ausente ou inválida.');
-                return;
-            }
-            try {
-                // O cabeçalho x-signature vem no formato: ts=NUMERO,v1=HASH
-                const parts = signatureHeader.split(',');
-                let ts = '';
-                let hashReceived = '';
-                for (const part of parts) {
-                    const [key, val] = part.split('=');
-                    if (key === 'ts') ts = val;
-                    if (key === 'v1') hashReceived = val;
-                }
-                
-                if (!ts || !hashReceived) {
-                    logger.warn("Webhook recebido com formato de x-signature inválido.");
-                    res.status(400).send('Assinatura inválida.');
-                    return;
-                }
-                
-                // Formato do manifest exigido pelo Mercado Pago para validação:
-                // id:[ID_DO_RECURSO];request-id:[X-REQUEST-ID];ts:[TIMESTAMP_DO_CABECALHO];
-                const crypto = require('crypto');
-                const manifest = `id:${paymentId};request-id:${requestIdHeader};ts:${ts};`;
-                
-                // Gerar HMAC SHA256 usando o segredo configurado e o manifest
-                const hmac = crypto.createHmac('sha256', webhookSecret);
-                hmac.update(manifest);
-                const hashCalculated = hmac.digest('hex');
-                
-                // Comparar hashes de forma segura (timing-safe) para evitar timing attacks
-                const sigValida =
-                    hashCalculated.length === hashReceived.length &&
-                    crypto.timingSafeEqual(Buffer.from(hashCalculated), Buffer.from(hashReceived));
-                if (!sigValida) {
-                    logger.error("Assinatura do webhook inválida. Acesso não autorizado.");
-                    res.status(401).send('Assinatura não autorizada.');
-                    return;
-                }
-                logger.info("Assinatura do webhook do Mercado Pago validada com sucesso!");
-            } catch (sigError) {
-                logger.error("Erro ao processar assinatura do webhook:", sigError);
-                res.status(500).send('Erro interno na validação de assinatura.');
-                return;
-            }
-        } else if (process.env.FUNCTIONS_EMULATOR === 'true') {
-            logger.warn("MP_WEBHOOK_SECRET ausente — validação de assinatura ignorada (apenas no emulador).");
-        } else {
-            // Fail-closed: em produção, sem segredo configurado o webhook é rejeitado por segurança.
-            logger.error("MP_WEBHOOK_SECRET não configurado em produção. Rejeitando webhook.");
-            res.status(500).send('Configuração de segurança ausente.');
+        const evento = req.body?.event || '';
+        const paymentId = req.body?.payment?.id;
+        logger.info("Webhook Asaas recebido. Evento:", evento, "Pagamento:", paymentId);
+
+        if (!paymentId) {
+            res.status(400).send('Payload sem id de pagamento.');
             return;
         }
 
         try {
-            const mpPaymentInfo = await getPaymentClient().get({ id: paymentId });
-            const statusReal = mpPaymentInfo.status;
-            
+            // NÃO confiamos no status que veio no corpo. Sem assinatura no payload, um token
+            // vazado bastaria para forjar "pagamento recebido" e emitir ingresso de graça.
+            // Reconsultar a cobrança na API do Asaas é o que mantém a garantia que o
+            // `payment.get()` dava no fluxo do Mercado Pago.
+            let pagamento = null;
+            try {
+                pagamento = await asaas.consultarCobranca(paymentId);
+            } catch (e) {
+                if (e.status === 404) {
+                    // Cobrança removida no Asaas: trata como cancelamento (o caminho de
+                    // estorno só reverte estoque/inscrição se o pedido chegou a ser pago).
+                    logger.warn(`Cobrança ${paymentId} não existe mais no Asaas. Tratando como cancelada.`);
+                } else {
+                    throw e;
+                }
+            }
+
+            // Status reais do Asaas traduzidos para o vocabulário interno que as transações
+            // abaixo já usam. Só a tradução é nova; estoque, inscrições, idempotência e
+            // reembolso automático de overbooking seguem exatamente como estavam.
+            const STATUS = {
+                RECEIVED: 'approved',
+                CONFIRMED: 'approved',
+                RECEIVED_IN_CASH: 'approved',
+                REFUNDED: 'refunded',
+                CHARGEBACK_REQUESTED: 'charged_back',
+                CHARGEBACK_DISPUTE: 'charged_back',
+            };
+            const statusReal = pagamento ? STATUS[pagamento.status] : 'cancelled';
+
+            // Eventos que não mexem no ingresso (PAYMENT_CREATED, PAYMENT_UPDATED,
+            // PAYMENT_OVERDUE, cobrança ainda PENDING…). Responder 200 evita reenfileiramento.
+            if (!statusReal) {
+                logger.info(`Evento ${evento} (status ${pagamento?.status}) ignorado: não altera o ingresso.`);
+                res.status(200).send('Evento ignorado.');
+                return;
+            }
+
+            const externalReference = pagamento?.externalReference || req.body?.payment?.externalReference;
             const pedidosRef = db.collection('pedidos');
             let pedidoDoc = null;
             let dadosPedido = null;
 
-            // Busca direta por external_reference (pedidoId)
-            if (mpPaymentInfo.external_reference) {
-                const docSnap = await pedidosRef.doc(mpPaymentInfo.external_reference).get();
+            // Busca direta por externalReference (pedidoId)
+            if (externalReference) {
+                const docSnap = await pedidosRef.doc(externalReference).get();
                 if (docSnap.exists) {
                     pedidoDoc = docSnap;
                     dadosPedido = docSnap.data();
                 }
             }
 
-            // Fallback por mercadoPagoPaymentId se não achou por external_reference
+            // Fallback por asaasPaymentId se não achou por externalReference
             if (!dadosPedido) {
-                const querySnapshot = await pedidosRef.where('mercadoPagoPaymentId', '==', Number(paymentId)).limit(1).get();
+                const querySnapshot = await pedidosRef.where('asaasPaymentId', '==', paymentId).limit(1).get();
                 if (!querySnapshot.empty) {
                     pedidoDoc = querySnapshot.docs[0];
                     dadosPedido = pedidoDoc.data();
@@ -1018,6 +944,111 @@ exports.recuperarMeusIngressos = onCall({ cors: true }, async (request) => {
         logger.error('Erro ao recuperar ingressos por e-mail:', error);
         throw new HttpsError('internal', 'Erro ao buscar ingressos.');
     }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cadastro do organizador como recebedor no Asaas (subconta + walletId)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// `creatorId` é o mesmo id gravado em `events.creatorId` (doc de perfil, cujo id é o UID
+// do Auth). Confirmar a posse é o ponto crítico: sem isso um parceiro cadastraria a própria
+// conta bancária no lugar de outro organizador e desviaria as vendas dele.
+async function assertCreatorId(auth, creatorIdPedido) {
+    const uid = auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'É preciso estar logado.');
+
+    const creatorId = String(creatorIdPedido || uid);
+    if (creatorId === uid || isCallerAdmin(auth.token)) return creatorId;
+
+    const perfilSnap = await db.collection('profiles').doc(creatorId).get();
+    const emailPerfil = ((perfilSnap.exists && perfilSnap.data().email) || '').toLowerCase();
+    const emailToken = (auth.token.email || '').toLowerCase();
+    if (emailPerfil && emailToken && emailPerfil === emailToken) return creatorId;
+
+    throw new HttpsError('permission-denied', 'Você não pode alterar a conta de recebimento deste organizador.');
+}
+
+/**
+ * Cria a subconta do organizador no Asaas e guarda o `walletId` — é ele, e não o id da
+ * conta, que o split usa como destino do repasse.
+ *
+ * Substitui o antigo fluxo OAuth do Mercado Pago: em vez de redirecionar o organizador
+ * para autorizar, recebemos os dados cadastrais dele e criamos a subconta.
+ */
+exports.asaasCadastrarRecebedor = onCall({ cors: true, secrets: [ASAAS_API_KEY] }, async (request) => {
+    const creatorId = await assertCreatorId(request.auth, request.data?.creatorId);
+
+    const d = request.data || {};
+    const cpfCnpj = String(d.cpfCnpj || '').replace(/\D/g, '');
+    const mobilePhone = String(d.mobilePhone || '').replace(/\D/g, '');
+    const cep = String(d.postalCode || '').replace(/\D/g, '');
+
+    // Validação no limite de confiança: os dados vêm do cliente e viram cadastro fiscal
+    // e destino de dinheiro. Melhor recusar aqui do que receber 400 genérico do Asaas.
+    const faltando = [];
+    if (!d.name || String(d.name).trim().length < 3) faltando.push('nome');
+    if (!d.email || !String(d.email).includes('@')) faltando.push('e-mail');
+    if (cpfCnpj.length !== 11 && cpfCnpj.length !== 14) faltando.push('CPF/CNPJ');
+    if (mobilePhone.length < 10) faltando.push('celular');
+    if (cep.length !== 8) faltando.push('CEP');
+    if (!d.address) faltando.push('endereço');
+    if (!d.addressNumber) faltando.push('número');
+    if (!d.province) faltando.push('bairro');
+    // Obrigatório no POST /v3/accounts — sem valor plausível o Asaas recusa o cadastro.
+    if (!(Number(d.incomeValue) > 0)) faltando.push('faturamento mensal');
+    if (faltando.length > 0) {
+        throw new HttpsError('invalid-argument', `Preencha corretamente: ${faltando.join(', ')}.`);
+    }
+
+    // Recadastrar por cima criaria uma segunda subconta órfã no Asaas com o mesmo CNPJ.
+    const jaExiste = await asaas.getRecebedor(creatorId);
+    if (jaExiste) {
+        throw new HttpsError('already-exists', 'Este organizador já possui uma conta de recebimento.');
+    }
+
+    try {
+        const conta = await asaas.criarSubconta({
+            name: String(d.name).trim(),
+            email: String(d.email).trim().toLowerCase(),
+            cpfCnpj,
+            mobilePhone,
+            incomeValue: Number(d.incomeValue),
+            address: d.address,
+            addressNumber: String(d.addressNumber),
+            complement: d.complement || null,
+            province: d.province,
+            postalCode: cep,
+            companyType: d.companyType || undefined,
+        });
+
+        await asaas.salvarRecebedor(creatorId, conta, {
+            connectedAt: FieldValue.serverTimestamp(),
+            connectedBy: request.auth.uid,
+        });
+
+        logger.info(`Organizador ${creatorId} cadastrado no Asaas. walletId=${conta.walletId}`);
+        return { success: true };
+    } catch (e) {
+        logger.error(`Falha ao criar subconta Asaas de ${creatorId}:`, e);
+        // A mensagem do Asaas costuma ser acionável ("CPF já cadastrado", "CEP inválido").
+        throw new HttpsError('failed-precondition', e.message || 'Não foi possível criar a conta de recebimento.');
+    }
+});
+
+// Status da conexão para a tela do organizador.
+exports.asaasStatusRecebedor = onCall({ cors: true }, async (request) => {
+    const creatorId = await assertCreatorId(request.auth, request.data?.creatorId);
+    const status = await asaas.getStatusPublico(creatorId);
+    return { ...status, feePercent: asaas.platformFeePercent() };
+});
+
+// Desvincula o recebedor. Não apaga a subconta no Asaas: o histórico financeiro dela
+// precisa continuar existindo — só paramos de rotear split para essa carteira.
+exports.asaasDesconectarRecebedor = onCall({ cors: true }, async (request) => {
+    const creatorId = await assertCreatorId(request.auth, request.data?.creatorId);
+    await asaas.desconectar(creatorId);
+    logger.info(`Organizador ${creatorId} desvinculado do recebedor Asaas.`);
+    return { success: true };
 });
 
 exports.onRegistrationCreated = onDocumentCreated("registrations/{registrationId}", async (event) => {

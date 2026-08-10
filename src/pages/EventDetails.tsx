@@ -15,17 +15,10 @@ import { httpsCallable } from 'firebase/functions';
 import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { db, getFunctionsInstance } from '../lib/firebase';
 import gsap from 'gsap';
-import { loadMercadoPago } from '@mercadopago/sdk-js';
 import { EventHeader } from '../components/EventDetails/EventHeader';
 import { EventLocationMap } from '../components/EventDetails/EventLocationMap';
 import { EventTicketSection } from '../components/EventDetails/EventTicketSection';
 
-declare global {
-  interface Window {
-    MercadoPago?: new (publicKey: string, options: { locale: string }) => unknown;
-    MP_DEVICE_SESSION_ID?: string;
-  }
-}
 
 export const EventDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -168,70 +161,6 @@ export const EventDetails = () => {
     setBuyerEmail(currentUser.username || '');
   }
 
-  // Inicialização do SDK V2 do Mercado Pago no Frontend
-  // Inicializa o SDK V2 do Mercado Pago + Carrega o script de segurança como fallback
-  useEffect(() => {
-    const initMP = async () => {
-      const publicKey = import.meta.env.VITE_MERCADOPAGO_PUBLIC_KEY;
-      if (publicKey && publicKey !== 'APP_USR-COLOQUE_SUA_PUBLIC_KEY_AQUI') {
-        try {
-          await loadMercadoPago();
-          if (window.MercadoPago) new window.MercadoPago(publicKey, { locale: 'pt-BR' });
-        } catch (err) {
-          console.error("Erro ao inicializar o Mercado Pago SDK:", err);
-        }
-      }
-    };
-    initMP();
-
-    // Injeta o script de segurança do Mercado Pago dinamicamente como fallback se não estiver carregado
-    const hasDeviceSessionId = !!window.MP_DEVICE_SESSION_ID;
-    const hasScriptTag = !!document.querySelector('script[src*="mercadopago.com/v2/security.js"]');
-
-    if (hasDeviceSessionId) {
-      // Se a variável global já existe, garante que o input oculto seja preenchido
-      const input = document.getElementById('MP_DEVICE_SESSION_ID') as HTMLInputElement;
-      if (input) {
-        input.value = window.MP_DEVICE_SESSION_ID || '';
-      }
-    }
-
-    if (!hasScriptTag) {
-      const scriptId = 'mp-security-script';
-      const script = document.createElement('script');
-      script.id = scriptId;
-      script.src = 'https://www.mercadopago.com/v2/security.js';
-      script.setAttribute('view', 'checkout');
-      script.setAttribute('output', 'MP_DEVICE_SESSION_ID');
-      script.async = true;
-
-      try {
-        Object.defineProperty(document, 'currentScript', {
-          get: () => document.getElementById(scriptId) || script,
-          configurable: true
-        });
-      } catch (e) {
-        console.warn("Não foi possível interceptar document.currentScript", e);
-      }
-
-      const restoreCurrentScript = () => {
-        try {
-          delete (document as unknown as { currentScript?: unknown }).currentScript;
-        } catch {
-          /* propriedade não removível neste navegador; segue sem restaurar */
-        }
-      };
-
-      script.onload = restoreCurrentScript;
-
-      script.onerror = () => {
-        console.error("Erro ao carregar script de segurança dinamicamente no checkout.");
-        restoreCurrentScript();
-      };
-
-      document.body.appendChild(script);
-    }
-  }, []);
 
 
 
@@ -290,11 +219,6 @@ export const EventDetails = () => {
     const novoPedidoId = `PIX-${event.id}-${buyerId}-${Date.now()}`;
     setPedidoId(novoPedidoId);
 
-    const deviceId = window.MP_DEVICE_SESSION_ID ||
-      (document.getElementById('MP_DEVICE_SESSION_ID') as HTMLInputElement)?.value ||
-      (document.getElementById('deviceId') as HTMLInputElement)?.value ||
-      '';
-
     // Mapear os ingressos selecionados
     const itensSelecionados = (event.tickets || [])
       .filter(t => (selectedTickets[t.id] || 0) > 0)
@@ -318,7 +242,6 @@ export const EventDetails = () => {
       eventTitle: event.title,
       eventDescription: event.description || '',
       userId: buyerId,
-      deviceId: deviceId,
       itensSelecionados: itensSelecionados
     };
 
@@ -588,8 +511,6 @@ export const EventDetails = () => {
 
   return (
     <div ref={containerRef} className="min-h-screen bg-background pb-[calc(15rem+env(safe-area-inset-bottom))] md:pb-16 px-4 md:px-8 pt-6">
-      <input type="hidden" id="MP_DEVICE_SESSION_ID" name="MP_DEVICE_SESSION_ID" />
-      <input type="hidden" id="deviceId" />
 
       {/* Main Responsive Grid Container */}
       <div className="w-full max-w-7xl mx-auto relative flex flex-col">

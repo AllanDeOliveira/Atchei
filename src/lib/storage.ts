@@ -97,7 +97,7 @@ export type Registration = {
   isTeste?: boolean;       // Ingresso de teste (gerado por admin, fora do faturamento real)
 };
 
-// Pedido de pagamento (Pix via Mercado Pago). Criado e alterado exclusivamente pelas
+// Pedido de pagamento (Pix via Asaas). Criado e alterado exclusivamente pelas
 // Cloud Functions; o cliente apenas lê (dono do pedido, admin ou criador do evento).
 export type Pedido = {
   id: string;
@@ -110,6 +110,13 @@ export type Pedido = {
   // pendente | pago | estornado | chargeback | cancelado | rejeitado
   status: string;
   itensComprados?: { id: string; name?: string; quantity: number }[];
+  // Split: `split: false` = cobrança sem recebedor cadastrado (tudo na plataforma).
+  // Os valores em reais são ESTIMATIVAS sobre o bruto — o Asaas reparte sobre o
+  // netValue (bruto − tarifa dele), então o repasse exato só é conhecido na liquidação.
+  split?: boolean;
+  splitPercentualOrganizador?: number;
+  applicationFee?: number;
+  valorLiquidoOrganizador?: number;
   overbooked?: boolean;
   isTeste?: boolean; // Pedido de teste (gerado por admin) — não entra no faturamento real
   dataCriacao?: Timestamp | null;

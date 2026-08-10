@@ -42,10 +42,7 @@ vi.mock('../lib/storage', () => ({
   },
 }));
 
-// Mock Firebase SDKs & loadMercadoPago
-vi.mock('@mercadopago/sdk-js', () => ({
-  loadMercadoPago: vi.fn().mockResolvedValue(null),
-}));
+// Mock Firebase SDKs
 
 vi.mock('firebase/functions', () => ({
   httpsCallable: vi.fn(),
