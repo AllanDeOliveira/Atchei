@@ -1,22 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storage } from '../lib/storage';
+import { formatDateBR } from '../lib/formatters';
 import type { EventItem, Pedido } from '../lib/storage';
 import { DollarSign, TrendingUp, Ticket, RotateCcw, Wallet, ChevronRight } from 'lucide-react';
-import gsap from 'gsap';
 
 const formatBRL = (value: number): string =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-
-const formatDateBR = (dateStr: string): string => {
-  if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    const [year, month, day] = parts;
-    return `${day}/${month}/${year}`;
-  }
-  return dateStr;
-};
 
 // Soma a quantidade de ingressos de um pedido (lotes) ou 1 quando é lote único.
 const countIngressos = (p: Pedido): number => {
@@ -92,16 +82,6 @@ export const Financeiro = () => {
     loadData();
   }, [loadData]);
 
-  useEffect(() => {
-    if (!loading && containerRef.current) {
-      const ctx = gsap.context(() => {
-        if (containerRef.current?.querySelectorAll('.fin-anim').length) {
-          gsap.from('.fin-anim', { y: 20, opacity: 0, duration: 0.5, stagger: 0.05, ease: 'power2.out' });
-        }
-      }, containerRef);
-      return () => ctx.revert();
-    }
-  }, [loading]);
 
   const totalFaturado = rows.reduce((acc, r) => acc + r.faturado, 0);
   const totalIngressos = rows.reduce((acc, r) => acc + r.ingressos, 0);

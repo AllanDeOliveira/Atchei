@@ -230,8 +230,6 @@ async function getStatusPublico(creatorId) {
 const desconectar = (creatorId) => db().collection(ACCOUNTS).doc(creatorId).delete();
 
 module.exports = {
-  ACCOUNTS,
-  asaasFetch,
   criarSubconta,
   buscarOuCriarCliente,
   criarCobrancaPix,

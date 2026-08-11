@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storage } from '../lib/storage';
 import type { EventItem, Registration } from '../lib/storage';
-import gsap from 'gsap';
 import { User, LogOut, Calendar, MapPin, Clock, Trash2, Navigation, Ticket, Camera, X, Users, Edit2, Mail, Download, Plus, ScanLine, Wallet, ChevronRight } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
 import { TicketModal } from '../components/TicketModal';
@@ -163,16 +162,6 @@ export const Profile = () => {
 
   useEffect(() => {
     loadEvents();
-    const ctx = gsap.context(() => {
-      gsap.from('.profile-el', {
-        y: 20,
-        opacity: 0,
-        duration: 0.5,
-        stagger: 0.1,
-        ease: 'power2.out',
-      });
-    }, containerRef);
-    return () => ctx.revert();
   }, [loadEvents]);
 
   const handleDelete = async (id: string) => {

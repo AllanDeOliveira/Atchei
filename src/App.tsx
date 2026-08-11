@@ -1,12 +1,11 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from './pages/Login';
 import { Feed } from './pages/Feed';
 import { Search } from './pages/Search';
 import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
-import { BottomNav } from './components/BottomNav';
-import { Sidebar } from './components/Sidebar';
+import { MainLayout } from './components/MainLayout';
 import { Toaster } from 'react-hot-toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -28,19 +27,6 @@ const LoadingSpinner = () => (
     <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
   </div>
 );
-
-// Layout principal unificado para páginas com barra de navegação lateral/inferior
-const MainLayout = () => {
-  return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-background w-full">
-      <Sidebar />
-      <main className="flex-1 w-full max-w-7xl mx-auto px-0 md:px-8 py-6 relative overflow-x-hidden">
-        <Outlet />
-      </main>
-      <BottomNav />
-    </div>
-  );
-};
 
 function App() {
   return (

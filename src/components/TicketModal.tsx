@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import type { EventItem, Registration } from '../lib/storage';
 import { makeTicketCode } from '../lib/ticketCode';
 import { formatCPF } from '../lib/cpf';
+import { formatDateExtenso } from '../lib/formatters';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
 
 interface TicketModalProps {
@@ -13,16 +14,6 @@ interface TicketModalProps {
   event: EventItem;
   registration: Registration;
 }
-
-const formatDateBR = (dateStr: string): string => {
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' });
-  } catch {
-    return dateStr;
-  }
-};
 
 const formatCpf = (cpf?: string): string => (cpf ? formatCPF(cpf) : '-');
 
@@ -182,7 +173,7 @@ export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModa
               <div className="space-y-3 text-left max-w-[280px] mx-auto">
                 <div className="flex items-center gap-3 text-textLight">
                   <Calendar size={16} className="text-primary shrink-0" />
-                  <span className="text-sm font-medium">{formatDateBR(event.date)}</span>
+                  <span className="text-sm font-medium">{formatDateExtenso(event.date)}</span>
                 </div>
                 <div className="flex items-center gap-3 text-textLight">
                   <Clock size={16} className="text-primary shrink-0" />

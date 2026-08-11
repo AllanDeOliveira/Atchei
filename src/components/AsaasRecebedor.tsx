@@ -47,19 +47,10 @@ export const AsaasRecebedor = () => {
     }
   }, []);
 
+  // O await tira o setState do corpo síncrono do efeito (evita render em cascata).
   useEffect(() => {
-    let vivo = true;
-    (async () => {
-      const fn = httpsCallable<unknown, Status>(getFunctionsInstance(), 'asaasStatusRecebedor');
-      try {
-        const { data } = await fn({});
-        if (vivo) setStatus(data);
-      } catch {
-        if (vivo) setStatus({ connected: false });
-      }
-    })();
-    return () => { vivo = false; };
-  }, []);
+    (async () => { await carregarStatus(); })();
+  }, [carregarStatus]);
 
   const set = (campo: keyof typeof VAZIO, valor: string) => {
     setForm((f) => ({ ...f, [campo]: valor }));

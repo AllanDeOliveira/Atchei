@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storage } from '../lib/storage';
+import { formatDateBR } from '../lib/formatters';
 import type { EventItem, Registration } from '../lib/storage';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Calendar, Users, Settings, Trash2, Search as SearchIcon, Building2, UserPlus, Mail, Lock, ShieldCheck, X, Copy, Check, Upload } from 'lucide-react';
-import gsap from 'gsap';
 import { Input } from '../components/ui/Input';
 import { cn } from '../lib/utils';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
@@ -17,16 +17,6 @@ import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import { firebaseConfig } from '../lib/firebase';
 import toast from 'react-hot-toast';
 
-
-const formatDateBR = (dateStr: string): string => {
-  if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    const [year, month, day] = parts;
-    return `${day}/${month}/${year}`;
-  }
-  return dateStr;
-};
 
 // Gera senha temporária forte usando CSPRNG (não Math.random, que é previsível).
 const generateSecurePassword = (length = 14): string => {
@@ -134,22 +124,6 @@ export const AdminDashboard = () => {
     loadData();
   }, [loadData]);
 
-  useEffect(() => {
-    if (containerRef.current) {
-      const ctx = gsap.context(() => {
-        if (containerRef.current?.querySelectorAll('.admin-anim').length) {
-          gsap.from('.admin-anim', {
-            y: 20,
-            opacity: 0,
-            duration: 0.5,
-            stagger: 0.05,
-            ease: 'power2.out',
-          });
-        }
-      }, containerRef);
-      return () => ctx.revert();
-    }
-  }, []); // Run only once on mount
 
   const handleGenerateMockEvents = async () => {
     const toastId = toast.loading('Gerando 10 eventos de Cáceres...');

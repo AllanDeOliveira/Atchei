@@ -1,29 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storage } from '../lib/storage';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { useRateLimit } from '../hooks/useRateLimit';
-import gsap from 'gsap';
 import { ArrowLeft } from 'lucide-react';
 
 export const Login = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.from('.stagger-el', {
-        y: 30,
-        opacity: 0,
-        duration: 0.8,
-        stagger: 0.15,
-        ease: 'expo.out',
-      });
-    }, containerRef);
-    return () => ctx.revert();
-  }, []);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

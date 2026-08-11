@@ -62,14 +62,6 @@
     transform: scale(0.97) translateY(1px);
   }
 
-  /* Micro-interação de cartão (sutil, ancorada) */
-  .beat-hover {
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .beat-hover:hover {
-    transform: translateY(-2px);
-  }
-
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
@@ -80,38 +72,6 @@
     .scrollbar-hide {
       scrollbar-width: none;
     }
-  }
-
-  .shimmer {
-    position: relative;
-    overflow: hidden;
-  }
-  .shimmer::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg,
-        transparent,
-        rgba(28, 25, 23, 0.03),
-        transparent);
-    animation: shimmer-slide 2.5s infinite;
-  }
-
-  /* Badge de Status (único uppercase+tracking aceitável: estado) */
-  .badge-open {
-    background: rgba(16, 185, 129, 0.08);
-    color: #065F46;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-size: 0.65rem;
-    padding: 3px 10px;
-    border-radius: 9999px;
-    border: 1px solid rgba(16, 185, 129, 0.2);
-    display: inline-block;
   }
 
   /* Modal Backdrop Claro Suave */
@@ -147,62 +107,6 @@
     backdrop-filter: blur(12px);
     border: 1px solid rgba(28, 25, 23, 0.08);
     box-shadow: 0 4px 16px -6px rgba(28, 25, 23, 0.08);
-  }
-
-  /* Hover de card: sutil, sem troca de opacidade de vidro nem salto exagerado */
-  .glass-hover {
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-  }
-  .glass-hover:hover {
-    border-color: rgba(255, 179, 77, 0.7);
-    box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
-    transform: translateY(-2px);
-  }
-  .glass-hover-accent {
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-  }
-  .glass-hover-accent:hover {
-    border-color: rgba(166, 99, 0, 0.35);
-    box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
-    transform: translateY(-2px);
-  }
-
-  /* Aliases legados → superfícies sólidas (mantidos durante a varredura) */
-  .brutal-card {
-    background: #FFFFFF;
-    border: 1px solid rgba(28, 25, 23, 0.08);
-    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.05);
-    border-radius: 16px;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-  }
-  .brutal-card:hover {
-    border-color: rgba(28, 25, 23, 0.14);
-    box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
-    transform: translateY(-2px);
-  }
-  .brutal-card-primary {
-    background: #FFFFFF;
-    border: 1px solid rgba(255, 179, 77, 0.5);
-    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.05);
-    border-radius: 16px;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-  }
-  .brutal-card-primary:hover {
-    border-color: rgba(255, 179, 77, 0.9);
-    box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
-    transform: translateY(-2px);
-  }
-  .brutal-card-accent {
-    background: #FFFFFF;
-    border: 1px solid rgba(166, 99, 0, 0.25);
-    box-shadow: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.05);
-    border-radius: 16px;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-  }
-  .brutal-card-accent:hover {
-    border-color: rgba(166, 99, 0, 0.45);
-    box-shadow: 0 6px 18px -8px rgba(28, 25, 23, 0.12);
-    transform: translateY(-2px);
   }
 
   /* Skeleton Loading Cor de Papel/Osso */
@@ -245,16 +149,49 @@
     animation: scan-sweep 2.2s ease-in-out infinite;
   }
 
-  /* Ambient Glow desativado (decoração "template" removida) */
-  .ambient-glow {
-    display: none;
+  /* ─── Animações de entrada (substituem o gsap.from de cada página) ───
+     Mesmo efeito: desliza no eixo Y + aparece. A distância vem de --anim-from,
+     então cabeçalhos podem descer em vez de subir. */
+  @keyframes anim-enter {
+    from { opacity: 0; transform: translateY(var(--anim-from, 20px)); }
+    to   { opacity: 1; transform: none; }
   }
 
-  .card-lift {
-    @apply glass-hover;
+  .admin-anim, .agenda-event, .create-anim, .anim-up, .stagger-el,
+  .profile-el, .fin-anim, .event-card-anim, .search-result, .highlights-section {
+    animation: anim-enter 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
-  .card-lift-accent {
-    @apply glass-hover-accent;
+
+  .feed-header, .agenda-header {
+    --anim-from: -20px;
+    animation: anim-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Cascata por posição entre irmãos — equivalente ao `stagger` do gsap. */
+  :is(.admin-anim, .agenda-event, .create-anim, .anim-up, .stagger-el, .profile-el, .fin-anim, .event-card-anim, .search-result):nth-child(2) { animation-delay: 0.06s; }
+  :is(.admin-anim, .agenda-event, .create-anim, .anim-up, .stagger-el, .profile-el, .fin-anim, .event-card-anim, .search-result):nth-child(3) { animation-delay: 0.12s; }
+  :is(.admin-anim, .agenda-event, .create-anim, .anim-up, .stagger-el, .profile-el, .fin-anim, .event-card-anim, .search-result):nth-child(4) { animation-delay: 0.18s; }
+  :is(.admin-anim, .agenda-event, .create-anim, .anim-up, .stagger-el, .profile-el, .fin-anim, .event-card-anim, .search-result):nth-child(5) { animation-delay: 0.24s; }
+  :is(.admin-anim, .agenda-event, .create-anim, .anim-up, .stagger-el, .profile-el, .fin-anim, .event-card-anim, .search-result):nth-child(6) { animation-delay: 0.30s; }
+  :is(.admin-anim, .agenda-event, .create-anim, .anim-up, .stagger-el, .profile-el, .fin-anim, .event-card-anim, .search-result):nth-child(n + 7) { animation-delay: 0.36s; }
+
+  /* Sequência da confirmação de pagamento (era gsap.fromTo com delays). */
+  .success-title { animation: anim-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both; --anim-from: 25px; }
+  .success-text  { animation: anim-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both; }
+  .success-bar   { animation: success-bar-fill 5s linear 0.2s both; }
+
+  @keyframes success-bar-fill {
+    from { width: 0%; }
+    to   { width: 100%; }
+  }
+
+  /* Acessibilidade: quem pediu menos movimento recebe o conteúdo já posicionado. */
+  @media (prefers-reduced-motion: reduce) {
+    .admin-anim, .agenda-event, .create-anim, .anim-up, .stagger-el,
+    .profile-el, .fin-anim, .event-card-anim, .search-result, .highlights-section,
+    .feed-header, .agenda-header, .success-title, .success-text {
+      animation: none;
+    }
   }
 
   /* Fix inline styles on BottomNav */

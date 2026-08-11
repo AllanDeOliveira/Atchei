@@ -6,17 +6,6 @@ import toast from 'react-hot-toast';
 import { Login } from './Login';
 import { storage } from '../lib/storage';
 
-// Mock GSAP
-vi.mock('gsap', () => ({
-  default: {
-    context: vi.fn((fn) => {
-      fn();
-      return { revert: vi.fn() };
-    }),
-    from: vi.fn(),
-  },
-}));
-
 // Mock react-router-dom useNavigate
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');

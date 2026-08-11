@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { storage } from '../lib/storage';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import gsap from 'gsap';
 import { Lock, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 export const ChangePassword = () => {
@@ -22,16 +21,6 @@ export const ChangePassword = () => {
       navigate('/feed');
       return;
     }
-    const ctx = gsap.context(() => {
-      gsap.from('.stagger-el', {
-        y: 30,
-        opacity: 0,
-        duration: 0.8,
-        stagger: 0.15,
-        ease: 'expo.out',
-      });
-    }, containerRef);
-    return () => ctx.revert();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

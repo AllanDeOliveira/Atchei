@@ -4,7 +4,6 @@ import { storage } from '../lib/storage';
 import type { EventItem, AppProfile } from '../lib/storage';
 import { EventCard } from '../components/EventCard';
 import { EventCardSkeleton, Skeleton } from '../components/ui/Skeleton';
-import gsap from 'gsap';
 import { ArrowLeft, Building2, Users, Mail } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
 import { useAuth } from '../contexts/AuthContext';
@@ -52,15 +51,6 @@ export const Agenda = () => {
     loadData();
   }, [id, user?.role]);
 
-  useEffect(() => {
-    if (profile) {
-      const ctx = gsap.context(() => {
-        gsap.from('.agenda-header', { y: -20, opacity: 0, duration: 0.5, ease: 'power2.out' });
-        gsap.from('.agenda-event', { y: 20, opacity: 0, duration: 0.4, stagger: 0.1, ease: 'power2.out', delay: 0.2 });
-      }, containerRef);
-      return () => ctx.revert();
-    }
-  }, [profile, events]);
 
   if (!profile) {
     // Enquanto carrega: esqueleto consistente. Se terminou e não há perfil: mensagem amigável.

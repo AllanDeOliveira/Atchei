@@ -6,17 +6,6 @@ import { storage } from '../lib/storage';
 import type { User, EventItem } from '../lib/storage';
 import { useAuth } from '../contexts/AuthContext';
 
-// Mock GSAP
-vi.mock('gsap', () => ({
-  default: {
-    context: vi.fn((fn) => {
-      fn();
-      return { revert: vi.fn() };
-    }),
-    from: vi.fn(),
-  },
-}));
-
 // Mock react-router-dom
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');

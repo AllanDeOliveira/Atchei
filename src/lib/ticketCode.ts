@@ -24,7 +24,7 @@ const fnv1a = (str: string, seed: number): number => {
 
 // Núcleo de 8 caracteres base32 (40 bits → espaço ~1 trilhão). A probabilidade
 // de colisão na escala de um evento (milhares de ingressos) é desprezível.
-export const ticketCodeCore = (id: string): string => {
+const ticketCodeCore = (id: string): string => {
   const clean = (id || '').trim();
   const a = fnv1a(clean, 0x811c9dc5);
   const b = fnv1a(clean, 0x9e3779b9);
@@ -47,7 +47,7 @@ export const makeTicketCode = (id: string): string => {
 // Normaliza um texto lido/digitado para comparação: maiúsculas, mapeia os
 // caracteres comumente confundidos (O→0, I/L→1) e remove tudo que não for
 // alfanumérico (espaços, hifens, o prefixo "CHN-", etc.).
-export const normalizeLoose = (raw: string): string => {
+const normalizeLoose = (raw: string): string => {
   const upper = (raw || '').toUpperCase();
   const mapped = upper.replace(/O/g, '0').replace(/[IL]/g, '1');
   return mapped.replace(/[^0-9A-Z]/g, '');

@@ -10,11 +10,11 @@ import { Calendar, Clock, MapPin, User, Ticket, Mail, Phone, CreditCard, Copy, C
 import toast from 'react-hot-toast';
 
 import { formatCPF, isValidCPF } from '../lib/cpf';
+import { formatDateExtenso, isValidEmail } from '../lib/formatters';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import { httpsCallable } from 'firebase/functions';
 import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { db, getFunctionsInstance } from '../lib/firebase';
-import gsap from 'gsap';
 import { EventHeader } from '../components/EventDetails/EventHeader';
 import { EventLocationMap } from '../components/EventDetails/EventLocationMap';
 import { EventTicketSection } from '../components/EventDetails/EventTicketSection';
@@ -78,7 +78,7 @@ export const EventDetails = () => {
     const e: { [k: string]: string } = {};
     if (!buyerName.trim()) e.name = 'Informe seu nome completo.';
     if (!buyerEmail.trim()) e.email = 'Informe seu e-mail.';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail.trim())) e.email = 'E-mail inválido.';
+    else if (!isValidEmail(buyerEmail)) e.email = 'E-mail inválido.';
     if (!buyerPhone.trim()) e.phone = 'Informe seu telefone.';
     else if (buyerPhone.replace(/\D/g, '').length < 10) e.phone = 'Telefone incompleto.';
     if (!buyerCpf.trim()) e.cpf = 'Informe seu CPF.';
@@ -305,18 +305,6 @@ export const EventDetails = () => {
   useEffect(() => {
     if (pixStep !== 'success') return;
 
-    gsap.fromTo('.success-title',
-      { y: 25, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.7, delay: 0.3, ease: 'power3.out' }
-    );
-    gsap.fromTo('.success-text',
-      { y: 20, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.7, delay: 0.5, ease: 'power3.out' }
-    );
-    gsap.fromTo('.success-bar',
-      { width: '0%' },
-      { width: '100%', duration: 5, ease: 'linear', delay: 0.2 }
-    );
 
     // Contagem regressiva visível: informa ao usuário o que vai acontecer.
     // Reinício de um timer externo (setInterval) ao entrar em 'success', não
@@ -417,22 +405,6 @@ export const EventDetails = () => {
     loadEvent();
   }, [loadEvent]);
 
-  useEffect(() => {
-    if (event && containerRef.current) {
-      const ctx = gsap.context(() => {
-        if (containerRef.current?.querySelectorAll('.anim-up').length) {
-          gsap.from('.anim-up', {
-            y: 30,
-            opacity: 0,
-            duration: 0.6,
-            stagger: 0.1,
-            ease: 'power3.out',
-          });
-        }
-      }, containerRef);
-      return () => ctx.revert();
-    }
-  }, [event]);
 
   if (isLoading) {
     return (
@@ -496,16 +468,6 @@ export const EventDetails = () => {
     } else {
       navigator.clipboard.writeText(window.location.href);
       toast.success('Link do evento copiado!');
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' });
-    } catch {
-      return dateStr;
     }
   };
 
@@ -577,7 +539,7 @@ export const EventDetails = () => {
                     <Calendar size={13} />
                     <span className="text-[11px] font-medium">Data</span>
                   </div>
-                  <p className="text-sm font-sans font-semibold text-textLight leading-tight">{formatDate(event.date)}</p>
+                  <p className="text-sm font-sans font-semibold text-textLight leading-tight">{formatDateExtenso(event.date)}</p>
                 </div>
 
                 <div className="flex flex-col gap-1.5">

@@ -59,13 +59,6 @@ const mockAdmin = {
   },
 };
 
-// Mock do cors
-const mockCors = () => (req, res, callback) => {
-  if (typeof callback === 'function') {
-    return callback();
-  }
-};
-
 // 2. Interceptar Module.prototype.require para forçar o carregamento dos mocks no index.js
 const originalRequire = Module.prototype.require;
 Module.prototype.require = function (id) {
@@ -85,9 +78,6 @@ Module.prototype.require = function (id) {
       estornarCobranca: mockAsaasEstornar,
       getRecebedor: mockAsaasGetRecebedor,
     };
-  }
-  if (id === 'cors') {
-    return mockCors;
   }
   if (id === './rateLimiter') {
     return {
@@ -291,50 +281,6 @@ describe('Cloud Functions Tests', () => {
     });
   });
 
-  describe('setAdminClaim', () => {
-    it('deve falhar se solicitante nao estiver autenticado', async () => {
-      const wrapped = fft.wrap(myFunctions.setAdminClaim);
-      
-      await expect(wrapped({
-        data: { uid: 'user-xyz', admin: true },
-        auth: null
-      })).rejects.toThrow('Apenas usuários autenticados podem definir permissões.');
-    });
-
-    it('deve falhar se solicitante nao for admin', async () => {
-      const wrapped = fft.wrap(myFunctions.setAdminClaim);
-      
-      await expect(wrapped({
-        data: { uid: 'user-xyz', admin: true },
-        auth: {
-          token: {
-            email: 'not-admin@example.com',
-            admin: false
-          }
-        }
-      })).rejects.toThrow('Apenas administradores podem definir novos administradores.');
-    });
-
-    it('deve definir claim de admin com sucesso', async () => {
-      const wrapped = fft.wrap(myFunctions.setAdminClaim);
-      
-      mockAuthSetCustomClaims.mockResolvedValueOnce({ success: true });
-
-      const result = await wrapped({
-        data: { uid: 'user-xyz', admin: true },
-        auth: {
-          token: {
-            email: ADMIN_EMAILS[0],
-            admin: true
-          }
-        }
-      });
-
-      expect(mockAuthSetCustomClaims).toHaveBeenCalledWith('user-xyz', { admin: true });
-      expect(result).toEqual({ success: true, uid: 'user-xyz', admin: true });
-    });
-  });
-
   describe('webhookAsaas', () => {
     const TOKEN = 'token-webhook-teste';
 
@@ -342,8 +288,18 @@ describe('Cloud Functions Tests', () => {
     const chamar = async (req) => {
       let resolveSend;
       const sendPromise = new Promise((resolve) => { resolveSend = resolve; });
+      // O CORS nativo do onRequest v2 registra listener no response, então o duplo
+      // precisa das APIs de EventEmitter além das de escrita.
       const res = {
         set: vi.fn(),
+        setHeader: vi.fn(),
+        getHeader: vi.fn(),
+        removeHeader: vi.fn(),
+        on: vi.fn(),
+        once: vi.fn(),
+        emit: vi.fn(),
+        removeListener: vi.fn(),
+        end: vi.fn(),
         status: vi.fn().mockReturnThis(),
         send: vi.fn().mockImplementation((msg) => { resolveSend(msg); }),
       };

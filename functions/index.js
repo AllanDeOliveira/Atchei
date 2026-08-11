@@ -4,7 +4,6 @@ const { onDocumentCreated, onDocumentDeleted } = require("firebase-functions/v2/
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const { FieldValue } = require("firebase-admin/firestore");
-const cors = require("cors")({ origin: true });
 const { checkRateLimit, LIMITS } = require("./rateLimiter");
 const { isCallerAdmin } = require("./adminEmails");
 const asaas = require("./asaas");
@@ -269,416 +268,414 @@ exports.criarCobrancaPix = onCall({ cors: true, secrets: [ASAAS_API_KEY] }, asyn
     }
 });
 
-exports.webhookAsaas = onRequest({ secrets: [ASAAS_API_KEY, ASAAS_WEBHOOK_TOKEN] }, async (req, res) => {
-    cors(req, res, async () => {
-        // Rate Limiting: 60 requests por minuto por IP
-        const clientIp = req.headers['x-forwarded-for'] || req.ip || 'unknown';
-        const rlWebhook = await checkRateLimit(clientIp, 'webhookAsaas', LIMITS.WEBHOOK.max, LIMITS.WEBHOOK.windowSec);
-        if (!rlWebhook.allowed) {
-            const retryAfterSec = Math.ceil(rlWebhook.retryAfterMs / 1000);
-            res.set('Retry-After', String(retryAfterSec));
-            res.status(429).send(`Rate limit excedido. Tente novamente em ${retryAfterSec} segundos.`);
-            return;
-        }
+exports.webhookAsaas = onRequest({ cors: true, secrets: [ASAAS_API_KEY, ASAAS_WEBHOOK_TOKEN] }, async (req, res) => {
+    // Rate Limiting: 60 requests por minuto por IP
+    const clientIp = req.headers['x-forwarded-for'] || req.ip || 'unknown';
+    const rlWebhook = await checkRateLimit(clientIp, 'webhookAsaas', LIMITS.WEBHOOK.max, LIMITS.WEBHOOK.windowSec);
+    if (!rlWebhook.allowed) {
+        const retryAfterSec = Math.ceil(rlWebhook.retryAfterMs / 1000);
+        res.set('Retry-After', String(retryAfterSec));
+        res.status(429).send(`Rate limit excedido. Tente novamente em ${retryAfterSec} segundos.`);
+        return;
+    }
 
-        // ─── Autenticação do webhook ───
-        // DIFERENÇA IMPORTANTE EM RELAÇÃO AO MERCADO PAGO: o MP assinava cada payload com
-        // HMAC-SHA256, o que provava a integridade da mensagem. O Asaas oferece apenas um
-        // token estático, que você define ao cadastrar o webhook e ele devolve no header
-        // `asaas-access-token`. É segredo compartilhado, não assinatura — quem obtiver o
-        // token consegue forjar notificações. Daí o fail-closed abaixo e, mais adiante, a
-        // reconsulta da cobrança na API em vez de acreditar no corpo da requisição.
-        const tokenEsperado = process.env.ASAAS_WEBHOOK_TOKEN;
-        if (!tokenEsperado) {
-            if (process.env.FUNCTIONS_EMULATOR === 'true') {
-                logger.warn("ASAAS_WEBHOOK_TOKEN ausente — validação ignorada (apenas no emulador).");
-            } else {
-                logger.error("ASAAS_WEBHOOK_TOKEN não configurado em produção. Rejeitando webhook.");
-                res.status(500).send('Configuração de segurança ausente.');
-                return;
-            }
+    // ─── Autenticação do webhook ───
+    // DIFERENÇA IMPORTANTE EM RELAÇÃO AO MERCADO PAGO: o MP assinava cada payload com
+    // HMAC-SHA256, o que provava a integridade da mensagem. O Asaas oferece apenas um
+    // token estático, que você define ao cadastrar o webhook e ele devolve no header
+    // `asaas-access-token`. É segredo compartilhado, não assinatura — quem obtiver o
+    // token consegue forjar notificações. Daí o fail-closed abaixo e, mais adiante, a
+    // reconsulta da cobrança na API em vez de acreditar no corpo da requisição.
+    const tokenEsperado = process.env.ASAAS_WEBHOOK_TOKEN;
+    if (!tokenEsperado) {
+        if (process.env.FUNCTIONS_EMULATOR === 'true') {
+            logger.warn("ASAAS_WEBHOOK_TOKEN ausente — validação ignorada (apenas no emulador).");
         } else {
-            const crypto = require('crypto');
-            const recebido = Buffer.from(String(req.headers['asaas-access-token'] || ''));
-            const esperado = Buffer.from(tokenEsperado);
-            const tokenOk = recebido.length === esperado.length && crypto.timingSafeEqual(recebido, esperado);
-            if (!tokenOk) {
-                logger.error("Token do webhook do Asaas inválido. Acesso não autorizado.");
-                res.status(401).send('Token não autorizado.');
-                return;
+            logger.error("ASAAS_WEBHOOK_TOKEN não configurado em produção. Rejeitando webhook.");
+            res.status(500).send('Configuração de segurança ausente.');
+            return;
+        }
+    } else {
+        const crypto = require('crypto');
+        const recebido = Buffer.from(String(req.headers['asaas-access-token'] || ''));
+        const esperado = Buffer.from(tokenEsperado);
+        const tokenOk = recebido.length === esperado.length && crypto.timingSafeEqual(recebido, esperado);
+        if (!tokenOk) {
+            logger.error("Token do webhook do Asaas inválido. Acesso não autorizado.");
+            res.status(401).send('Token não autorizado.');
+            return;
+        }
+    }
+
+    const evento = req.body?.event || '';
+    const paymentId = req.body?.payment?.id;
+    logger.info("Webhook Asaas recebido. Evento:", evento, "Pagamento:", paymentId);
+
+    if (!paymentId) {
+        res.status(400).send('Payload sem id de pagamento.');
+        return;
+    }
+
+    try {
+        // NÃO confiamos no status que veio no corpo. Sem assinatura no payload, um token
+        // vazado bastaria para forjar "pagamento recebido" e emitir ingresso de graça.
+        // Reconsultar a cobrança na API do Asaas é o que mantém a garantia que o
+        // `payment.get()` dava no fluxo do Mercado Pago.
+        let pagamento = null;
+        try {
+            pagamento = await asaas.consultarCobranca(paymentId);
+        } catch (e) {
+            if (e.status === 404) {
+                // Cobrança removida no Asaas: trata como cancelamento (o caminho de
+                // estorno só reverte estoque/inscrição se o pedido chegou a ser pago).
+                logger.warn(`Cobrança ${paymentId} não existe mais no Asaas. Tratando como cancelada.`);
+            } else {
+                throw e;
             }
         }
 
-        const evento = req.body?.event || '';
-        const paymentId = req.body?.payment?.id;
-        logger.info("Webhook Asaas recebido. Evento:", evento, "Pagamento:", paymentId);
+        // Status reais do Asaas traduzidos para o vocabulário interno que as transações
+        // abaixo já usam. Só a tradução é nova; estoque, inscrições, idempotência e
+        // reembolso automático de overbooking seguem exatamente como estavam.
+        const STATUS = {
+            RECEIVED: 'approved',
+            CONFIRMED: 'approved',
+            RECEIVED_IN_CASH: 'approved',
+            REFUNDED: 'refunded',
+            CHARGEBACK_REQUESTED: 'charged_back',
+            CHARGEBACK_DISPUTE: 'charged_back',
+        };
+        const statusReal = pagamento ? STATUS[pagamento.status] : 'cancelled';
 
-        if (!paymentId) {
-            res.status(400).send('Payload sem id de pagamento.');
+        // Eventos que não mexem no ingresso (PAYMENT_CREATED, PAYMENT_UPDATED,
+        // PAYMENT_OVERDUE, cobrança ainda PENDING…). Responder 200 evita reenfileiramento.
+        if (!statusReal) {
+            logger.info(`Evento ${evento} (status ${pagamento?.status}) ignorado: não altera o ingresso.`);
+            res.status(200).send('Evento ignorado.');
             return;
         }
 
-        try {
-            // NÃO confiamos no status que veio no corpo. Sem assinatura no payload, um token
-            // vazado bastaria para forjar "pagamento recebido" e emitir ingresso de graça.
-            // Reconsultar a cobrança na API do Asaas é o que mantém a garantia que o
-            // `payment.get()` dava no fluxo do Mercado Pago.
-            let pagamento = null;
+        const externalReference = pagamento?.externalReference || req.body?.payment?.externalReference;
+        const pedidosRef = db.collection('pedidos');
+        let pedidoDoc = null;
+        let dadosPedido = null;
+
+        // Busca direta por externalReference (pedidoId)
+        if (externalReference) {
+            const docSnap = await pedidosRef.doc(externalReference).get();
+            if (docSnap.exists) {
+                pedidoDoc = docSnap;
+                dadosPedido = docSnap.data();
+            }
+        }
+
+        // Fallback por asaasPaymentId se não achou por externalReference
+        if (!dadosPedido) {
+            const querySnapshot = await pedidosRef.where('asaasPaymentId', '==', paymentId).limit(1).get();
+            if (!querySnapshot.empty) {
+                pedidoDoc = querySnapshot.docs[0];
+                dadosPedido = pedidoDoc.data();
+            }
+        }
+
+        if (!dadosPedido) {
+            logger.error(`Pedido correspondente ao pagamento MP ID ${paymentId} não encontrado no Firestore.`);
+            res.status(404).send('Pedido não encontrado.');
+            return;
+        }
+        
+        let isOverbooked = false;
+        let statusPedidoAtual = '';
+        // Sinaliza que a compra acabou de ser confirmada AGORA (transição pendente -> pago),
+        // para disparar a notificação push apenas uma vez, ignorando webhooks redundantes.
+        let deveNotificar = false;
+
+        if (statusReal === 'approved') {
+            // Toda a operação de aprovação ocorre de forma atômica dentro de uma transação
             try {
-                pagamento = await asaas.consultarCobranca(paymentId);
-            } catch (e) {
-                if (e.status === 404) {
-                    // Cobrança removida no Asaas: trata como cancelamento (o caminho de
-                    // estorno só reverte estoque/inscrição se o pedido chegou a ser pago).
-                    logger.warn(`Cobrança ${paymentId} não existe mais no Asaas. Tratando como cancelada.`);
-                } else {
-                    throw e;
-                }
-            }
+                await db.runTransaction(async (transaction) => {
+                    // Reinicia as flags a cada tentativa: o Firestore pode reexecutar este callback
+                    // em caso de contenção (retry), e um valor true de uma tentativa abortada não pode
+                    // vazar para a próxima (evita overbooking/notificação falsos após recomputar leituras).
+                    isOverbooked = false;
+                    deveNotificar = false;
 
-            // Status reais do Asaas traduzidos para o vocabulário interno que as transações
-            // abaixo já usam. Só a tradução é nova; estoque, inscrições, idempotência e
-            // reembolso automático de overbooking seguem exatamente como estavam.
-            const STATUS = {
-                RECEIVED: 'approved',
-                CONFIRMED: 'approved',
-                RECEIVED_IN_CASH: 'approved',
-                REFUNDED: 'refunded',
-                CHARGEBACK_REQUESTED: 'charged_back',
-                CHARGEBACK_DISPUTE: 'charged_back',
-            };
-            const statusReal = pagamento ? STATUS[pagamento.status] : 'cancelled';
+                    const pedidoRef = pedidosRef.doc(pedidoDoc.id);
+                    const currentPedidoDoc = await transaction.get(pedidoRef);
 
-            // Eventos que não mexem no ingresso (PAYMENT_CREATED, PAYMENT_UPDATED,
-            // PAYMENT_OVERDUE, cobrança ainda PENDING…). Responder 200 evita reenfileiramento.
-            if (!statusReal) {
-                logger.info(`Evento ${evento} (status ${pagamento?.status}) ignorado: não altera o ingresso.`);
-                res.status(200).send('Evento ignorado.');
-                return;
-            }
+                    if (!currentPedidoDoc.exists) {
+                        throw new Error("Pedido não encontrado na transação.");
+                    }
 
-            const externalReference = pagamento?.externalReference || req.body?.payment?.externalReference;
-            const pedidosRef = db.collection('pedidos');
-            let pedidoDoc = null;
-            let dadosPedido = null;
+                    const currentPedidoData = currentPedidoDoc.data();
+                    statusPedidoAtual = currentPedidoData.status;
 
-            // Busca direta por externalReference (pedidoId)
-            if (externalReference) {
-                const docSnap = await pedidosRef.doc(externalReference).get();
-                if (docSnap.exists) {
-                    pedidoDoc = docSnap;
-                    dadosPedido = docSnap.data();
-                }
-            }
+                    // Se o pedido já está em qualquer estado terminal, aborta para evitar que um
+                    // 'approved' tardio/retry do Mercado Pago ressuscite um pedido pago/estornado/cancelado
+                    // (reprocessamento recriaria inscrições determinísticas e corromperia o estoque).
+                    if (['pago', 'estornado', 'chargeback', 'cancelado'].includes(statusPedidoAtual)) {
+                        logger.info(`Pedido ${pedidoDoc.id} já está em estado terminal (${statusPedidoAtual}). Abortando aprovação redundante/tardia.`);
+                        return;
+                    }
 
-            // Fallback por asaasPaymentId se não achou por externalReference
-            if (!dadosPedido) {
-                const querySnapshot = await pedidosRef.where('asaasPaymentId', '==', paymentId).limit(1).get();
-                if (!querySnapshot.empty) {
-                    pedidoDoc = querySnapshot.docs[0];
-                    dadosPedido = pedidoDoc.data();
-                }
-            }
+                    // Transição efetiva para pago: libera o envio da notificação push após a transação
+                    deveNotificar = true;
 
-            if (!dadosPedido) {
-                logger.error(`Pedido correspondente ao pagamento MP ID ${paymentId} não encontrado no Firestore.`);
-                res.status(404).send('Pedido não encontrado.');
-                return;
-            }
-            
-            let isOverbooked = false;
-            let statusPedidoAtual = '';
-            // Sinaliza que a compra acabou de ser confirmada AGORA (transição pendente -> pago),
-            // para disparar a notificação push apenas uma vez, ignorando webhooks redundantes.
-            let deveNotificar = false;
-
-            if (statusReal === 'approved') {
-                // Toda a operação de aprovação ocorre de forma atômica dentro de uma transação
-                try {
-                    await db.runTransaction(async (transaction) => {
-                        // Reinicia as flags a cada tentativa: o Firestore pode reexecutar este callback
-                        // em caso de contenção (retry), e um valor true de uma tentativa abortada não pode
-                        // vazar para a próxima (evita overbooking/notificação falsos após recomputar leituras).
-                        isOverbooked = false;
-                        deveNotificar = false;
-
-                        const pedidoRef = pedidosRef.doc(pedidoDoc.id);
-                        const currentPedidoDoc = await transaction.get(pedidoRef);
-
-                        if (!currentPedidoDoc.exists) {
-                            throw new Error("Pedido não encontrado na transação.");
-                        }
-
-                        const currentPedidoData = currentPedidoDoc.data();
-                        statusPedidoAtual = currentPedidoData.status;
-
-                        // Se o pedido já está em qualquer estado terminal, aborta para evitar que um
-                        // 'approved' tardio/retry do Mercado Pago ressuscite um pedido pago/estornado/cancelado
-                        // (reprocessamento recriaria inscrições determinísticas e corromperia o estoque).
-                        if (['pago', 'estornado', 'chargeback', 'cancelado'].includes(statusPedidoAtual)) {
-                            logger.info(`Pedido ${pedidoDoc.id} já está em estado terminal (${statusPedidoAtual}). Abortando aprovação redundante/tardia.`);
-                            return;
-                        }
-
-                        // Transição efetiva para pago: libera o envio da notificação push após a transação
-                        deveNotificar = true;
-
-                        // 1. Atualizar o pedido para Pago
-                        transaction.update(pedidoRef, {
-                            status: 'pago',
-                            dataPagamento: FieldValue.serverTimestamp()
-                        });
-                        
-                        const itensComprados = currentPedidoData.itensComprados || [];
-                        
-                        // 2. Decrementar estoque dos ingressos correspondentes no evento
-                        if (currentPedidoData.eventId && itensComprados.length > 0) {
-                            const eventRef = db.collection('events').doc(currentPedidoData.eventId);
-                            const eventDoc = await transaction.get(eventRef);
-                            
-                            if (eventDoc.exists) {
-                                const eventData = eventDoc.data();
-                                const tickets = eventData.tickets || [];
-                                
-                                // Mapear as compras de cada ticketId neste pedido
-                                const vendasMap = {};
-                                for (const item of itensComprados) {
-                                    vendasMap[item.id] = (vendasMap[item.id] || 0) + (Number(item.quantity) || 0);
-                                }
-                                
-                                let alterado = false;
-                                const updatedTickets = tickets.map(ticket => {
-                                    const qtdVendida = vendasMap[ticket.id];
-                                    if (qtdVendida) {
-                                        alterado = true;
-                                        const novoSold = (ticket.sold || 0) + qtdVendida;
-                                        if (novoSold > ticket.capacity) {
-                                            isOverbooked = true; // Houve estouro de estoque (venda simultânea)
-                                        }
-                                        const novoStatus = novoSold >= ticket.capacity ? 'sold_out' : ticket.status;
-                                        return {
-                                            ...ticket,
-                                            sold: novoSold,
-                                            status: novoStatus
-                                        };
-                                    }
-                                    return ticket;
-                                });
-                                
-                                if (alterado) {
-                                    transaction.update(eventRef, { tickets: updatedTickets });
-                                    logger.info(`Estoque atualizado no evento ${currentPedidoData.eventId} para os tickets:`, Object.keys(vendasMap));
-                                }
-                            }
-                        }
-                        
-                        if (isOverbooked) {
-                            transaction.update(pedidoRef, { overbooked: true });
-                            logger.warn(`Alerta de Overbooking detectado no pedido ${pedidoDoc.id}`);
-                        }
-                        
-                        // 3. Criar inscrições na coleção registrations
-                        // O ID da inscrição agora é 100% determinístico e idempotente (usa o id do pedido e o índice), eliminando duplicações
-                        if (itensComprados.length > 0) {
-                            for (const item of itensComprados) {
-                                const qty = Number(item.quantity) || 0;
-                                for (let q = 0; q < qty; q++) {
-                                    const registrationId = `reg_${currentPedidoData.eventId}_${currentPedidoData.userId}_${item.id}_${q}_${pedidoDoc.id}`;
-                                    const regRef = db.collection('registrations').doc(registrationId);
-                                    transaction.set(regRef, {
-                                        id: registrationId,
-                                        eventId: currentPedidoData.eventId || '',
-                                        userId: currentPedidoData.userId || '',
-                                        userName: currentPedidoData.clienteNome || '',
-                                        userEmail: currentPedidoData.clienteEmail || '',
-                                        // Chave de busca da recuperação por email-link (e-mail normalizado).
-                                        userEmailLower: (currentPedidoData.clienteEmail || '').trim().toLowerCase(),
-                                        userPhone: currentPedidoData.clienteTelefone || '',
-                                        userCpf: currentPedidoData.clienteCpf || '',
-                                        paymentStatus: isOverbooked ? 'Overbooking (Pago)' : 'Pago',
-                                        overbooked: isOverbooked,
-                                        ticketTypeId: item.id,
-                                        ticketTypeName: item.name,
-                                        pedidoId: pedidoDoc.id,
-                                        timestamp: new Date().toISOString()
-                                    });
-                                }
-                            }
-                            logger.info(`Transação: Pedido ${pedidoDoc.id} processado! Inscrições criadas.`);
-                        } else {
-                            const registrationId = `reg_${currentPedidoData.eventId}_${currentPedidoData.userId}_${pedidoDoc.id}`;
-                            const regRef = db.collection('registrations').doc(registrationId);
-                            transaction.set(regRef, {
-                                id: registrationId,
-                                eventId: currentPedidoData.eventId || '',
-                                userId: currentPedidoData.userId || '',
-                                userName: currentPedidoData.clienteNome || '',
-                                userEmail: currentPedidoData.clienteEmail || '',
-                                // Chave de busca da recuperação por email-link (e-mail normalizado).
-                                userEmailLower: (currentPedidoData.clienteEmail || '').trim().toLowerCase(),
-                                userPhone: currentPedidoData.clienteTelefone || '',
-                                userCpf: currentPedidoData.clienteCpf || '',
-                                paymentStatus: isOverbooked ? 'Overbooking (Pago)' : 'Pago',
-                                overbooked: isOverbooked,
-                                pedidoId: pedidoDoc.id,
-                                timestamp: new Date().toISOString()
-                            });
-                            logger.info(`Transação: Pedido ${pedidoDoc.id} processado! Inscrição simples criada.`);
-                        }
+                    // 1. Atualizar o pedido para Pago
+                    transaction.update(pedidoRef, {
+                        status: 'pago',
+                        dataPagamento: FieldValue.serverTimestamp()
                     });
-                } catch (transError) {
-                    logger.error("Erro na transação de aprovação do pedido:", transError);
-                    res.status(500).send('Erro na transação do banco.');
-                    return;
-                }
-            }
-
-            // Tratamento de estorno, chargeback e cancelamento.
-            // Se o pedido já havia sido pago, devolvemos o estoque ao evento e removemos as
-            // inscrições geradas, impedindo que um ingresso estornado continue válido na portaria.
-            const REFUND_STATUSES = ['refunded', 'cancelled', 'charged_back'];
-            if (REFUND_STATUSES.includes(statusReal)) {
-                try {
-                    await db.runTransaction(async (transaction) => {
-                        const pedidoRef = pedidosRef.doc(pedidoDoc.id);
-
-                        // IMPORTANTE: todas as leituras devem ocorrer antes de qualquer escrita na transação.
-                        const currentPedidoDoc = await transaction.get(pedidoRef);
-                        if (!currentPedidoDoc.exists) {
-                            throw new Error("Pedido não encontrado na transação de estorno.");
-                        }
-                        const currentPedidoData = currentPedidoDoc.data();
-                        const statusAtual = currentPedidoData.status;
-
-                        const novoStatusPedido = statusReal === 'charged_back'
-                            ? 'chargeback'
-                            : (statusReal === 'refunded' ? 'estornado' : 'cancelado');
-
-                        // Idempotência: se já está em um estado final de estorno, não faz nada.
-                        if (['estornado', 'chargeback', 'cancelado'].includes(statusAtual)) {
-                            logger.info(`Pedido ${pedidoDoc.id} já está em estado final (${statusAtual}). Ignorando estorno redundante.`);
-                            return;
-                        }
-
-                        // Só revertemos estoque/inscrições se o pedido chegou a ser efetivamente pago.
-                        const eraPago = statusAtual === 'pago';
-                        const itensComprados = currentPedidoData.itensComprados || [];
-
-                        // Leitura do evento (antes das escritas) apenas quando há estoque a devolver.
-                        let eventDoc = null;
-                        let eventRef = null;
-                        if (eraPago && currentPedidoData.eventId && itensComprados.length > 0) {
-                            eventRef = db.collection('events').doc(currentPedidoData.eventId);
-                            eventDoc = await transaction.get(eventRef);
-                        }
-
-                        // 1. Atualiza o status do pedido
-                        transaction.update(pedidoRef, {
-                            status: novoStatusPedido,
-                            dataEstorno: FieldValue.serverTimestamp()
-                        });
-
-                        if (!eraPago) {
-                            // Pedido nunca foi pago (ex.: Pix expirado). Nada de estoque/inscrições a reverter.
-                            logger.info(`Pedido ${pedidoDoc.id} marcado como ${novoStatusPedido} (não havia sido pago).`);
-                            return;
-                        }
-
-                        // 2. Devolve o estoque dos lotes ao evento
-                        if (eventDoc && eventDoc.exists) {
+                    
+                    const itensComprados = currentPedidoData.itensComprados || [];
+                    
+                    // 2. Decrementar estoque dos ingressos correspondentes no evento
+                    if (currentPedidoData.eventId && itensComprados.length > 0) {
+                        const eventRef = db.collection('events').doc(currentPedidoData.eventId);
+                        const eventDoc = await transaction.get(eventRef);
+                        
+                        if (eventDoc.exists) {
                             const eventData = eventDoc.data();
                             const tickets = eventData.tickets || [];
-                            const devolucoesMap = {};
+                            
+                            // Mapear as compras de cada ticketId neste pedido
+                            const vendasMap = {};
                             for (const item of itensComprados) {
-                                devolucoesMap[item.id] = (devolucoesMap[item.id] || 0) + (Number(item.quantity) || 0);
+                                vendasMap[item.id] = (vendasMap[item.id] || 0) + (Number(item.quantity) || 0);
                             }
+                            
                             let alterado = false;
                             const updatedTickets = tickets.map(ticket => {
-                                const qtdDevolvida = devolucoesMap[ticket.id];
-                                if (qtdDevolvida) {
+                                const qtdVendida = vendasMap[ticket.id];
+                                if (qtdVendida) {
                                     alterado = true;
-                                    const novoSold = Math.max(0, (ticket.sold || 0) - qtdDevolvida);
-                                    // Reabre o lote se estava esgotado e voltou a ter vaga
-                                    const novoStatus = ticket.status === 'sold_out' && novoSold < ticket.capacity
-                                        ? 'active'
-                                        : ticket.status;
-                                    return { ...ticket, sold: novoSold, status: novoStatus };
+                                    const novoSold = (ticket.sold || 0) + qtdVendida;
+                                    if (novoSold > ticket.capacity) {
+                                        isOverbooked = true; // Houve estouro de estoque (venda simultânea)
+                                    }
+                                    const novoStatus = novoSold >= ticket.capacity ? 'sold_out' : ticket.status;
+                                    return {
+                                        ...ticket,
+                                        sold: novoSold,
+                                        status: novoStatus
+                                    };
                                 }
                                 return ticket;
                             });
+                            
                             if (alterado) {
                                 transaction.update(eventRef, { tickets: updatedTickets });
-                                logger.info(`Estoque devolvido no evento ${currentPedidoData.eventId} após ${novoStatusPedido} do pedido ${pedidoDoc.id}.`);
+                                logger.info(`Estoque atualizado no evento ${currentPedidoData.eventId} para os tickets:`, Object.keys(vendasMap));
                             }
                         }
-
-                        // 3. Remove as inscrições criadas por este pedido (IDs determinísticos,
-                        // idênticos aos gerados na aprovação). O contador é ajustado por onRegistrationDeleted.
-                        if (itensComprados.length > 0) {
-                            for (const item of itensComprados) {
-                                const qty = Number(item.quantity) || 0;
-                                for (let q = 0; q < qty; q++) {
-                                    const registrationId = `reg_${currentPedidoData.eventId}_${currentPedidoData.userId}_${item.id}_${q}_${pedidoDoc.id}`;
-                                    transaction.delete(db.collection('registrations').doc(registrationId));
-                                }
-                            }
-                        } else {
-                            const registrationId = `reg_${currentPedidoData.eventId}_${currentPedidoData.userId}_${pedidoDoc.id}`;
-                            transaction.delete(db.collection('registrations').doc(registrationId));
-                        }
-                        logger.info(`Inscrições do pedido ${pedidoDoc.id} removidas após ${novoStatusPedido}.`);
-                    });
-                } catch (transError) {
-                    logger.error("Erro na transação de estorno/cancelamento do pedido:", transError);
-                    res.status(500).send('Erro na transação de estorno.');
-                    return;
-                }
-            }
-
-            // Pós-pagamento (apenas na transição efetiva para pago). Executado após a transação
-            // para não atrasar nem arriscar o processamento financeiro.
-            if (deveNotificar) {
-                const tituloEvento = dadosPedido.eventTitle || 'o evento';
-                if (isOverbooked) {
-                    // Resolução automática de overbooking: reembolsa o pagamento. O webhook de
-                    // estorno (status 'refunded') cuidará de devolver o estoque e remover as inscrições.
-                    // POLÍTICA: se QUALQUER lote do pedido estourou a capacidade, o pedido INTEIRO é
-                    // reembolsado (refund total), inclusive lotes do mesmo pedido que tinham estoque.
-                    // É a opção simples e consistente; refund parcial por lote exigiria cálculo de valor
-                    // por item e ajuste do webhook de 'refunded' para não remover todas as inscrições.
-                    const reembolsado = await reembolsarPagamentoAutomatico(paymentId);
-                    if (reembolsado) {
-                        await enviarNotificacaoPush(
-                            dadosPedido.userId,
-                            'Lote esgotado — reembolso em andamento',
-                            `O lote de "${tituloEvento}" esgotou antes da confirmação. Seu pagamento está sendo reembolsado automaticamente.`,
-                            '/profile'
-                        );
-                    } else {
-                        await enviarNotificacaoPush(
-                            dadosPedido.userId,
-                            'Problema com seu ingresso',
-                            `Houve um problema de disponibilidade em "${tituloEvento}". Entre em contato com o organizador.`,
-                            '/profile'
-                        );
                     }
+                    
+                    if (isOverbooked) {
+                        transaction.update(pedidoRef, { overbooked: true });
+                        logger.warn(`Alerta de Overbooking detectado no pedido ${pedidoDoc.id}`);
+                    }
+                    
+                    // 3. Criar inscrições na coleção registrations
+                    // O ID da inscrição agora é 100% determinístico e idempotente (usa o id do pedido e o índice), eliminando duplicações
+                    if (itensComprados.length > 0) {
+                        for (const item of itensComprados) {
+                            const qty = Number(item.quantity) || 0;
+                            for (let q = 0; q < qty; q++) {
+                                const registrationId = `reg_${currentPedidoData.eventId}_${currentPedidoData.userId}_${item.id}_${q}_${pedidoDoc.id}`;
+                                const regRef = db.collection('registrations').doc(registrationId);
+                                transaction.set(regRef, {
+                                    id: registrationId,
+                                    eventId: currentPedidoData.eventId || '',
+                                    userId: currentPedidoData.userId || '',
+                                    userName: currentPedidoData.clienteNome || '',
+                                    userEmail: currentPedidoData.clienteEmail || '',
+                                    // Chave de busca da recuperação por email-link (e-mail normalizado).
+                                    userEmailLower: (currentPedidoData.clienteEmail || '').trim().toLowerCase(),
+                                    userPhone: currentPedidoData.clienteTelefone || '',
+                                    userCpf: currentPedidoData.clienteCpf || '',
+                                    paymentStatus: isOverbooked ? 'Overbooking (Pago)' : 'Pago',
+                                    overbooked: isOverbooked,
+                                    ticketTypeId: item.id,
+                                    ticketTypeName: item.name,
+                                    pedidoId: pedidoDoc.id,
+                                    timestamp: new Date().toISOString()
+                                });
+                            }
+                        }
+                        logger.info(`Transação: Pedido ${pedidoDoc.id} processado! Inscrições criadas.`);
+                    } else {
+                        const registrationId = `reg_${currentPedidoData.eventId}_${currentPedidoData.userId}_${pedidoDoc.id}`;
+                        const regRef = db.collection('registrations').doc(registrationId);
+                        transaction.set(regRef, {
+                            id: registrationId,
+                            eventId: currentPedidoData.eventId || '',
+                            userId: currentPedidoData.userId || '',
+                            userName: currentPedidoData.clienteNome || '',
+                            userEmail: currentPedidoData.clienteEmail || '',
+                            // Chave de busca da recuperação por email-link (e-mail normalizado).
+                            userEmailLower: (currentPedidoData.clienteEmail || '').trim().toLowerCase(),
+                            userPhone: currentPedidoData.clienteTelefone || '',
+                            userCpf: currentPedidoData.clienteCpf || '',
+                            paymentStatus: isOverbooked ? 'Overbooking (Pago)' : 'Pago',
+                            overbooked: isOverbooked,
+                            pedidoId: pedidoDoc.id,
+                            timestamp: new Date().toISOString()
+                        });
+                        logger.info(`Transação: Pedido ${pedidoDoc.id} processado! Inscrição simples criada.`);
+                    }
+                });
+            } catch (transError) {
+                logger.error("Erro na transação de aprovação do pedido:", transError);
+                res.status(500).send('Erro na transação do banco.');
+                return;
+            }
+        }
+
+        // Tratamento de estorno, chargeback e cancelamento.
+        // Se o pedido já havia sido pago, devolvemos o estoque ao evento e removemos as
+        // inscrições geradas, impedindo que um ingresso estornado continue válido na portaria.
+        const REFUND_STATUSES = ['refunded', 'cancelled', 'charged_back'];
+        if (REFUND_STATUSES.includes(statusReal)) {
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const pedidoRef = pedidosRef.doc(pedidoDoc.id);
+
+                    // IMPORTANTE: todas as leituras devem ocorrer antes de qualquer escrita na transação.
+                    const currentPedidoDoc = await transaction.get(pedidoRef);
+                    if (!currentPedidoDoc.exists) {
+                        throw new Error("Pedido não encontrado na transação de estorno.");
+                    }
+                    const currentPedidoData = currentPedidoDoc.data();
+                    const statusAtual = currentPedidoData.status;
+
+                    const novoStatusPedido = statusReal === 'charged_back'
+                        ? 'chargeback'
+                        : (statusReal === 'refunded' ? 'estornado' : 'cancelado');
+
+                    // Idempotência: se já está em um estado final de estorno, não faz nada.
+                    if (['estornado', 'chargeback', 'cancelado'].includes(statusAtual)) {
+                        logger.info(`Pedido ${pedidoDoc.id} já está em estado final (${statusAtual}). Ignorando estorno redundante.`);
+                        return;
+                    }
+
+                    // Só revertemos estoque/inscrições se o pedido chegou a ser efetivamente pago.
+                    const eraPago = statusAtual === 'pago';
+                    const itensComprados = currentPedidoData.itensComprados || [];
+
+                    // Leitura do evento (antes das escritas) apenas quando há estoque a devolver.
+                    let eventDoc = null;
+                    let eventRef = null;
+                    if (eraPago && currentPedidoData.eventId && itensComprados.length > 0) {
+                        eventRef = db.collection('events').doc(currentPedidoData.eventId);
+                        eventDoc = await transaction.get(eventRef);
+                    }
+
+                    // 1. Atualiza o status do pedido
+                    transaction.update(pedidoRef, {
+                        status: novoStatusPedido,
+                        dataEstorno: FieldValue.serverTimestamp()
+                    });
+
+                    if (!eraPago) {
+                        // Pedido nunca foi pago (ex.: Pix expirado). Nada de estoque/inscrições a reverter.
+                        logger.info(`Pedido ${pedidoDoc.id} marcado como ${novoStatusPedido} (não havia sido pago).`);
+                        return;
+                    }
+
+                    // 2. Devolve o estoque dos lotes ao evento
+                    if (eventDoc && eventDoc.exists) {
+                        const eventData = eventDoc.data();
+                        const tickets = eventData.tickets || [];
+                        const devolucoesMap = {};
+                        for (const item of itensComprados) {
+                            devolucoesMap[item.id] = (devolucoesMap[item.id] || 0) + (Number(item.quantity) || 0);
+                        }
+                        let alterado = false;
+                        const updatedTickets = tickets.map(ticket => {
+                            const qtdDevolvida = devolucoesMap[ticket.id];
+                            if (qtdDevolvida) {
+                                alterado = true;
+                                const novoSold = Math.max(0, (ticket.sold || 0) - qtdDevolvida);
+                                // Reabre o lote se estava esgotado e voltou a ter vaga
+                                const novoStatus = ticket.status === 'sold_out' && novoSold < ticket.capacity
+                                    ? 'active'
+                                    : ticket.status;
+                                return { ...ticket, sold: novoSold, status: novoStatus };
+                            }
+                            return ticket;
+                        });
+                        if (alterado) {
+                            transaction.update(eventRef, { tickets: updatedTickets });
+                            logger.info(`Estoque devolvido no evento ${currentPedidoData.eventId} após ${novoStatusPedido} do pedido ${pedidoDoc.id}.`);
+                        }
+                    }
+
+                    // 3. Remove as inscrições criadas por este pedido (IDs determinísticos,
+                    // idênticos aos gerados na aprovação). O contador é ajustado por onRegistrationDeleted.
+                    if (itensComprados.length > 0) {
+                        for (const item of itensComprados) {
+                            const qty = Number(item.quantity) || 0;
+                            for (let q = 0; q < qty; q++) {
+                                const registrationId = `reg_${currentPedidoData.eventId}_${currentPedidoData.userId}_${item.id}_${q}_${pedidoDoc.id}`;
+                                transaction.delete(db.collection('registrations').doc(registrationId));
+                            }
+                        }
+                    } else {
+                        const registrationId = `reg_${currentPedidoData.eventId}_${currentPedidoData.userId}_${pedidoDoc.id}`;
+                        transaction.delete(db.collection('registrations').doc(registrationId));
+                    }
+                    logger.info(`Inscrições do pedido ${pedidoDoc.id} removidas após ${novoStatusPedido}.`);
+                });
+            } catch (transError) {
+                logger.error("Erro na transação de estorno/cancelamento do pedido:", transError);
+                res.status(500).send('Erro na transação de estorno.');
+                return;
+            }
+        }
+
+        // Pós-pagamento (apenas na transição efetiva para pago). Executado após a transação
+        // para não atrasar nem arriscar o processamento financeiro.
+        if (deveNotificar) {
+            const tituloEvento = dadosPedido.eventTitle || 'o evento';
+            if (isOverbooked) {
+                // Resolução automática de overbooking: reembolsa o pagamento. O webhook de
+                // estorno (status 'refunded') cuidará de devolver o estoque e remover as inscrições.
+                // POLÍTICA: se QUALQUER lote do pedido estourou a capacidade, o pedido INTEIRO é
+                // reembolsado (refund total), inclusive lotes do mesmo pedido que tinham estoque.
+                // É a opção simples e consistente; refund parcial por lote exigiria cálculo de valor
+                // por item e ajuste do webhook de 'refunded' para não remover todas as inscrições.
+                const reembolsado = await reembolsarPagamentoAutomatico(paymentId);
+                if (reembolsado) {
+                    await enviarNotificacaoPush(
+                        dadosPedido.userId,
+                        'Lote esgotado — reembolso em andamento',
+                        `O lote de "${tituloEvento}" esgotou antes da confirmação. Seu pagamento está sendo reembolsado automaticamente.`,
+                        '/profile'
+                    );
                 } else {
                     await enviarNotificacaoPush(
                         dadosPedido.userId,
-                        'Ingresso confirmado! 🎟️',
-                        `Seu ingresso para ${tituloEvento} foi confirmado. Toque para visualizar.`,
-                        dadosPedido.eventId ? `/event/${dadosPedido.eventId}` : '/profile'
+                        'Problema com seu ingresso',
+                        `Houve um problema de disponibilidade em "${tituloEvento}". Entre em contato com o organizador.`,
+                        '/profile'
                     );
                 }
+            } else {
+                await enviarNotificacaoPush(
+                    dadosPedido.userId,
+                    'Ingresso confirmado! 🎟️',
+                    `Seu ingresso para ${tituloEvento} foi confirmado. Toque para visualizar.`,
+                    dadosPedido.eventId ? `/event/${dadosPedido.eventId}` : '/profile'
+                );
             }
-
-            res.status(200).send('Webhook processado.');
-
-        } catch (error) {
-            logger.error('Erro ao processar webhook:', error);
-            res.status(500).send('Erro interno do servidor.');
         }
-    });
+
+        res.status(200).send('Webhook processado.');
+
+    } catch (error) {
+        logger.error('Erro ao processar webhook:', error);
+        res.status(500).send('Erro interno do servidor.');
+    }
 });
 
 exports.adminResetPassword = onCall({ cors: true }, async (request) => {
@@ -722,35 +719,6 @@ exports.adminResetPassword = onCall({ cors: true }, async (request) => {
     } catch (error) {
         logger.error(`Erro ao redefinir senha do usuário ${uid}:`, error);
         throw new HttpsError('internal', 'Erro interno ao redefinir senha.');
-    }
-});
-
-// Nova Cloud Function para definir claims de administrador nos usuários
-exports.setAdminClaim = onCall({ cors: true }, async (request) => {
-    // 1. Verificar se quem está chamando está autenticado
-    if (!request.auth) {
-        throw new HttpsError('unauthenticated', 'Apenas usuários autenticados podem definir permissões.');
-    }
-    
-    // 2. Verificar se o solicitante é um dos administradores permitidos (claims de admin ou e-mail de fallback)
-    const callerEmail = request.auth.token.email || '';
-    if (!isCallerAdmin(request.auth.token)) {
-        throw new HttpsError('permission-denied', 'Apenas administradores podem definir novos administradores.');
-    }
-    
-    const { uid, admin: shouldBeAdmin } = request.data;
-    if (!uid) {
-        throw new HttpsError('invalid-argument', 'O UID do usuário alvo é obrigatório.');
-    }
-    
-    try {
-        // 3. Definir claim de admin no Firebase Authentication
-        await admin.auth().setCustomUserClaims(uid, { admin: shouldBeAdmin === true });
-        logger.info(`Claim admin definido como ${shouldBeAdmin === true} para o usuário ${uid} por ${callerEmail}.`);
-        return { success: true, uid, admin: shouldBeAdmin === true };
-    } catch (error) {
-        logger.error(`Erro ao definir claim admin para o usuário ${uid}:`, error);
-        throw new HttpsError('internal', 'Erro interno ao definir permissão de administrador.');
     }
 });
 

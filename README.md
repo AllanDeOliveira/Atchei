@@ -44,13 +44,14 @@ Autorização de admin é **100% via custom claim** do Firebase Auth — não ex
 
 ## 🛠️ Stack
 
-**Frontend** — React 19 · Vite 8 · TypeScript · Tailwind 3 · React Router 7 · GSAP · Lucide
+**Frontend** — React 19 · Vite 8 · TypeScript · Tailwind 3 · React Router 7 · Lucide
 `react-hook-form` + `zod` (formulários) · `@vis.gl/react-google-maps` · `@zxing/browser` (leitura de QR) · `react-easy-crop` · `html-to-image` · `vite-plugin-pwa`
+Animações de entrada são CSS puro (`@keyframes anim-enter` em `index.css`), sem biblioteca.
 
-**Backend** — Cloud Functions gen2 (Node 22) · `firebase-admin` · SDK do Mercado Pago
-Serviços Firebase usados pelo app: Authentication · Firestore · Cloud Functions · Storage · Cloud Messaging · Analytics
+**Backend** — Cloud Functions gen2 (Node 22) · `firebase-admin` · API v3 do Asaas (via `fetch`, sem SDK)
+Serviços Firebase usados pelo app: Authentication · Firestore · Cloud Functions · Storage · Cloud Messaging
 
-**Testes** — Vitest + Testing Library + jsdom, no frontend e nas functions. Regras do Firestore testadas com `@firebase/rules-unit-testing`.
+**Testes** — Vitest + Testing Library + jsdom, no frontend e nas functions.
 
 **Identidade visual** — tema claro, âmbar `#FFB34D` e preto `#000000` sobre off-white `#FFFCF8`, tipografia Plus Jakarta Sans.
 
@@ -58,19 +59,21 @@ Serviços Firebase usados pelo app: Authentication · Firestore · Cloud Functio
 
 ## 💳 Pagamento
 
-Método **exclusivamente PIX**, via Mercado Pago. Não há cartão.
+Método **exclusivamente PIX**, via Asaas (API v3), com **split de pagamento**. Não há cartão.
 
 1. O cliente escolhe os lotes e informa os dados.
 2. A function `criarCobrancaPix` valida o estoque e **recalcula o preço no servidor** a partir do documento do evento — o valor enviado pelo cliente é ignorado.
-3. Retorna o QR Code copia-e-cola e a imagem.
-4. O Mercado Pago notifica o webhook. Numa transação Firestore: o pedido vira `pago`, o estoque do lote é decrementado, as inscrições são criadas e uma push é enviada.
+3. A cobrança é criada com a chave **da plataforma**; o array `split` repassa a parte do organizador para o `walletId` dele (`PLATFORM_FEE_PERCENT` define a comissão retida). O QR Code vem numa segunda chamada.
+4. O Asaas notifica o webhook. Numa transação Firestore: o pedido vira `pago`, o estoque do lote é decrementado, as inscrições são criadas e uma push é enviada.
+
+O organizador vira recebedor cadastrando seus dados no perfil (`asaasCadastrarRecebedor` cria a subconta). Sem recebedor, a venda acontece sem split e o valor fica integralmente na plataforma.
 
 **Garantias implementadas**
-- Assinatura HMAC-SHA256 do webhook validada com comparação *timing-safe*, **fail-closed** — sem o segredo em produção, o webhook rejeita.
-- Idempotência por `pedidoId`, com IDs de inscrição determinísticos — retry do Mercado Pago não duplica ingresso.
+- Webhook autenticado pelo token estático `asaas-access-token`, comparado *timing-safe*, **fail-closed** — sem o token em produção, o webhook rejeita. O Asaas **não assina o payload** (não há HMAC como no Mercado Pago), então o status de pagamento é sempre **reconsultado na API** antes de emitir ingresso: um payload forjado não vira ingresso.
+- Idempotência por `pedidoId`, com IDs de inscrição determinísticos — retry do Asaas não duplica ingresso.
 - Estados terminais (`pago`, `estornado`, `chargeback`, `cancelado`) bloqueiam reprocessamento.
 - Estorno e chargeback devolvem estoque e **deletam as inscrições** — ingresso estornado não passa na portaria.
-- Venda simultânea que estoure a capacidade marca o pedido como `overbooked` e **reembolsa automaticamente**.
+- Venda simultânea que estoure a capacidade marca o pedido como `overbooked` e **estorna automaticamente**.
 - Rate limiting transacional por operação.
 
 ---
@@ -88,7 +91,7 @@ O código curto é derivado do id por FNV-1a → base32 Crockford, sem campo ext
 
 ## 🔧 Rodando localmente
 
-**Pré-requisitos:** Node 22+, projeto Firebase próprio, credenciais do Mercado Pago (para testar pagamento).
+**Pré-requisitos:** Node 22+, projeto Firebase próprio, conta Asaas (use a chave de **sandbox** para testar pagamento).
 
 ```bash
 npm install
@@ -112,9 +115,15 @@ VITE_USE_EMULATORS=          # 'true' para falar com os emuladores
 E um `functions/.env` para o runtime das Cloud Functions:
 
 ```env
-MP_ACCESS_TOKEN=
-MP_WEBHOOK_SECRET=
+ASAAS_API_KEY=               # chave de sandbox para desenvolvimento
+ASAAS_BASE_URL=https://api-sandbox.asaas.com/v3
+ASAAS_WEBHOOK_TOKEN=         # o mesmo valor cadastrado no webhook do Asaas
+PLATFORM_FEE_PERCENT=10      # comissão retida pela plataforma, em %
+APP_BASE_URL=http://localhost:5173
 ```
+
+> Em produção, a chave e o token do webhook vão pelo Secret Manager, não pelo `.env`
+> (que é empacotado no deploy): `firebase functions:secrets:set ASAAS_API_KEY`.
 
 > ⚠️ Sem `VITE_USE_EMULATORS=true`, o `npm run dev` fala com **produção**.
 
@@ -127,7 +136,6 @@ npm run test:run     # suíte usada no CI
 
 O frontend só conecta nos emuladores do Firebase se o host for `localhost`/`127.0.0.1` **e** `VITE_USE_EMULATORS` for `true`.
 
-**Testes das regras do Firestore** ficam em `tests/rules/` e exigem o emulador Firestore ativo. Estão fora da suíte padrão do Vitest e não rodam no CI.
 
 ---
 
@@ -148,9 +156,9 @@ src/
   lib/           firebase, storage, ticketCode, tipos
 functions/
   index.js       Cloud Functions (PIX, webhook, admin, triggers)
+  asaas.js       cliente da API v3 do Asaas + cofre de recebedores
   rateLimiter.js rate limiting transacional
   scripts/       utilitários administrativos
-tests/rules/     testes das security rules
 ```
 
 ---

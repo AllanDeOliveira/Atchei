@@ -5,7 +5,6 @@ import { cn } from '../lib/utils';
 import { storage } from '../lib/storage';
 import type { EventItem } from '../lib/storage';
 import { useAuth } from '../contexts/AuthContext';
-import gsap from 'gsap';
 import { Sparkles, Flame, Calendar, Ticket } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -173,45 +172,6 @@ export const Feed = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (containerRef.current) {
-      const ctx = gsap.context(() => {
-        // Header entrance
-        if (containerRef.current?.querySelector('.feed-header')) {
-          gsap.from('.feed-header', {
-            y: -20,
-            opacity: 0,
-            duration: 0.6,
-            ease: 'power3.out',
-          });
-        }
-        
-        // Highlights section
-        if (containerRef.current?.querySelector('.highlights-section')) {
-          gsap.from('.highlights-section', {
-            x: -30,
-            opacity: 0,
-            duration: 0.7,
-            delay: 0.2,
-            ease: 'expo.out',
-          });
-        }
-        
-        // Event cards
-        if (containerRef.current?.querySelectorAll('.event-card-anim').length) {
-          gsap.from('.event-card-anim', {
-            y: 40,
-            opacity: 0,
-            duration: 0.6,
-            stagger: 0.1,
-            delay: 0.4,
-            ease: 'expo.out',
-          });
-        }
-      }, containerRef);
-      return () => ctx.revert();
-    }
-  }, []); // Run only once on mount
 
   const getFilteredAndSortedEvents = () => {
     let filtered = [...events];

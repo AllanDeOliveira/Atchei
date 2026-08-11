@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { EventTicketSection } from './EventTicketSection';
 import type { EventItem, User } from '../../lib/storage';
@@ -26,6 +26,10 @@ describe('EventTicketSection Component', () => {
     role: 'admin',
   };
 
+  // Os handlers de mockProps são compartilhados entre os testes; sem o reset,
+  // um clique de um teste conta como chamada no seguinte.
+  beforeEach(() => { vi.clearAllMocks(); });
+
   const mockProps = {
     event: mockEvent,
     currentUser: mockUser,
@@ -48,11 +52,18 @@ describe('EventTicketSection Component', () => {
     expect(screen.getByText('Presença confirmada · ingresso garantido')).toBeInTheDocument();
   });
 
-  it('esconde compra via Pix enquanto PIX_ENABLED=false e cai para WhatsApp', () => {
+  it('abre o checkout Pix quando o evento tem ingressos via Pix', () => {
     render(<EventTicketSection {...mockProps} />);
+    fireEvent.click(screen.getByText('Comprar via Pix'));
+    expect(mockProps.onOpenPixModal).toHaveBeenCalled();
+  });
+
+  // Evento sem Pix continua caindo no WhatsApp — a flag liga o Pix, não o remove.
+  it('cai para WhatsApp quando o evento nao tem ingressos via Pix', () => {
+    const semPix = { ...mockProps.event, hasPixTickets: false, hasTickets: true };
+    render(<EventTicketSection {...mockProps} event={semPix} />);
     expect(screen.queryByText('Comprar via Pix')).toBeNull();
     expect(screen.getByText('Comprar ingresso')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Comprar ingresso'));
     expect(mockProps.onOpenPixModal).not.toHaveBeenCalled();
   });
 });

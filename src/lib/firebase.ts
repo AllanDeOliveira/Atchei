@@ -2,7 +2,6 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, initializeAuth, inMemoryPersistence, browserPopupRedirectResolver } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { getAnalytics } from 'firebase/analytics';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import type { Functions } from 'firebase/functions';
 
@@ -20,7 +19,6 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storageRef = getStorage(app);
-export const analytics = getAnalytics(app);
 
 // Instância única do Functions, com hookup do emulador em dev local.
 // Lazy para que testes que mockam os módulos do Firebase não a inicializem.

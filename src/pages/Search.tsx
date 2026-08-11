@@ -7,7 +7,6 @@ import { EventCard } from '../components/EventCard';
 import { ProfileCard } from '../components/ProfileCard';
 import { EventCardSkeleton, Skeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
-import gsap from 'gsap';
 import { Search as SearchIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -63,17 +62,6 @@ export const Search = () => {
     return false;
   });
 
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      if (containerRef.current?.querySelectorAll('.search-result').length) {
-        gsap.fromTo('.search-result', 
-          { y: 20, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.4, stagger: 0.05, ease: 'power2.out' }
-        );
-      }
-    }, containerRef);
-    return () => ctx.revert();
-  }, []); // Run only once on mount
 
   return (
     <div ref={containerRef} className="min-h-screen bg-background pb-28 pt-8 px-4 relative">
