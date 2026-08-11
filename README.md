@@ -1,6 +1,6 @@
-# Chain — Plataforma de Eventos 🎟️
+# Atchei — Plataforma de Eventos 🎟️
 
-**Chain** é uma plataforma de descoberta, venda e validação de ingressos para eventos, festivais, casas noturnas e atléticas. Cobre o ciclo inteiro: o cliente descobre o evento no feed, paga por PIX, recebe o ingresso, e a portaria valida por QR Code.
+**Atchei** é uma plataforma de descoberta, venda e validação de ingressos para eventos, festivais, casas noturnas e atléticas. Cobre o ciclo inteiro: o cliente descobre o evento no feed, paga por PIX, recebe o ingresso, e a portaria valida por QR Code.
 
 ---
 

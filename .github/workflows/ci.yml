@@ -1,4 +1,4 @@
-# CI do Chain
+# CI do Atchei
 #
 # Em Pull Requests e pushes para `main`: instala, builda e roda os testes (frontend e functions).
 # O deploy é feito fora deste workflow (hospedagem própria).

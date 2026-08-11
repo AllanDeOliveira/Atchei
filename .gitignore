@@ -34,3 +34,4 @@ agents/
 
 # Graphify
 graphify-out/
+.env*.bak

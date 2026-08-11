@@ -247,9 +247,9 @@ export const Feed = () => {
         <div className="flex justify-between items-center mb-6 md:hidden">
           <div className="flex items-center gap-2">
             <img 
-              src={`${import.meta.env.BASE_URL}logo.png?v=5`} 
-              alt="Chain" 
-              className="w-auto h-14 object-contain drop-shadow-sm brightness-110" 
+              src={`${import.meta.env.BASE_URL}placeholder-logo.png`}
+              alt="Atchei"
+              className="w-auto h-14 object-contain drop-shadow-sm brightness-110"
             />
           </div>
           

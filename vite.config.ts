@@ -18,8 +18,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['logo.png'],
       manifest: {
-        name: 'Chain - Eventos e ingressos',
-        short_name: 'Chain',
+        name: 'Atchei - Eventos e ingressos',
+        short_name: 'Atchei',
         description: 'Descubra e crie os melhores eventos, festas e encontros na sua região.',
         theme_color: '#FFB34D',
         background_color: '#FFFCF8',

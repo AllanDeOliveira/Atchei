@@ -156,7 +156,7 @@ exports.criarCobrancaPix = onCall({ cors: true, secrets: [ASAAS_API_KEY] }, asyn
             throw new HttpsError('invalid-argument', 'Informe um CPF ou CNPJ válido para gerar o Pix.');
         }
 
-        const eventTitle = data.eventTitle || "Ingresso Chain";
+        const eventTitle = data.eventTitle || "Ingresso Atchei";
 
         // Processar múltiplos ingressos (VIP, Camarote, etc.) e lotes selecionados.
         // SEGURANÇA: o preço é SEMPRE obtido do documento do evento no servidor.

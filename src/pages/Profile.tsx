@@ -417,9 +417,9 @@ export const Profile = () => {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <img 
-              src={`${import.meta.env.BASE_URL}logo.png?v=5`} 
-              alt="Chain" 
-              className="w-auto h-14 object-contain brightness-110 drop-shadow-sm" 
+              src={`${import.meta.env.BASE_URL}placeholder-logo.png`}
+              alt="Atchei"
+              className="w-auto h-14 object-contain brightness-110 drop-shadow-sm"
             />
           </div>
           {user && (

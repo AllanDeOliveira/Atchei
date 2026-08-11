@@ -1,5 +1,5 @@
 /**
- * Script de Inicialização de Administradores - Chain
+ * Script de Inicialização de Administradores - Atchei
  *
  * Este script define o custom claim { admin: true } para os e-mails listados
  * em functions/adminEmails.js, permitindo que eles acessem o painel

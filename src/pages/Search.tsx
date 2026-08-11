@@ -69,14 +69,14 @@ export const Search = () => {
       <div className="flex justify-between items-center mb-6 px-2 relative z-10 md:hidden">
         <div className="flex items-center gap-2">
           <img
-            src={`${import.meta.env.BASE_URL}logo.png?v=5`}
-            alt="Chain"
+            src={`${import.meta.env.BASE_URL}placeholder-logo.png`}
+            alt="Atchei"
             className="w-auto h-14 object-contain brightness-110 drop-shadow-sm"
           />
         </div>
         <button
           onClick={() => navigate('/profile')}
-          className="w-14 h-14 rounded-full bg-primary text-textDark border border-primary/20 flex items-center justify-center text-lg font-display font-semibold overflow-hidden transition-all duration-300 hover:bg-primaryHover active:scale-95 cursor-pointer"
+          className="w-14 h-14 rounded-2xl bg-primary text-textDark flex items-center justify-center text-lg font-sans font-bold overflow-hidden transition-all duration-200 hover:brightness-110 active:scale-95 cursor-pointer"
           title="Ir para o perfil"
         >
           {user?.imageUrl ? (
