@@ -91,7 +91,7 @@ const CreateEventContent = () => {
       ticketPrice: '',
       pixTicketPrice: '',
       isTestEvent: false,
-      hasPresence: true,
+      hasPresence: false,
       whatsappContacts: [{ name: '', phone: '' }],
       whatsappNumber: ''
     }
@@ -102,7 +102,7 @@ const CreateEventContent = () => {
   const hasPixTickets = watch('hasPixTickets');
   const isTestEvent = watch('isTestEvent');
   const address = watch('address');
-  const hasPresence = watch('hasPresence') ?? true;
+  const hasPresence = watch('hasPresence') ?? false;
   const dateValue = watch('date');
   const timeValue = watch('time');
 

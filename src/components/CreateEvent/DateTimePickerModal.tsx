@@ -88,6 +88,13 @@ const Conteudo = ({ date, time, onConfirm, onClose }: Omit<Props, 'open'>) => {
     setHoraSel(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
   };
 
+  // Digitação direta: só dígitos, últimos 2, limitado a 23h/59min.
+  const digitarHora = (campo: 'h' | 'm', valor: string) => {
+    const num = Math.min(Number(valor.replace(/\D/g, '').slice(-2) || '0'), campo === 'h' ? 23 : 59);
+    const [h, m] = campo === 'h' ? [num, Number(mm)] : [Number(hh), num];
+    setHoraSel(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+  };
+
   return (
     <div
       className="modal-backdrop fixed inset-0 z-[99999] flex items-center justify-center p-4"
@@ -179,9 +186,15 @@ const Conteudo = ({ date, time, onConfirm, onClose }: Omit<Props, 'open'>) => {
                 >
                   <ChevronUp size={16} />
                 </button>
-                <span className="font-display font-bold text-xl text-textLight tabular-nums w-8 text-center">
-                  {campo === 'h' ? hh : mm}
-                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={campo === 'h' ? hh : mm}
+                  onChange={e => digitarHora(campo, e.target.value)}
+                  onFocus={e => e.target.select()}
+                  className="font-display font-bold text-xl text-textLight tabular-nums w-8 text-center bg-transparent rounded-md focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  aria-label={campo === 'h' ? 'Hora' : 'Minuto'}
+                />
                 <button
                   type="button"
                   onClick={() => ajustarHora(campo, campo === 'h' ? -1 : -5)}

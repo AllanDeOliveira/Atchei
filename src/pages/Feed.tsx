@@ -283,7 +283,7 @@ export const Feed = () => {
                 </span>
                 {user?.name && (
                   <span className="text-primary font-display font-semibold text-4xl block leading-tight mt-1 truncate">
-                    {user.name}
+                    {user.name.trim().split(' ')[0]}
                   </span>
                 )}
               </div>

@@ -8,6 +8,9 @@ interface EventLocationMapProps {
 
 export const EventLocationMap: React.FC<EventLocationMapProps> = ({ location, address }) => {
   const mapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
+  // Nome do local + endereço: só o endereço (sem número/cidade) faz o Google
+  // geocodificar o bairro em vez do estabelecimento.
+  const consulta = [location, address].filter(Boolean).join(', ');
 
   return (
     <div className="text-left space-y-3">
@@ -36,12 +39,12 @@ export const EventLocationMap: React.FC<EventLocationMapProps> = ({ location, ad
             loading="lazy"
             allowFullScreen
             referrerPolicy="no-referrer-when-downgrade"
-            src={`https://www.google.com/maps/embed/v1/place?key=${mapsApiKey}&q=${encodeURIComponent(address || location)}`}
+            src={`https://www.google.com/maps/embed/v1/place?key=${mapsApiKey}&q=${encodeURIComponent(consulta)}`}
           ></iframe>
         </div>
 
         <button
-          onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address || location)}`, '_blank')}
+          onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(consulta)}`, '_blank')}
           className="w-full bg-surface border border-glassBorder hover:bg-surfaceHover hover:border-primary/30 text-textLight font-sans font-semibold text-sm py-3.5 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all duration-200 neo-click cursor-pointer"
         >
           <MapPin size={15} /> Ver rota no Google Maps

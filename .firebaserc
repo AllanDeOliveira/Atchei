@@ -1,6 +1,5 @@
 {
   "projects": {
-    "default": "atchei",
-    "old": "atche-sistemas"
+    "default": "atchei"
   }
 }

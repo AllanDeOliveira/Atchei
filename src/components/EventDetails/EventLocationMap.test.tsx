@@ -22,7 +22,7 @@ describe('EventLocationMap Component', () => {
     fireEvent.click(routeBtn);
 
     expect(windowOpenSpy).toHaveBeenCalledWith(
-      expect.stringContaining('https://www.google.com/maps/dir/?api=1&destination=Av.%20Paulista%2C%201000'),
+      expect.stringContaining('https://www.google.com/maps/dir/?api=1&destination=Parque%20Central%2C%20Av.%20Paulista%2C%201000'),
       '_blank'
     );
     windowOpenSpy.mockRestore();
