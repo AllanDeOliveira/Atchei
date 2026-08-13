@@ -36,6 +36,8 @@ export interface AppProfile {
   password?: string;
   mustChangePassword?: boolean;
   instagram?: string;
+  /** Data de nascimento (YYYY-MM-DD). Cadastros exigem 18+; docs antigos não têm o campo. */
+  birthDate?: string;
 };
 
 export type User = {
@@ -281,7 +283,7 @@ export const storage = {
 
   // Perfil 'user' (pessoal) participa de eventos; 'profissional' também vende
   // ingressos e cadastra a conta de recebimento Asaas (vira role 'partner').
-  register: async (email: string, password: string, name: string, type: 'user' | 'profissional' = 'user'): Promise<User | null> => {
+  register: async (email: string, password: string, name: string, type: 'user' | 'profissional' = 'user', birthDate?: string): Promise<User | null> => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const fbUser = userCredential.user;
@@ -298,7 +300,8 @@ export const storage = {
         name,
         email,
         type,
-        mustChangePassword: false
+        mustChangePassword: false,
+        ...(birthDate ? { birthDate } : {})
       });
 
       localStorage.setItem('@chain:user', JSON.stringify(user));

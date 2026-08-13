@@ -96,6 +96,11 @@ exports.criarCobrancaPix = onCall({ cors: true, secrets: [ASAAS_API_KEY] }, asyn
         throw new HttpsError('invalid-argument', 'Dados incompletos para gerar o Pix.');
     }
 
+    // Compra exige conta (Termos de Uso) — também elimina o balde anônimo do rate limit.
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Faça login para comprar ingressos.');
+    }
+
     // Rate Limiting: uid autenticado ou IP (primeiro hop do x-forwarded-for). Nunca
     // identificadores do payload (deviceId/userId): o cliente controla e rotaciona,
     // o que zeraria o limite. IP compartilhado (CGNAT) pode agrupar compradores — ceiling aceito.

@@ -108,11 +108,21 @@ export const EventDetails = () => {
       setPixStep('buyer_info');
     }
     setQrCodeData(null);
+    if (!exigirLogin()) return;
     setPixErrors({});
     setPixCopied(false);
     setPixExpired(false);
     registrationForTicketRef.current = null;
     setShowPixModal(true);
+  };
+
+  // Comprar ingresso e confirmar presença exigem conta (Termos de Uso; rules
+  // do Firestore não aceitam mais inscrição de visitante).
+  const exigirLogin = (): boolean => {
+    if (currentUser) return true;
+    toast.error('Entre na sua conta para continuar.');
+    navigate('/login');
+    return false;
   };
 
   const getSelectedTicketsTotal = () => {
@@ -211,10 +221,11 @@ export const EventDetails = () => {
       return;
     }
 
+    if (!exigirLogin() || !currentUser) return;
     triggerPixCooldown();
     setPixExpired(false);
     setLoadingPix(true);
-    const buyerId = currentUser ? currentUser.id : `guest-${Date.now()}`;
+    const buyerId = currentUser.id;
 
     const novoPedidoId = `PIX-${event.id}-${buyerId}-${Date.now()}`;
     setPedidoId(novoPedidoId);
@@ -430,8 +441,9 @@ export const EventDetails = () => {
     }
 
     if (!event) return;
+    if (!exigirLogin() || !currentUser) return;
 
-    const buyerId = currentUser ? currentUser.id : `guest-${Date.now()}`;
+    const buyerId = currentUser.id;
 
     const registration: Registration = {
       id: Date.now().toString(),
@@ -520,7 +532,7 @@ export const EventDetails = () => {
               currentUser={currentUser}
               isRegistered={isRegistered}
               loadingTestTicket={loadingTestTicket}
-              onOpenFreeTicketModal={() => setShowFreeTicketModal(true)}
+              onOpenFreeTicketModal={() => { if (exigirLogin()) setShowFreeTicketModal(true); }}
               onOpenPixModal={handleOpenPixModal}
               onOpenContactsModal={() => setShowContactsModal(true)}
               onGerarIngressoTeste={handleGerarIngressoTeste}

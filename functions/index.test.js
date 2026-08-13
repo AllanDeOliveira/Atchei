@@ -161,11 +161,18 @@ describe('Cloud Functions Tests', () => {
       await expect(wrapped({ data: { valor: null } })).rejects.toThrow('Dados incompletos para gerar o Pix.');
     });
 
+    it('recusa compra sem autenticacao', async () => {
+      const wrapped = fft.wrap(myFunctions.criarCobrancaPix);
+      await expect(wrapped({ data: pedidoBase() }))
+        .rejects.toThrow('Faça login para comprar ingressos.');
+      expect(mockAsaasCriarCobranca).not.toHaveBeenCalled();
+    });
+
     it('recusa CPF/CNPJ invalido antes de falar com o Asaas', async () => {
       const wrapped = fft.wrap(myFunctions.criarCobrancaPix);
       filaPadrao();
 
-      await expect(wrapped({ data: pedidoBase({ cpf: '123' }) }))
+      await expect(wrapped({ data: pedidoBase({ cpf: '123' }), auth: { uid: 'user-1' } }))
         .rejects.toThrow('Informe um CPF ou CNPJ válido para gerar o Pix.');
       expect(mockAsaasCriarCobranca).not.toHaveBeenCalled();
     });
@@ -176,7 +183,7 @@ describe('Cloud Functions Tests', () => {
       mockAsaasCriarCobranca.mockResolvedValueOnce({ id: 'pay_abc' });
       mockAsaasQrCode.mockResolvedValueOnce({ qr_code: 'copia-e-cola', qr_code_base64: 'base64-img' });
 
-      const result = await wrapped({ data: pedidoBase() });
+      const result = await wrapped({ data: pedidoBase(), auth: { uid: 'user-1' } });
 
       const [corpo] = mockAsaasCriarCobranca.mock.calls[0];
       expect(corpo.billingType).toBeUndefined(); // billingType é fixado dentro de asaas.js
@@ -201,7 +208,7 @@ describe('Cloud Functions Tests', () => {
         }),
       });
 
-      await expect(wrapped({ data: pedidoBase() }))
+      await expect(wrapped({ data: pedidoBase(), auth: { uid: 'user-1' } }))
         .rejects.toThrow('Desculpe, o ingresso "Lote VIP" esgotou ou não possui a quantidade solicitada disponível.');
     });
 
@@ -210,7 +217,7 @@ describe('Cloud Functions Tests', () => {
       filaPadrao();
 
       // Cliente tenta pagar R$ 1 por um ingresso de R$ 50.
-      await wrapped({ data: pedidoBase({ valor: 1, itensSelecionados: [{ id: 'lote-1', quantity: 1, price: 1 }] }) });
+      await wrapped({ data: pedidoBase({ valor: 1, itensSelecionados: [{ id: 'lote-1', quantity: 1, price: 1 }] }), auth: { uid: 'user-1' } });
 
       const [corpo] = mockAsaasCriarCobranca.mock.calls[0];
       expect(corpo.value).toBe(50);
@@ -226,7 +233,7 @@ describe('Cloud Functions Tests', () => {
       filaPadrao();
       mockAsaasCriarCobranca.mockResolvedValueOnce({ id: 'pay_split' });
 
-      await wrapped({ data: pedidoBase({ pedidoId: 'ped-split' }) });
+      await wrapped({ data: pedidoBase({ pedidoId: 'ped-split' }), auth: { uid: 'user-1' } });
 
       // Comissão de 10% => 90% do líquido vai para a carteira do organizador.
       // Percentual, não valor fixo: fixedValue sobre o bruto estoura o teto do netValue.
@@ -256,7 +263,7 @@ describe('Cloud Functions Tests', () => {
       mockAsaasGetRecebedor.mockResolvedValueOnce(null);
       filaPadrao();
 
-      await wrapped({ data: pedidoBase({ pedidoId: 'ped-legado' }) });
+      await wrapped({ data: pedidoBase({ pedidoId: 'ped-legado' }), auth: { uid: 'user-1' } });
 
       const [corpo] = mockAsaasCriarCobranca.mock.calls[0];
       expect(corpo.split).toBeUndefined();
@@ -276,7 +283,7 @@ describe('Cloud Functions Tests', () => {
       });
       mockDocGet.mockResolvedValueOnce({ exists: true, data: () => ({ status: 'pago' }) });
 
-      await expect(wrapped({ data: pedidoBase() })).rejects.toThrow('Este pedido já foi processado.');
+      await expect(wrapped({ data: pedidoBase(), auth: { uid: 'user-1' } })).rejects.toThrow('Este pedido já foi processado.');
       expect(mockAsaasCriarCobranca).not.toHaveBeenCalled();
     });
   });

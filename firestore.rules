@@ -103,14 +103,14 @@ service cloud.firestore {
       // A) Dono do evento ou admin: registra participantes do PRÓPRIO evento com
       //    qualquer status (cortesia, pago em dinheiro, Pix manual na portaria).
       //
-      // B) Caminho público de PRESENÇA GRATUITA (usuário logado ou visitante):
+      // B) PRESENÇA GRATUITA — exige conta (Termos de Uso; inscrição de visitante
+      //    'guest-*' foi descontinuada — docs antigos permanecem legíveis):
       //    1. O evento precisa aceitar presença gratuita — impede forjar um ingresso
       //       "Gratuito" para um evento exclusivamente pago e passá-lo na portaria.
       //    2. paymentStatus só pode ser 'Gratuito'/nulo — nunca 'Pago' pelo cliente.
       //    3. A inscrição não pode nascer já validada (check-in é ação de portaria).
-      //    4. Usuário logado só cria inscrição em nome PRÓPRIO (userId == uid).
-      //       Visitante sem login precisa usar um userId de convidado ('guest-...'),
-      //       impedindo atribuir uma inscrição forjada ao UID de outra pessoa.
+      //    4. Só em nome PRÓPRIO (userId == uid) — impede inscrição forjada em nome
+      //       de outra pessoa.
       allow create: if
         isAdmin() ||
         isEventOwner(request.resource.data.eventId) ||
@@ -125,16 +125,7 @@ service cloud.firestore {
             !('checkedIn' in request.resource.data) ||
             request.resource.data.checkedIn == false
           ) &&
-          (
-            (isAuthed() && request.resource.data.userId == request.auth.uid) ||
-            (
-              !isAuthed() &&
-              request.resource.data.userId is string &&
-              request.resource.data.userId.matches('guest-.*') &&
-              request.resource.data.userName is string && request.resource.data.userName.size() > 0 &&
-              request.resource.data.userEmail is string && request.resource.data.userEmail.size() > 0
-            )
-          )
+          isAuthed() && request.resource.data.userId == request.auth.uid
         );
 
       // Atualização: admin (irrestrita) OU o dono do evento, mas SÓ para registrar

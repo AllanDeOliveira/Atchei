@@ -7,10 +7,20 @@ import { Input } from '../components/ui/Input';
 import { useRateLimit } from '../hooks/useRateLimit';
 import { ArrowLeft } from 'lucide-react';
 
+// Idade em anos completos a partir de uma data YYYY-MM-DD (sem fuso: parse manual).
+const calcularIdade = (iso: string): number => {
+  const [ano, mes, dia] = iso.split('-').map(Number);
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - ano;
+  if (hoje.getMonth() + 1 < mes || (hoje.getMonth() + 1 === mes && hoje.getDate() < dia)) idade--;
+  return idade;
+};
+
 export const Register = () => {
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
+  const [birthDate, setBirthDate] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [tipo, setTipo] = useState<'user' | 'profissional'>('user');
@@ -24,10 +34,14 @@ export const Register = () => {
       toast.error('Informe seu nome.');
       return;
     }
+    if (!birthDate || calcularIdade(birthDate) < 18) {
+      toast.error('Você precisa ter 18 anos ou mais para criar uma conta.');
+      return;
+    }
     triggerCooldown();
     setIsLoading(true);
     try {
-      await storage.register(email, password, name.trim(), tipo);
+      await storage.register(email, password, name.trim(), tipo, birthDate);
       toast.success('Conta criada! Bem-vindo.');
       navigate('/feed');
     } catch (error) {
@@ -105,6 +119,19 @@ export const Register = () => {
           </div>
 
           <div className="stagger-el space-y-1.5">
+            <label className="text-xs font-medium text-textMuted block ml-1">Data de nascimento</label>
+            <Input
+              type="date"
+              required
+              aria-label="Data de nascimento"
+              value={birthDate}
+              max={new Date().toISOString().slice(0, 10)}
+              onChange={e => setBirthDate(e.target.value)}
+            />
+            <p className="text-[10px] text-textMuted ml-1">É necessário ter 18 anos ou mais.</p>
+          </div>
+
+          <div className="stagger-el space-y-1.5">
             <label className="text-xs font-medium text-textMuted block ml-1">E-mail</label>
             <Input
               type="email"
@@ -127,7 +154,14 @@ export const Register = () => {
             />
           </div>
 
-          <div className="stagger-el pt-4">
+          <p className="stagger-el text-[11px] text-textMuted leading-snug text-center pt-1">
+            Ao criar a conta, você concorda com os{' '}
+            <Link to="/termos" className="text-primary underline underline-offset-2">Termos de Uso</Link>{' '}
+            e a{' '}
+            <Link to="/privacidade" className="text-primary underline underline-offset-2">Política de Privacidade</Link>.
+          </p>
+
+          <div className="stagger-el pt-2">
             <Button
               type="submit"
               variant="primary"
