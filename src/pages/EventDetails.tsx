@@ -10,7 +10,7 @@ import { Calendar, Clock, MapPin, User, Ticket, Mail, Phone, CreditCard, Copy, C
 import toast from 'react-hot-toast';
 
 import { formatCPF, isValidCPF } from '../lib/cpf';
-import { formatDateExtenso, isValidEmail } from '../lib/formatters';
+import { formatDateExtenso, isValidEmail, mapsDirUrl } from '../lib/formatters';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import { httpsCallable } from 'firebase/functions';
 import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
@@ -591,7 +591,7 @@ export const EventDetails = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(event.address || event.location)}`, '_blank')}
+                  onClick={() => window.open(mapsDirUrl(event.location, event.address), '_blank')}
                   className="w-full bg-surface border border-glassBorder hover:bg-surfaceHover hover:border-primary/30 text-textLight font-sans font-semibold text-sm py-3 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all duration-200 neo-click cursor-pointer"
                 >
                   <MapPin size={14} /> Traçar rota no GPS

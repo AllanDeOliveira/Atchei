@@ -135,6 +135,18 @@ export const storage = {
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppProfile));
   },
 
+  // Diretório público (busca de visitante): só perfis profissionais — as rules negam
+  // listagem irrestrita sem login; docs legados ('atletica'/'estabelecimento') contam.
+  getPublicProfiles: async (limitCount: number = 50): Promise<AppProfile[]> => {
+    const q = query(
+      collection(db, 'profiles'),
+      where('type', 'in', ['profissional', 'atletica', 'estabelecimento']),
+      limit(limitCount)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppProfile));
+  },
+
   getProfileById: async (id: string): Promise<AppProfile | undefined> => {
     const docSnap = await getDoc(doc(db, 'profiles', id));
     if (docSnap.exists()) {
@@ -228,7 +240,10 @@ export const storage = {
   saveEvent: async (event: EventItem) => {
     const { id, ...eventData } = event;
     if (id && id.length > 5) { // Se tiver um ID real, atualiza
-      await setDoc(doc(db, 'events', id), eventData);
+      // merge: preserva campos que o formulário não envia (ex.: registrationCount,
+      // gerido pelas triggers) — sem isso o edit apagava o contador e as rules
+      // recusariam a escrita por "alterar" campo protegido.
+      await setDoc(doc(db, 'events', id), eventData, { merge: true });
     } else { // Senão, cria novo
       await addDoc(collection(db, 'events'), eventData);
     }

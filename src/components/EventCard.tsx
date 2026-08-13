@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import type { EventItem } from '../lib/storage';
 import { Navigation, Clock, MapPin, ExternalLink, Ticket, ArrowRight } from 'lucide-react';
 import { isVideoUrl } from '../lib/imageUtils';
+import { mapsDirUrl } from '../lib/formatters';
 
 const formatCardDate = (dateStr: string): string => {
   if (!dateStr) return '';
@@ -23,9 +24,7 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
 
 
   const openMaps = () => {
-    const query = event.address || event.location;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`;
-    window.open(url, '_blank');
+    window.open(mapsDirUrl(event.location, event.address), '_blank');
   };
 
   const openWhatsApp = () => {

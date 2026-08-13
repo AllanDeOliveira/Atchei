@@ -23,17 +23,24 @@ service cloud.firestore {
     }
 
     // Verifica se um evento aceita presença gratuita. Um evento sem o campo
-    // `hasPresence` (undefined) é tratado como habilitado — espelha a UI, que usa
-    // `hasPresence !== false`. Eventos exclusivamente pagos gravam hasPresence=false
-    // e, portanto, NÃO permitem a criação de inscrições gratuitas pelo cliente.
+    // `hasPresence` (undefined, legado) é tratado como habilitado — espelha a UI,
+    // que usa `hasPresence !== false`. hasPresence=false bloqueia inscrição gratuita
+    // pelo cliente e é o DEFAULT de eventos novos (toggle desligado no formulário);
+    // o organizador liga o toggle para permitir confirmação de presença.
     function eventAllowsPresence(eventId) {
       return exists(/databases/$(database)/documents/events/$(eventId)) &&
         get(/databases/$(database)/documents/events/$(eventId)).data.hasPresence != false;
     }
 
     match /profiles/{profileId} {
-      // Perfis são públicos para visualização
-      allow read: if true;
+      // Leitura de UM perfil é pública (página do organizador; UID não é enumerável).
+      // LISTAGEM é restrita: visitante anônimo só enxerga o diretório profissional
+      // (a query do cliente precisa filtrar por type — ver storage.getPublicProfiles);
+      // logado pode listar (o fallback de login busca o próprio perfil por e-mail).
+      // Impede o dump anônimo da base inteira (nomes + e-mails) via query aberta.
+      allow get: if true;
+      allow list: if isAuthed() ||
+        resource.data.type in ['profissional', 'atletica', 'estabelecimento'];
       
       // Permitir criação se o próprio usuário estiver criando seu perfil com tipo
       // 'user' (pessoal) ou 'profissional', ou se o solicitante for um administrador.
@@ -62,8 +69,19 @@ service cloud.firestore {
       allow read: if true;
       // Qualquer usuário autenticado pode criar eventos, e o creatorId deve ser o próprio UID
       allow create: if isAuthed() && request.resource.data.creatorId == request.auth.uid;
-      // Somente o criador do evento ou o administrador podem editar/excluir
-      allow update, delete: if isAuthed() && (resource.data.creatorId == request.auth.uid || isAdmin());
+      // Somente o criador do evento ou o administrador podem editar/excluir.
+      // O criador NÃO pode transferir a posse (creatorId) nem forjar o contador
+      // gerido pelo backend (registrationCount — incrementado pelas triggers via
+      // Admin SDK, que ignora estas regras). Admin segue irrestrito.
+      allow update: if isAuthed() && (
+        (
+          resource.data.creatorId == request.auth.uid &&
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['creatorId', 'registrationCount'])
+        ) ||
+        isAdmin()
+      );
+      allow delete: if isAuthed() && (resource.data.creatorId == request.auth.uid || isAdmin());
     }
 
     match /registrations/{registrationId} {

@@ -88,11 +88,17 @@ const Conteudo = ({ date, time, onConfirm, onClose }: Omit<Props, 'open'>) => {
     setHoraSel(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
   };
 
-  // Digitação direta: só dígitos, últimos 2, limitado a 23h/59min.
+  // Digitação direta: só dígitos, últimos 2, limitado a 23h/59min. Se os 2 últimos
+  // estouram o limite (ex.: '23'+'1' → 31), vale só o último dígito — sem isso o campo
+  // fica preso em 23/59 digitando com o cursor no fim (e no iOS, onde o select() do
+  // focus não segura, digitar sempre acrescenta em vez de substituir).
   const digitarHora = (campo: 'h' | 'm', valor: string) => {
-    const num = Math.min(Number(valor.replace(/\D/g, '').slice(-2) || '0'), campo === 'h' ? 23 : 59);
-    const [h, m] = campo === 'h' ? [num, Number(mm)] : [Number(hh), num];
-    setHoraSel(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+    const digitos = valor.replace(/\D/g, '');
+    const max = campo === 'h' ? 23 : 59;
+    let num = Number(digitos.slice(-2) || '0');
+    if (num > max) num = Number(digitos.slice(-1));
+    const v = String(num).padStart(2, '0');
+    setHoraSel(campo === 'h' ? `${v}:${mm}` : `${hh}:${v}`);
   };
 
   return (

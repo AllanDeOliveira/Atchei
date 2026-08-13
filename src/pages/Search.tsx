@@ -33,7 +33,7 @@ export const Search = () => {
         // para admin — evento que já passou não deve aparecer na busca pública.
         const [allEvents, allProfiles] = await Promise.all([
           storage.getUpcomingEvents(),
-          storage.getProfiles()
+          storage.getPublicProfiles()
         ]);
         const startOfToday = new Date();
         startOfToday.setHours(0, 0, 0, 0);

@@ -96,10 +96,12 @@ exports.criarCobrancaPix = onCall({ cors: true, secrets: [ASAAS_API_KEY] }, asyn
         throw new HttpsError('invalid-argument', 'Dados incompletos para gerar o Pix.');
     }
 
-    // Rate Limiting: identifica o chamador por uid; sem login, usa deviceId/IP para não
-    // colocar todos os anônimos no mesmo balde (um comprador legítimo bloquearia os demais).
-    const clientIp = request.rawRequest?.headers?.['x-forwarded-for'] || request.rawRequest?.ip || '';
-    const rateLimitKey = request.auth?.uid || data.deviceId || clientIp || data.userId || 'anonymous';
+    // Rate Limiting: uid autenticado ou IP (primeiro hop do x-forwarded-for). Nunca
+    // identificadores do payload (deviceId/userId): o cliente controla e rotaciona,
+    // o que zeraria o limite. IP compartilhado (CGNAT) pode agrupar compradores — ceiling aceito.
+    const forwarded = String(request.rawRequest?.headers?.['x-forwarded-for'] || '');
+    const clientIp = forwarded.split(',')[0].trim() || request.rawRequest?.ip || '';
+    const rateLimitKey = request.auth?.uid || clientIp || 'anonymous';
     // Rate Limiting: 5 cobranças por minuto
     const rlMinuto = await checkRateLimit(rateLimitKey, 'criarCobrancaPix', LIMITS.CRIAR_COBRANCA.max, LIMITS.CRIAR_COBRANCA.windowSec);
     if (!rlMinuto.allowed) {

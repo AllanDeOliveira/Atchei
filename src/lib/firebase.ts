@@ -4,6 +4,7 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 import { getAnalytics, isSupported } from 'firebase/analytics';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import type { Functions } from 'firebase/functions';
 
 export const firebaseConfig = {
@@ -17,6 +18,21 @@ export const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+// App Check (reCAPTCHA v3): atesta que as chamadas a Firestore/Functions vêm do app
+// legítimo. Em dev, o debug token (impresso no console na 1ª execução) precisa ser
+// registrado em Firebase Console → App Check → Apps → Gerenciar tokens de depuração.
+const appCheckSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+if (appCheckSiteKey && !import.meta.env.TEST) {
+  if (import.meta.env.DEV) {
+    (self as { FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean }).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+  }
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(appCheckSiteKey),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
+
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storageRef = getStorage(app);

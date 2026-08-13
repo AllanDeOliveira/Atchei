@@ -13,7 +13,7 @@ import { compressImage, dataURLtoBlob } from '../lib/imageUtils';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
 
-import { formatCPF, formatPhone } from '../lib/formatters';
+import { formatCPF, formatPhone, mapsDirUrl } from '../lib/formatters';
 
 export const Profile = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -384,9 +384,7 @@ export const Profile = () => {
   };
 
   const openMaps = (event: EventItem) => {
-    const query = event.address || event.location;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`;
-    window.open(url, '_blank');
+    window.open(mapsDirUrl(event.location, event.address), '_blank');
   };
 
   const openWhatsApp = (event: EventItem) => {

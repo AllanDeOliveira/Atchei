@@ -102,7 +102,7 @@ const CreateEventContent = () => {
   const hasPixTickets = watch('hasPixTickets');
   const isTestEvent = watch('isTestEvent');
   const address = watch('address');
-  const hasPresence = watch('hasPresence') ?? false;
+  const hasPresence = watch('hasPresence');
   const dateValue = watch('date');
   const timeValue = watch('time');
 
@@ -156,6 +156,8 @@ const CreateEventContent = () => {
               hasPixTickets: ev.hasPixTickets || false,
               pixTicketPrice: ev.pixTicketPrice || '',
               isTestEvent: ev.isTestEvent || false,
+              // Evento legado sem o campo se comporta como ligado (regras/UI usam !== false);
+              // difere de propósito do default de evento NOVO (desligado, defaultValues acima).
               hasPresence: ev.hasPresence ?? true,
               whatsappContacts: ev.whatsappContacts || (ev.whatsappNumber ? [{ name: ev.whatsappName || '', phone: ev.whatsappNumber }] : [{ name: '', phone: '' }]),
               whatsappNumber: ev.whatsappNumber || ''
