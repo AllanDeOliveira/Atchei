@@ -8,7 +8,8 @@ export const Sidebar = () => {
   useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const isPartner = user?.role === 'partner' || user?.role === 'admin';
+  // Criação de evento e financeiro abertos a qualquer usuário logado.
+  const isLogged = !!user;
   const isAdmin = user?.role === 'admin';
 
   const handleLogout = async () => {
@@ -25,8 +26,8 @@ export const Sidebar = () => {
   const navItems = [
     { icon: Home, path: '/', label: 'Início' },
     { icon: Search, path: '/search', label: 'Pesquisar' },
-    ...(isPartner ? [{ icon: PlusSquare, path: '/create', label: 'Criar Evento' }] : []),
-    ...(isPartner ? [{ icon: Wallet, path: '/financeiro', label: 'Financeiro' }] : []),
+    ...(isLogged ? [{ icon: PlusSquare, path: '/create', label: 'Criar Evento' }] : []),
+    ...(isLogged ? [{ icon: Wallet, path: '/financeiro', label: 'Financeiro' }] : []),
     ...(isAdmin ? [{ icon: Settings, path: '/admin', label: 'Painel Admin' }] : []),
     { icon: User, path: '/profile', label: 'Meu Perfil' },
   ];
@@ -88,7 +89,7 @@ export const Sidebar = () => {
               </button>
               <div className="min-w-0 flex flex-col text-left">
                 <span className="font-sans font-semibold text-sm text-textLight truncate">{user.name}</span>
-                <span className="text-[11px] font-sans font-medium text-accent mt-0.5">{user.role === 'admin' ? 'Admin' : user.role === 'partner' ? 'Parceiro' : 'Membro'}</span>
+                <span className="text-[11px] font-sans font-medium text-accent mt-0.5">{user.role === 'admin' ? 'Admin' : user.role === 'partner' ? 'Profissional' : 'Pessoal'}</span>
               </div>
             </div>
 

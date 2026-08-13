@@ -130,7 +130,8 @@ const CreateEventContent = () => {
       if (userRole === 'admin') {
         try {
           const allProfiles = await storage.getProfiles();
-          setProfiles(allProfiles.filter(p => p.type === 'estabelecimento' || p.type === 'atletica'));
+          // Perfis profissionais; docs legados ('atletica'/'estabelecimento') contam como profissional.
+          setProfiles(allProfiles.filter(p => p.type !== 'user' && p.type !== 'admin'));
         } catch (error) {
           console.error("Erro ao carregar perfis:", error);
         }
@@ -171,11 +172,12 @@ const CreateEventContent = () => {
     loadEventData();
   }, [id, userRole, reset]);
 
+  // Basta estar logado: qualquer usuário pode criar seus próprios eventos.
   useEffect(() => {
-    if (!userId || (userRole !== 'partner' && userRole !== 'admin')) {
+    if (!userId) {
       navigate('/feed');
     }
-  }, [userId, userRole, navigate]);
+  }, [userId, navigate]);
 
   const onSubmit = async (data: EventFormValues) => {
     const targetCreatorId = selectedCreatorId || user?.profileId || userId!;
@@ -286,11 +288,11 @@ const CreateEventContent = () => {
             {userRole === 'admin' && (
               <div className="create-anim space-y-1 text-left">
                 <label htmlFor="creator-select" className="text-xs font-medium text-textMuted ml-1 block">
-                  Criar evento pelo estabelecimento:
+                  Criar evento pelo perfil profissional:
                 </label>
                 <select
                   id="creator-select"
-                  title="Selecione o estabelecimento criador"
+                  title="Selecione o perfil criador"
                   className="w-full h-10 md:h-12 bg-surface border border-glassBorder rounded-xl px-3 md:px-4 text-xs md:text-sm font-sans focus:outline-none focus:border-primary/40 transition-all text-textLight"
                   value={selectedCreatorId}
                   onChange={e => setSelectedCreatorId(e.target.value)}
@@ -298,7 +300,7 @@ const CreateEventContent = () => {
                   <option value="">(Nenhum - Criar como Admin)</option>
                   {profiles.map(p => (
                     <option key={p.id} value={p.id} className="text-stone-900 bg-white">
-                      {p.name} ({p.type})
+                      {p.name}
                     </option>
                   ))}
                 </select>
@@ -548,8 +550,9 @@ const CreateEventContent = () => {
               )}
             </div>
 
-            {/* PIX Section — Admin Only */}
-            {PIX_ENABLED && userRole === 'admin' && (
+            {/* PIX Section — perfis profissionais e admin. Sem conta de recebimento
+                cadastrada a venda ainda funciona, mas o repasse não sai automático. */}
+            {PIX_ENABLED && userRole !== 'user' && (
               <div className="create-anim space-y-2.5 md:space-y-3.5 surface rounded-2xl p-3.5 md:p-5 text-left">
                 <div className="flex items-center justify-between">
                   <label className="text-xs md:text-sm font-display font-semibold text-textLight flex items-center gap-1.5 md:gap-2">
@@ -592,6 +595,13 @@ const CreateEventContent = () => {
                     </div>
 
                     <TicketTypesEditor tickets={tickets} onChange={setTickets} />
+
+                    {userRole !== 'admin' && (
+                      <p className="text-[11px] text-textMuted leading-relaxed">
+                        Para receber o repasse das vendas, cadastre sua conta de recebimento em{' '}
+                        <span className="font-semibold">Meu Perfil → Conta de recebimento</span>.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

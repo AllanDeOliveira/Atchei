@@ -946,6 +946,14 @@ async function assertCreatorId(auth, creatorIdPedido) {
 exports.asaasCadastrarRecebedor = onCall({ cors: true, secrets: [ASAAS_API_KEY] }, async (request) => {
     const creatorId = await assertCreatorId(request.auth, request.data?.creatorId);
 
+    // Regra de negócio no limite de confiança: só perfil profissional vende com
+    // repasse. A UI esconde o cadastro para perfil pessoal; aqui é o enforcement real.
+    // Tipos legados ('atletica'/'estabelecimento') contam como profissional.
+    const perfilSnap = await db.collection('profiles').doc(creatorId).get();
+    if (!perfilSnap.exists || perfilSnap.data().type === 'user') {
+        throw new HttpsError('permission-denied', 'Apenas perfis profissionais podem cadastrar conta de recebimento.');
+    }
+
     const d = request.data || {};
     const cpfCnpj = String(d.cpfCnpj || '').replace(/\D/g, '');
     const mobilePhone = String(d.mobilePhone || '').replace(/\D/g, '');
@@ -1008,6 +1016,30 @@ exports.asaasStatusRecebedor = onCall({ cors: true }, async (request) => {
     const creatorId = await assertCreatorId(request.auth, request.data?.creatorId);
     const status = await asaas.getStatusPublico(creatorId);
     return { ...status, feePercent: asaas.platformFeePercent() };
+});
+
+// Upgrade pessoal → profissional. Fica no backend porque as rules proíbem o dono de
+// alterar o próprio `type` (evita auto-promoção a admin); aqui a transição é controlada.
+exports.tornarProfissional = onCall({ cors: true }, async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError('unauthenticated', 'É preciso estar logado.');
+
+    const ref = db.collection('profiles').doc(uid);
+    const snap = await ref.get();
+    if (!snap.exists) {
+        // Conta antiga sem doc de perfil: cria já como profissional.
+        await ref.set({
+            name: request.auth.token.name || 'Usuário',
+            email: request.auth.token.email || '',
+            type: 'profissional',
+            mustChangePassword: false,
+        });
+    } else if (snap.data().type === 'user') {
+        await ref.update({ type: 'profissional' });
+    }
+    // Quem já é profissional/admin recebe ok idempotente.
+    logger.info(`Perfil ${uid} atualizado para profissional.`);
+    return { success: true };
 });
 
 // Desvincula o recebedor. Não apaga a subconta no Asaas: o histórico financeiro dela

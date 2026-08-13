@@ -4,7 +4,7 @@ import { storage } from '../lib/storage';
 import type { EventItem, AppProfile } from '../lib/storage';
 import { EventCard } from '../components/EventCard';
 import { EventCardSkeleton, Skeleton } from '../components/ui/Skeleton';
-import { ArrowLeft, Building2, Users, Mail } from 'lucide-react';
+import { ArrowLeft, Building2, Mail } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -92,8 +92,6 @@ export const Agenda = () => {
         <div className="w-24 h-24 rounded-2xl bg-surface/40 border border-glassBorder flex items-center justify-center mb-4 overflow-hidden relative shadow-md shrink-0 z-10">
           {profile.imageUrl ? (
             <img src={profile.imageUrl} className="w-full h-full object-cover" alt={profile.name} />
-          ) : profile.type === 'atletica' ? (
-             <Users className="text-primary" size={36} />
           ) : (
              <Building2 className="text-primary" size={36} />
           )}
@@ -101,7 +99,7 @@ export const Agenda = () => {
         
         <h1 className="font-display font-semibold text-2xl mb-2 text-textLight z-10 leading-tight">{profile.name}</h1>
         <span className="text-[11px] font-medium capitalize text-accent bg-accent/10 border border-accent/20 px-3 py-1 rounded-full mb-4 inline-block z-10">
-          {profile.type === 'atletica' ? 'Atlética' : 'Estabelecimento'}
+          Profissional
         </span>
         
         {profile.description && (

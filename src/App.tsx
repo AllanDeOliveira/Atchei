@@ -12,6 +12,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 // CARREGAMENTO PREGUIÇOSO (LAZY LOADING)
 // Importações dinâmicas sob demanda para reduzir o tamanho inicial do bundle do app
 const CreateEvent = React.lazy(() => import('./pages/CreateEvent').then(m => ({ default: m.CreateEvent })));
+const Register = React.lazy(() => import('./pages/Register').then(m => ({ default: m.Register })));
 const EventDetails = React.lazy(() => import('./pages/EventDetails').then(m => ({ default: m.EventDetails })));
 const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 const Profile = React.lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
@@ -52,8 +53,7 @@ function App() {
             <Routes>
               {/* Rotas autônomas (sem barra de navegação) */}
               <Route path="/login" element={<Login />} />
-              {/* Cadastro de usuário removido: a opção de criar conta foi desativada. */}
-              <Route path="/register" element={<Navigate to="/login" replace />} />
+              <Route path="/register" element={<Register />} />
               <Route path="/change-password" element={<ChangePassword />} />
               <Route path="/event/:id" element={<EventDetails />} />
               {/* Recuperação de ingresso por CPF (acesso público, sem login) */}

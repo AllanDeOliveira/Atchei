@@ -3,6 +3,7 @@ import { getAuth, initializeAuth, inMemoryPersistence, browserPopupRedirectResol
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 import type { Functions } from 'firebase/functions';
 
 export const firebaseConfig = {
@@ -19,6 +20,10 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storageRef = getStorage(app);
+
+// O GA4 só coleta depois desta inicialização — o measurementId na config sozinho não
+// envia nada. isSupported() evita crash em navegadores/webviews sem suporte.
+isSupported().then((ok) => { if (ok) getAnalytics(app); });
 
 // Instância única do Functions, com hookup do emulador em dev local.
 // Lazy para que testes que mockam os módulos do Firebase não a inicializem.

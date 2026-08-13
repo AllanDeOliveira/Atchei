@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { storage } from '../lib/storage';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
@@ -98,6 +98,13 @@ export const Login = () => {
               {isLoading ? 'Entrando...' : isLimited ? `Aguarde ${Math.ceil(remainingMs / 1000)}s...` : 'Entrar'}
             </Button>
           </div>
+
+          <p className="stagger-el text-center text-xs text-textMuted">
+            Ainda não tem conta?{' '}
+            <Link to="/register" className="text-primary font-medium hover:underline">
+              Criar conta
+            </Link>
+          </p>
         </form>
       </div>
     </div>

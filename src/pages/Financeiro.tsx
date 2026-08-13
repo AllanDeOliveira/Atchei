@@ -38,7 +38,8 @@ export const Financeiro = () => {
   const role = currentUser?.role;
 
   const loadData = useCallback(async () => {
-    if (!userId || (role !== 'partner' && role !== 'admin')) {
+    // Basta estar logado: o painel mostra só os eventos criados pelo próprio usuário.
+    if (!userId) {
       navigate('/feed');
       return;
     }

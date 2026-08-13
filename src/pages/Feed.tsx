@@ -9,6 +9,7 @@ import { Sparkles, Flame, Calendar, Ticket } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { EventCardSkeleton } from '../components/ui/Skeleton';
+import { InstallAppCard } from '../components/InstallAppCard';
 
 const getGreeting = (): string => {
   const hour = new Date().getHours();
@@ -306,6 +307,11 @@ export const Feed = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Instalação do PWA — só no mobile, some se já instalado ou dispensado */}
+      <div className="px-5 mb-2 relative z-10 md:hidden">
+        <InstallAppCard />
       </div>
 
       {/* Highlights Carousel */}

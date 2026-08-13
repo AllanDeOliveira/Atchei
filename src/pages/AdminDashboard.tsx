@@ -42,7 +42,7 @@ export const AdminDashboard = () => {
   const [showPartnerModal, setShowPartnerModal] = useState(false);
   const [newPartner, setNewPartner] = useState({
     name: '',
-    type: 'estabelecimento' as 'estabelecimento' | 'atletica',
+    type: 'profissional' as AppProfile['type'],
     description: '',
     imageUrl: ''
   });
@@ -477,7 +477,7 @@ export const AdminDashboard = () => {
       setProfiles(allProfiles);
       setLastGenerated({ email, pass: password }); // A senha fica só na tela, nunca no banco
 
-      setNewPartner({ name: '', type: 'estabelecimento', description: '', imageUrl: '' });
+      setNewPartner({ name: '', type: 'profissional', description: '', imageUrl: '' });
     } catch (error: any) {
       console.error("Erro ao adicionar parceiro:", error);
       if (error?.code === 'auth/email-already-in-use') {
@@ -760,9 +760,8 @@ export const AdminDashboard = () => {
                     value={editingPartner.type}
                     onChange={e => setEditingPartner(prev => prev ? ({ ...prev, type: e.target.value as any }) : null)}
                   >
-                    <option value="user">Usuário comum</option>
-                    <option value="estabelecimento">Estabelecimento</option>
-                    <option value="atletica">Atlética</option>
+                    <option value="user">Pessoal</option>
+                    <option value="profissional">Profissional</option>
                     <option value="admin">Administrador</option>
                   </select>
                 </div>
@@ -838,9 +837,8 @@ export const AdminDashboard = () => {
                       value={newPartner.type}
                       onChange={e => setNewPartner(prev => ({ ...prev, type: e.target.value as any }))}
                     >
-                      <option value="user">Usuário comum</option>
-                      <option value="estabelecimento">Estabelecimento</option>
-                      <option value="atletica">Atlética</option>
+                      <option value="user">Pessoal</option>
+                      <option value="profissional">Profissional</option>
                       <option value="admin">Administrador</option>
                     </select>
                   </div>

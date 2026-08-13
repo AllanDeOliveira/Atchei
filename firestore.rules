@@ -15,14 +15,6 @@ service cloud.firestore {
       return isAuthed() && 'admin' in request.auth.token && request.auth.token.admin == true;
     }
 
-    // Função auxiliar para verificar se o usuário é parceiro ou administrador
-    function isPartnerOrAdmin() {
-      return isAuthed() && (
-        isAdmin() ||
-        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.type in ['atletica', 'estabelecimento', 'admin']
-      );
-    }
-
     // Verifica se o usuário autenticado é o criador (dono) de um evento.
     function isEventOwner(eventId) {
       return isAuthed() &&
@@ -43,10 +35,10 @@ service cloud.firestore {
       // Perfis são públicos para visualização
       allow read: if true;
       
-      // Permitir criação se o próprio usuário estiver criando seu perfil com tipo 'user'
-      // ou se o solicitante for um administrador
+      // Permitir criação se o próprio usuário estiver criando seu perfil com tipo
+      // 'user' (pessoal) ou 'profissional', ou se o solicitante for um administrador.
       allow create: if isAuthed() && (
-        (request.auth.uid == profileId && request.resource.data.type == 'user') || 
+        (request.auth.uid == profileId && request.resource.data.type in ['user', 'profissional']) ||
         isAdmin()
       );
       
@@ -68,8 +60,8 @@ service cloud.firestore {
     match /events/{eventId} {
       // Eventos são públicos para visualização
       allow read: if true;
-      // Somente parceiros ou administradores podem criar eventos, e o creatorId deve ser o próprio UID
-      allow create: if isPartnerOrAdmin() && request.resource.data.creatorId == request.auth.uid;
+      // Qualquer usuário autenticado pode criar eventos, e o creatorId deve ser o próprio UID
+      allow create: if isAuthed() && request.resource.data.creatorId == request.auth.uid;
       // Somente o criador do evento ou o administrador podem editar/excluir
       allow update, delete: if isAuthed() && (resource.data.creatorId == request.auth.uid || isAdmin());
     }

@@ -26,7 +26,10 @@ import {
 export interface AppProfile {
   id: string;
   name: string;
-  type: 'user' | 'atletica' | 'estabelecimento' | 'admin';
+  // 'atletica'/'estabelecimento' foram fundidos em 'profissional'; docs antigos no
+  // Firestore ainda podem carregar os valores legados — trate qualquer tipo que não
+  // seja 'user'/'admin' como profissional.
+  type: 'user' | 'profissional' | 'admin';
   description: string;
   imageUrl?: string;
   email?: string;
@@ -125,7 +128,7 @@ export type Pedido = {
 };
 
 export const storage = {
-  // Profiles (Estabelecimentos, Atléticas)
+  // Profiles
   getProfiles: async (limitCount: number = 50): Promise<AppProfile[]> => {
     const q = query(collection(db, 'profiles'), limit(limitCount));
     const querySnapshot = await getDocs(q);
@@ -261,7 +264,9 @@ export const storage = {
     return user;
   },
 
-  register: async (email: string, password: string, name: string): Promise<User | null> => {
+  // Perfil 'user' (pessoal) participa de eventos; 'profissional' também vende
+  // ingressos e cadastra a conta de recebimento Asaas (vira role 'partner').
+  register: async (email: string, password: string, name: string, type: 'user' | 'profissional' = 'user'): Promise<User | null> => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const fbUser = userCredential.user;
@@ -270,14 +275,14 @@ export const storage = {
         id: fbUser.uid,
         name,
         username: email,
-        role: 'user',
+        role: type === 'user' ? 'user' : 'partner',
         mustChangePassword: false,
       };
 
       await setDoc(doc(db, 'profiles', fbUser.uid), {
         name,
         email,
-        type: 'user',
+        type,
         mustChangePassword: false
       });
 

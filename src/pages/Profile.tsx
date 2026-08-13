@@ -109,14 +109,14 @@ export const Profile = () => {
 
       if (currentUserRole === 'admin') {
         setMyEvents(visibleEvents);
-      } else if (currentUserRole === 'partner') {
-        const targetId = currentProfileId || currentUserId;
-        setMyEvents(visibleEvents.filter(e => e.creatorId === targetId));
       } else if (currentUserId) {
+        // Qualquer usuário pode criar eventos: a lista junta os criados por ele
+        // e os com presença confirmada (o card decide as ações por dono).
+        const targetId = currentProfileId || currentUserId;
         const myRegs = await storage.getRegistrationsForUser(currentUserId);
         setMyRegistrations(myRegs);
         const myRegIds = myRegs.map(r => r.eventId);
-        setMyEvents(visibleEvents.filter(e => myRegIds.includes(e.id)));
+        setMyEvents(visibleEvents.filter(e => e.creatorId === targetId || myRegIds.includes(e.id)));
       }
     } catch (error) {
       console.error("Erro ao carregar eventos do perfil:", error);
@@ -128,7 +128,7 @@ export const Profile = () => {
   // Sincronizar dados em tempo real do Firestore
   useEffect(() => {
     const syncProfile = async () => {
-      if (user && userRole === 'partner' && user.username) {
+      if (user && userRole !== 'admin' && user.username) {
         try {
           const remoteProfile = await storage.getProfileByEmail(user.username);
           if (remoteProfile) {
@@ -455,25 +455,23 @@ export const Profile = () => {
                     </div>
                   )}
                 </div>
-                {userRole !== 'user' && (
-                  <button 
-                    onClick={() => setShowEditModal(true)}
-                    className="absolute -bottom-1 -right-1 w-7 h-7 rounded-xl bg-surface/85 border border-glassBorder text-accent flex items-center justify-center shadow-md hover:bg-surfaceHover hover:scale-110 hover:border-accent/40 active:scale-95 transition-all duration-300 cursor-pointer"
-                    title="Alterar Foto de Perfil"
-                  >
-                    <Camera size={12} />
-                  </button>
-                )}
+                <button
+                  onClick={() => setShowEditModal(true)}
+                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-xl bg-surface/85 border border-glassBorder text-accent flex items-center justify-center shadow-md hover:bg-surfaceHover hover:scale-110 hover:border-accent/40 active:scale-95 transition-all duration-300 cursor-pointer"
+                  title="Alterar Foto de Perfil"
+                >
+                  <Camera size={12} />
+                </button>
               </div>
               <div className="flex-1 min-w-0 text-left">
                 <h2 className="font-display font-semibold text-2xl text-textLight">{user.name}</h2>
                 <p className="font-mono text-xs text-textMuted mt-0.5 truncate">@{user.username}</p>
-                {userRole !== 'user' && editData.description && (
+                {editData.description && (
                   <p className="text-xs font-sans text-textLight font-medium mt-2 max-w-[200px] line-clamp-2 leading-relaxed">{editData.description}</p>
                 )}
                 
-                {/* Social icons in profile card (only for partners/admins) */}
-                {userRole !== 'user' && (editData.instagram || user.username) && (
+                {/* Social icons in profile card */}
+                {(editData.instagram || user.username) && (
                   <div className="flex items-center gap-2.5 mt-2.5">
                     {editData.instagram && (
                       <a href={`https://instagram.com/${editData.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primaryHover hover:scale-110 transition-all" title="Instagram">
@@ -491,23 +489,17 @@ export const Profile = () => {
                 <div className="flex items-center gap-2 mt-2.5">
                   <Calendar size={13} className="text-accent" />
                   <span className="text-xs text-textMuted font-medium">
-                    {userRole === 'user' ? (
-                      `${myEvents.length} presença${myEvents.length !== 1 ? 's' : ''} confirmada${myEvents.length !== 1 ? 's' : ''}`
-                    ) : (
-                      `${myEvents.length} evento${myEvents.length !== 1 ? 's' : ''} criado${myEvents.length !== 1 ? 's' : ''}`
-                    )}
+                    {`${myEvents.length} evento${myEvents.length !== 1 ? 's' : ''}`}
                   </span>
                 </div>
                 
-                {userRole !== 'user' && (
-                  <button 
-                    onClick={() => setShowEditModal(true)}
-                    className="flex items-center gap-1.5 mt-3.5 px-3 py-1.5 bg-surface border border-glassBorder hover:border-accent/40 rounded-lg font-sans text-xs font-medium text-textLight hover:text-accent transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:translate-y-0 neo-click"
-                  >
-                    <Edit2 size={12} />
-                    Editar perfil
-                  </button>
-                )}
+                <button
+                  onClick={() => setShowEditModal(true)}
+                  className="flex items-center gap-1.5 mt-3.5 px-3 py-1.5 bg-surface border border-glassBorder hover:border-accent/40 rounded-lg font-sans text-xs font-medium text-textLight hover:text-accent transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:translate-y-0 neo-click"
+                >
+                  <Edit2 size={12} />
+                  Editar perfil
+                </button>
               </div>
             </div>
           </div>
@@ -530,8 +522,8 @@ export const Profile = () => {
         )}
       </div>
 
-      {/* Acesso ao painel financeiro (parceiros/admin) — também disponível na sidebar do desktop */}
-      {user && userRole !== 'user' && (
+      {/* Acesso ao painel financeiro — também disponível na sidebar do desktop */}
+      {user && (
         <div className="profile-el mx-5 mb-6 relative z-10">
           <button
             onClick={() => navigate('/financeiro')}
@@ -549,13 +541,12 @@ export const Profile = () => {
         </div>
       )}
 
-      {/* Conta de recebimento (split): organizador cadastra a subconta Asaas */}
+      {/* Conta de recebimento (split): só perfil profissional vende ingressos e recebe repasse */}
       {user && userRole !== 'user' && (
         <div className="profile-el mx-5 mb-6 relative z-10">
           <AsaasRecebedor />
         </div>
       )}
-
       {/* Toggle de notificações push (só aparece se houver suporte e chave VAPID) */}
       {user && (
         <div className="profile-el mx-5 mb-6 relative z-10">
@@ -604,7 +595,7 @@ export const Profile = () => {
             <div className="profile-el flex items-center gap-2.5 px-5 mb-4">
               <div className="w-1 h-5 bg-primary/40 rounded-full" />
               <h2 className="font-display font-semibold text-xl text-textLight">
-                {userRole === 'user' ? 'Minha agenda' : 'Meus eventos'}
+                Meus eventos
               </h2>
             </div>
           )}
@@ -725,10 +716,10 @@ export const Profile = () => {
                 <p className="font-sans text-textMuted text-sm mb-4">
                   {userRole === 'admin'
                     ? (activeTab === 'public' ? 'Nenhum evento público cadastrado.' : 'Nenhum evento de teste cadastrado.')
-                    : (userRole === 'user' ? 'Você ainda não confirmou presença em nenhum evento.' : 'Você ainda não criou eventos.')
+                    : 'Você ainda não criou eventos nem confirmou presença.'
                   }
                 </p>
-                {userRole === 'user' && (
+                {userRole !== 'admin' && (
                   <button
                     onClick={() => navigate('/')}
                     className="px-6 py-2.5 bg-surface hover:bg-primary text-primary hover:text-textDark border border-glassBorder rounded-full font-sans text-sm font-medium transition-all active:scale-95 cursor-pointer"
@@ -853,7 +844,7 @@ export const Profile = () => {
                   <input
                     type="text"
                     required
-                    placeholder="Nome do seu estabelecimento ou atlética"
+                    placeholder="Seu nome ou o da sua marca"
                     value={editData.name}
                     onChange={(e) => setEditData({ ...editData, name: e.target.value })}
                     className="w-full h-12 bg-surfaceHover/50 border border-glassBorder rounded-xl px-4 text-sm font-sans text-textLight focus:outline-none focus:border-primary/40 focus:shadow-glow-primary placeholder:text-textMuted/50 transition-all duration-300"
@@ -863,7 +854,7 @@ export const Profile = () => {
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-textMuted ml-1 block">Descrição / Sobre</label>
                   <textarea
-                    placeholder="Escreva um breve texto sobre o estabelecimento ou atlética..."
+                    placeholder="Escreva um breve texto sobre você ou seu negócio..."
                     value={editData.description}
                     onChange={(e) => setEditData({ ...editData, description: e.target.value })}
                     className="w-full min-h-[90px] bg-surfaceHover/50 border border-glassBorder rounded-xl px-4 py-3 text-sm font-sans text-textLight focus:outline-none focus:border-primary/40 focus:shadow-glow-primary resize-none placeholder:text-textMuted/50 transition-all duration-300"

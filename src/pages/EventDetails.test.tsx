@@ -87,7 +87,7 @@ describe('EventDetails Page', () => {
     vi.mocked(storage.getProfileById).mockResolvedValue({
       id: 'creator-1',
       name: 'Organizador Teste',
-      type: 'estabelecimento',
+      type: 'profissional',
       description: '',
     });
     vi.mocked(storage.hasUserRegistered).mockResolvedValue(false);

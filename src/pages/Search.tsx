@@ -12,7 +12,7 @@ import { cn } from '../lib/utils';
 
 import { useAuth } from '../contexts/AuthContext';
 
-type TabType = 'eventos' | 'estabelecimentos' | 'atleticas';
+type TabType = 'eventos' | 'perfis';
 
 export const Search = () => {
   const { user } = useAuth();
@@ -55,12 +55,12 @@ export const Search = () => {
 
   const filteredEvents = events.filter(e => e.title.toLowerCase().includes(query.toLowerCase()));
   
-  const filteredProfiles = profiles.filter(p => {
-    const matchesQuery = p.name.toLowerCase().includes(query.toLowerCase());
-    if (activeTab === 'estabelecimentos') return matchesQuery && p.type === 'estabelecimento';
-    if (activeTab === 'atleticas') return matchesQuery && p.type === 'atletica';
-    return false;
-  });
+  // Perfis profissionais na busca; docs legados ('atletica'/'estabelecimento') contam como profissional.
+  const filteredProfiles = profiles.filter(p =>
+    activeTab === 'perfis' &&
+    p.type !== 'user' && p.type !== 'admin' &&
+    p.name.toLowerCase().includes(query.toLowerCase())
+  );
 
 
   return (
@@ -110,26 +110,15 @@ export const Search = () => {
           Eventos
         </button>
         <button
-          onClick={() => setActiveTab('estabelecimentos')}
+          onClick={() => setActiveTab('perfis')}
           className={cn(
             "px-5 py-3 rounded-xl font-sans font-medium text-xs whitespace-nowrap transition-all duration-300 border neo-click",
-            activeTab === 'estabelecimentos'
+            activeTab === 'perfis'
               ? "bg-primary text-textDark border-primary/20"
               : "bg-surface border-glassBorder text-textMuted hover:text-textLight hover:bg-surfaceHover hover:-translate-y-0.5"
           )}
         >
-          Estabelecimentos
-        </button>
-        <button
-          onClick={() => setActiveTab('atleticas')}
-          className={cn(
-            "px-5 py-3 rounded-xl font-sans font-medium text-xs whitespace-nowrap transition-all duration-300 border neo-click",
-            activeTab === 'atleticas'
-              ? "bg-primary text-textDark border-primary/20"
-              : "bg-surface border-glassBorder text-textMuted hover:text-textLight hover:bg-surfaceHover hover:-translate-y-0.5"
-          )}
-        >
-          Atléticas
+          Perfis
         </button>
       </div>
 
@@ -166,7 +155,7 @@ export const Search = () => {
                 className="col-span-full"
                 icon={<SearchIcon size={26} />}
                 title="Nada encontrado"
-                description={query ? `Nenhum perfil para "${query}". Tente outro termo.` : 'Digite o nome de um estabelecimento ou atlética.'}
+                description={query ? `Nenhum perfil para "${query}". Tente outro termo.` : 'Digite o nome de um perfil profissional.'}
               />
             )}
           </>

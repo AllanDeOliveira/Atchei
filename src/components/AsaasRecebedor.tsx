@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { httpsCallable } from 'firebase/functions';
 import { Wallet, CheckCircle2, Loader2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -144,7 +145,9 @@ export const AsaasRecebedor = () => {
         )}
       </div>
 
-      {aberto && (
+      {/* Portal: o card fica dentro de um wrapper `relative z-10` no Profile, que criaria
+          um stacking context e deixaria as seções seguintes pintarem por cima do modal. */}
+      {aberto && createPortal(
         <div
           className="fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4"
           role="dialog"
@@ -266,7 +269,8 @@ export const AsaasRecebedor = () => {
               </Button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

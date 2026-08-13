@@ -7,13 +7,14 @@ export const BottomNav = () => {
   // useLocation forces re-render on every route change, so user role is always fresh
   useLocation();
   const { user } = useAuth();
-  const isPartner = user?.role === 'partner' || user?.role === 'admin';
+  // Criação de evento aberta a qualquer usuário logado.
+  const isLogged = !!user;
   const isAdmin = user?.role === 'admin';
 
   const navItems = [
     { icon: Home, path: '/', label: 'Início' },
     { icon: Search, path: '/search', label: 'Pesquisar' },
-    ...(isPartner ? [{ icon: PlusSquare, path: '/create', label: 'Criar' }] : []),
+    ...(isLogged ? [{ icon: PlusSquare, path: '/create', label: 'Criar' }] : []),
     ...(isAdmin ? [{ icon: Settings, path: '/admin', label: 'Admin' }] : []),
     { icon: User, path: '/profile', label: 'Perfil' },
   ];
