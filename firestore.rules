@@ -70,14 +70,14 @@ service cloud.firestore {
       // Qualquer usuário autenticado pode criar eventos, e o creatorId deve ser o próprio UID
       allow create: if isAuthed() && request.resource.data.creatorId == request.auth.uid;
       // Somente o criador do evento ou o administrador podem editar/excluir.
-      // O criador NÃO pode transferir a posse (creatorId) nem forjar o contador
-      // gerido pelo backend (registrationCount — incrementado pelas triggers via
-      // Admin SDK, que ignora estas regras). Admin segue irrestrito.
+      // O criador NÃO pode transferir a posse (creatorId) nem forjar contadores
+      // geridos pelo backend (registrationCount e soldByTicket — escritos pelas
+      // triggers/webhook via Admin SDK, que ignora estas regras). Admin irrestrito.
       allow update: if isAuthed() && (
         (
           resource.data.creatorId == request.auth.uid &&
           !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['creatorId', 'registrationCount'])
+            .hasAny(['creatorId', 'registrationCount', 'soldByTicket'])
         ) ||
         isAdmin()
       );

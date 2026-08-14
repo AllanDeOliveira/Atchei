@@ -1,4 +1,5 @@
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const { onDocumentCreated, onDocumentDeleted } = require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
@@ -7,6 +8,8 @@ const { FieldValue } = require("firebase-admin/firestore");
 const { checkRateLimit, LIMITS } = require("./rateLimiter");
 const { isCallerAdmin } = require("./adminEmails");
 const asaas = require("./asaas");
+const { handleOgPreview } = require("./ogPreview");
+const { getTomorrowDateString, processarLembretesD1 } = require("./reminders");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -143,10 +146,14 @@ exports.criarCobrancaPix = onCall({ cors: true, secrets: [ASAAS_API_KEY] }, asyn
 
         if (eventData.tickets && itensSelecionados.length > 0) {
             const tickets = eventData.tickets || [];
+            // Vendidos moram em soldByTicket (campo protegido nas rules, escrito só pelo
+            // backend). tickets[].sold é legado de eventos antigos — fallback de leitura.
+            const soldMap = eventData.soldByTicket || {};
             for (const item of itensSelecionados) {
                 const ticketOriginal = tickets.find(t => t.id === item.id);
                 if (ticketOriginal) {
-                    const available = ticketOriginal.capacity - (ticketOriginal.sold || 0);
+                    const vendidos = soldMap[item.id] ?? ticketOriginal.sold ?? 0;
+                    const available = ticketOriginal.capacity - vendidos;
                     if (Number(item.quantity) > available) {
                         throw new HttpsError('failed-precondition', `Desculpe, o ingresso "${ticketOriginal.name}" esgotou ou não possui a quantidade solicitada disponível.`);
                     }
@@ -444,34 +451,29 @@ exports.webhookAsaas = onRequest({ cors: true, secrets: [ASAAS_API_KEY, ASAAS_WE
                         if (eventDoc.exists) {
                             const eventData = eventDoc.data();
                             const tickets = eventData.tickets || [];
-                            
+                            // Contadores em soldByTicket (protegido nas rules); tickets[].sold
+                            // do array fica intocado (legado, só leitura de fallback).
+                            const soldMap = eventData.soldByTicket || {};
+
                             // Mapear as compras de cada ticketId neste pedido
                             const vendasMap = {};
                             for (const item of itensComprados) {
                                 vendasMap[item.id] = (vendasMap[item.id] || 0) + (Number(item.quantity) || 0);
                             }
-                            
-                            let alterado = false;
-                            const updatedTickets = tickets.map(ticket => {
-                                const qtdVendida = vendasMap[ticket.id];
-                                if (qtdVendida) {
-                                    alterado = true;
-                                    const novoSold = (ticket.sold || 0) + qtdVendida;
-                                    if (novoSold > ticket.capacity) {
-                                        isOverbooked = true; // Houve estouro de estoque (venda simultânea)
-                                    }
-                                    const novoStatus = novoSold >= ticket.capacity ? 'sold_out' : ticket.status;
-                                    return {
-                                        ...ticket,
-                                        sold: novoSold,
-                                        status: novoStatus
-                                    };
+
+                            const updates = {};
+                            for (const [ticketId, qtdVendida] of Object.entries(vendasMap)) {
+                                const ticket = tickets.find(t => t.id === ticketId);
+                                if (!ticket) continue;
+                                const novoSold = (soldMap[ticketId] ?? ticket.sold ?? 0) + qtdVendida;
+                                if (novoSold > ticket.capacity) {
+                                    isOverbooked = true; // Houve estouro de estoque (venda simultânea)
                                 }
-                                return ticket;
-                            });
-                            
-                            if (alterado) {
-                                transaction.update(eventRef, { tickets: updatedTickets });
+                                updates[`soldByTicket.${ticketId}`] = novoSold;
+                            }
+
+                            if (Object.keys(updates).length > 0) {
+                                transaction.update(eventRef, updates);
                                 logger.info(`Estoque atualizado no evento ${currentPedidoData.eventId} para os tickets:`, Object.keys(vendasMap));
                             }
                         }
@@ -593,26 +595,19 @@ exports.webhookAsaas = onRequest({ cors: true, secrets: [ASAAS_API_KEY, ASAAS_WE
                     if (eventDoc && eventDoc.exists) {
                         const eventData = eventDoc.data();
                         const tickets = eventData.tickets || [];
+                        const soldMap = eventData.soldByTicket || {};
                         const devolucoesMap = {};
                         for (const item of itensComprados) {
                             devolucoesMap[item.id] = (devolucoesMap[item.id] || 0) + (Number(item.quantity) || 0);
                         }
-                        let alterado = false;
-                        const updatedTickets = tickets.map(ticket => {
-                            const qtdDevolvida = devolucoesMap[ticket.id];
-                            if (qtdDevolvida) {
-                                alterado = true;
-                                const novoSold = Math.max(0, (ticket.sold || 0) - qtdDevolvida);
-                                // Reabre o lote se estava esgotado e voltou a ter vaga
-                                const novoStatus = ticket.status === 'sold_out' && novoSold < ticket.capacity
-                                    ? 'active'
-                                    : ticket.status;
-                                return { ...ticket, sold: novoSold, status: novoStatus };
-                            }
-                            return ticket;
-                        });
-                        if (alterado) {
-                            transaction.update(eventRef, { tickets: updatedTickets });
+                        const updates = {};
+                        for (const [ticketId, qtdDevolvida] of Object.entries(devolucoesMap)) {
+                            const ticket = tickets.find(t => t.id === ticketId);
+                            const atual = soldMap[ticketId] ?? ticket?.sold ?? 0;
+                            updates[`soldByTicket.${ticketId}`] = Math.max(0, atual - qtdDevolvida);
+                        }
+                        if (Object.keys(updates).length > 0) {
+                            transaction.update(eventRef, updates);
                             logger.info(`Estoque devolvido no evento ${currentPedidoData.eventId} após ${novoStatusPedido} do pedido ${pedidoDoc.id}.`);
                         }
                     }
@@ -1059,31 +1054,71 @@ exports.asaasDesconectarRecebedor = onCall({ cors: true }, async (request) => {
 });
 
 exports.onRegistrationCreated = onDocumentCreated("registrations/{registrationId}", async (event) => {
-    const data = event.data.data();
+    const data = event.data?.data() || {};
     // Ingressos de teste (gerados por admin) não entram na contagem real de presença.
     if (!data.eventId || data.isTeste === true) return;
     try {
-        await db.collection("events").doc(data.eventId).update({
-            registrationCount: FieldValue.increment(1)
-        });
+        const updates = { registrationCount: FieldValue.increment(1) };
+        // Venda manual do organizador (sem pedidoId): o contador de lote é ajustado
+        // aqui, pelo Admin SDK — soldByTicket é bloqueado para escrita do cliente.
+        // Compras Pix (com pedidoId) já são contabilizadas na transação do webhook.
+        if (data.ticketTypeId && !data.pedidoId) {
+            updates[`soldByTicket.${data.ticketTypeId}`] = FieldValue.increment(1);
+        }
+        await db.collection("events").doc(data.eventId).update(updates);
         logger.info(`Incremented registration count for event ${data.eventId}`);
     } catch (error) {
         logger.error(`Error incrementing registration count for event ${data.eventId}:`, error);
     }
+
+    // Notificação push imediata para confirmação de presença gratuita (compras PIX já recebem no webhook)
+    if (data.userId && (data.paymentStatus === 'Gratuito' || !data.paymentStatus)) {
+        try {
+            const eventDoc = await db.collection("events").doc(data.eventId).get();
+            const eventTitle = eventDoc.exists ? (eventDoc.data()?.title || 'o evento') : 'o evento';
+            await enviarNotificacaoPush(
+                data.userId,
+                'Vaga confirmada! 🎉',
+                `Sua presença em "${eventTitle}" foi confirmada com sucesso.`,
+                `/event/${data.eventId}`
+            );
+        } catch (pushErr) {
+            logger.error(`Erro ao enviar push de confirmação gratuita para ${data.userId}:`, pushErr);
+        }
+    }
 });
 
 exports.onRegistrationDeleted = onDocumentDeleted("registrations/{registrationId}", async (event) => {
-    const data = event.data.data();
+    const data = event.data?.data() || {};
     // Ingressos de teste nunca incrementaram a contagem — não decrementam ao serem removidos.
     if (!data.eventId || data.isTeste === true) return;
     try {
-        await db.collection("events").doc(data.eventId).update({
-            registrationCount: FieldValue.increment(-1)
-        });
+        const updates = { registrationCount: FieldValue.increment(-1) };
+        // Simétrico ao onRegistrationCreated: só vendas manuais (sem pedidoId);
+        // estornos de Pix devolvem estoque na transação do webhook.
+        if (data.ticketTypeId && !data.pedidoId) {
+            updates[`soldByTicket.${data.ticketTypeId}`] = FieldValue.increment(-1);
+        }
+        await db.collection("events").doc(data.eventId).update(updates);
         logger.info(`Decremented registration count for event ${data.eventId}`);
     } catch (error) {
         logger.error(`Error decrementing registration count for event ${data.eventId}:`, error);
     }
 });
+
+// Renderizador de Open Graph / WhatsApp Preview para links /e/:id
+exports.renderEventOpenGraph = onRequest({ cors: true }, async (req, res) => {
+    await handleOgPreview(req, res, db);
+});
+
+// Lembrete D-1: dispara diariamente às 09:00 BRT
+exports.lembreteEventosD1 = onSchedule({
+    schedule: "0 9 * * *",
+    timeZone: "America/Sao_Paulo"
+}, async () => {
+    const tomorrow = getTomorrowDateString(new Date(), "America/Sao_Paulo");
+    await processarLembretesD1(db, tomorrow, enviarNotificacaoPush);
+});
+
 
 

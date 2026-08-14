@@ -38,6 +38,7 @@ function App() {
         {/* Notificações Toaster customizadas com visual premium */}
         <Toaster
           position="top-center"
+          containerStyle={{ top: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
           toastOptions={{
             duration: 4000,
             style: {

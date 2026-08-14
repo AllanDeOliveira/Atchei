@@ -2,13 +2,13 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { storage } from '../lib/storage';
-import type { AppProfile, EventItem, TicketType } from '../lib/storage';
+import { storage, EVENT_CATEGORIES } from '../lib/storage';
+import type { AppProfile, EventItem, EventCategory, TicketType } from '../lib/storage';
 import { cn } from '../lib/utils';
 import { PIX_ENABLED } from '../lib/flags';
 import {
   ArrowLeft, Image as ImageIcon, MapPin, X, Plus, Clock, Loader2,
-  CalendarPlus, CheckCircle, Upload, Trash2, AlertTriangle, FileText
+  CalendarPlus, CheckCircle, Upload, Trash2, AlertTriangle, FileText, Sparkles
 } from 'lucide-react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +32,7 @@ const eventSchema = z.object({
   location: z.string().min(1, "Local obrigatório"),
   address: z.string().min(1, "Endereço obrigatório"),
   publicType: z.string().optional(),
+  category: z.string().optional(),
   description: z.string().min(10, "A descrição deve ter no mínimo 10 caracteres"),
   hasTickets: z.boolean(),
   hasPixTickets: z.boolean().optional(),
@@ -82,6 +83,7 @@ const CreateEventContent = () => {
       date: '',
       time: '',
       publicType: 'Aberto',
+      category: 'Festa',
       description: '',
       location: 'Centro',
       address: '',
@@ -105,6 +107,7 @@ const CreateEventContent = () => {
   const hasPresence = watch('hasPresence');
   const dateValue = watch('date');
   const timeValue = watch('time');
+  const selectedCategory = watch('category') || 'Festa';
 
   const [tickets, setTickets] = useState<TicketType[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -147,16 +150,17 @@ const CreateEventContent = () => {
               date: ev.date,
               time: ev.time,
               publicType: ev.publicType,
+              category: ev.category || 'Festa',
               description: ev.description,
               location: ev.location,
               address: ev.address || '',
               mediaUrls: ev.mediaUrls || [],
-              hasTickets: ev.hasTickets || false,
+              hasTickets: !!ev.hasTickets,
+              hasPixTickets: !!ev.hasPixTickets,
               ticketPrice: ev.ticketPrice || '',
-              hasPixTickets: ev.hasPixTickets || false,
               pixTicketPrice: ev.pixTicketPrice || '',
-              isTestEvent: ev.isTestEvent || false,
-              // Evento legado sem o campo se comporta como ligado (regras/UI usam !== false);
+              isTestEvent: !!ev.isTestEvent,
+              // Eventos antigos sem hasPresence (undefined) tratam como habilitado —
               // difere de propósito do default de evento NOVO (desligado, defaultValues acima).
               hasPresence: ev.hasPresence ?? true,
               whatsappContacts: ev.whatsappContacts || (ev.whatsappNumber ? [{ name: ev.whatsappName || '', phone: ev.whatsappNumber }] : [{ name: '', phone: '' }]),
@@ -187,6 +191,7 @@ const CreateEventContent = () => {
       ...data,
       id: id || Date.now().toString(),
       publicType: (data.publicType || 'Aberto') as EventItem['publicType'],
+      category: (data.category || 'Festa') as EventCategory,
       tickets: data.hasPixTickets ? tickets : [],
       whatsappContacts: data.whatsappContacts?.filter(c => c.phone.trim() !== '') || [],
       creatorId: id ? (selectedCreatorId || originalCreatorId || targetCreatorId) : targetCreatorId,
@@ -357,6 +362,34 @@ const CreateEventContent = () => {
                 className="bg-surface border-glassBorder text-textLight"
                 {...register('title')}
               />
+            </div>
+
+            {/* Category */}
+            <div className="create-anim space-y-1.5 text-left">
+              <label className="text-xs font-medium text-textMuted ml-1 flex items-center gap-1.5">
+                <Sparkles size={12} />
+                Categoria
+              </label>
+              <div className="flex flex-wrap gap-1.5 md:gap-2">
+                {EVENT_CATEGORIES.map((cat) => {
+                  const isSelected = selectedCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setValue('category', cat)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border",
+                        isSelected
+                          ? "bg-primary text-black border-primary shadow-sm font-semibold"
+                          : "bg-surface text-textMuted border-glassBorder hover:border-primary/40 hover:text-textLight"
+                      )}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Description */}

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { storage } from '../lib/storage';
+import { onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { storage, soldCount } from '../lib/storage';
 import type { EventItem, Registration } from '../lib/storage';
 import { User, LogOut, Calendar, MapPin, Clock, Trash2, Navigation, Ticket, Camera, X, Users, Edit2, Mail, Download, Plus, ScanLine, Wallet, ChevronRight } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
@@ -13,7 +15,7 @@ import { compressImage, dataURLtoBlob } from '../lib/imageUtils';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
 
-import { formatCPF, formatPhone, mapsDirUrl } from '../lib/formatters';
+import { formatCPF, formatPhone, maskCPF, maskPhone, mapsDirUrl } from '../lib/formatters';
 
 export const Profile = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -23,6 +25,25 @@ export const Profile = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const { user, updateUser } = useAuth();
   const userRole = user?.role;
+
+  // Aviso de e-mail não verificado (typo no cadastro inviabiliza recuperar ingresso).
+  const [emailNaoVerificado, setEmailNaoVerificado] = useState(false);
+  const [verificacaoReenviada, setVerificacaoReenviada] = useState(false);
+  useEffect(() => {
+    // onAuthStateChanged em vez de auth.currentUser direto: cobre a hidratação pós-F5.
+    const unsub = onAuthStateChanged(auth, (u) => setEmailNaoVerificado(!!u && !u.emailVerified));
+    return unsub;
+  }, []);
+  const reenviarVerificacao = async () => {
+    if (!auth.currentUser) return;
+    try {
+      await sendEmailVerification(auth.currentUser);
+      setVerificacaoReenviada(true);
+      toast.success('E-mail de verificação enviado! Confira sua caixa de entrada.');
+    } catch {
+      toast.error('Não foi possível enviar agora. Tente novamente em alguns minutos.');
+    }
+  };
 
   // Estados do Perfil e Imagem
   const [imageUrl, setImageUrl] = useState<string>(user?.imageUrl || '');
@@ -298,24 +319,17 @@ export const Profile = () => {
       // Atualizar o ID real retornado
       const regWithRealId = { ...newRegistration, id: realDocId };
 
-      // Se um lote foi selecionado, atualizar a quantidade vendida de ingressos no evento
-      if (manualTicketTypeId && selectedEventForParticipants.tickets) {
-        const updatedTickets = selectedEventForParticipants.tickets.map(t => {
-          if (t.id === manualTicketTypeId) {
-            const newSold = (t.sold || 0) + 1;
-            return {
-              ...t,
-              sold: newSold,
-              status: newSold >= t.capacity ? 'sold_out' as const : t.status
-            };
-          }
-          return t;
-        });
-
-        // Atualizar o evento
-        const updatedEvent = { ...selectedEventForParticipants, tickets: updatedTickets };
-        await storage.saveEvent(updatedEvent);
-        setSelectedEventForParticipants(updatedEvent);
+      // O contador de vendidos do lote (soldByTicket) é incrementado pelo backend
+      // (trigger onRegistrationCreated) — as rules bloqueiam essa escrita pelo cliente.
+      // Reflete localmente só para a UI não esperar o trigger.
+      if (manualTicketTypeId) {
+        setSelectedEventForParticipants(prev => prev ? {
+          ...prev,
+          soldByTicket: {
+            ...prev.soldByTicket,
+            [manualTicketTypeId]: soldCount(prev, { id: manualTicketTypeId, sold: prev.tickets?.find(t => t.id === manualTicketTypeId)?.sold ?? 0 }) + 1,
+          },
+        } : prev);
       }
 
       // Adicionar à lista local de participantes exibida na tela
@@ -431,6 +445,28 @@ export const Profile = () => {
           )}
         </div>
       </div>
+
+      {/* Aviso de e-mail não verificado */}
+      {user && emailNaoVerificado && (
+        <div className="profile-el mx-5 mb-4 relative z-10 surface rounded-2xl p-4 border border-primary/30 flex items-start gap-3 text-left">
+          <Mail size={18} className="text-primary shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-textLight">Confirme seu e-mail</p>
+            <p className="text-xs text-textMuted mt-0.5 leading-snug">
+              Enviamos um link de verificação para <span className="font-semibold">{user.username}</span>.
+              Sem ele, você pode perder o acesso aos seus ingressos se digitar o e-mail errado.
+            </p>
+            {!verificacaoReenviada && (
+              <button
+                onClick={reenviarVerificacao}
+                className="mt-2 text-xs font-semibold text-primary underline underline-offset-2 cursor-pointer"
+              >
+                Reenviar e-mail de verificação
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Profile Card */}
       <div className="profile-el mx-5 mb-6 relative z-10">
@@ -1005,11 +1041,11 @@ export const Profile = () => {
                         <div className="grid grid-cols-2 gap-3 md:gap-4 pt-2 md:pt-3 text-[10px] md:text-xs font-mono text-textLight">
                           <div>
                             <span className="text-[8px] md:text-[9px] font-bold text-primary/70 uppercase block mb-0.5 tracking-wider">Telefone</span>
-                            <span className="text-[10px] md:text-sm font-semibold">{reg.userPhone ? formatPhone(reg.userPhone) : '-'}</span>
+                            <span className="text-[10px] md:text-sm font-semibold">{reg.userPhone ? maskPhone(reg.userPhone) : '-'}</span>
                           </div>
                           <div>
                             <span className="text-[8px] md:text-[9px] font-bold text-primary/70 uppercase block mb-0.5 tracking-wider">CPF</span>
-                            <span className="text-[10px] md:text-sm font-semibold">{reg.userCpf ? formatCPF(reg.userCpf) : '-'}</span>
+                            <span className="text-[10px] md:text-sm font-semibold">{reg.userCpf ? maskCPF(reg.userCpf) : '-'}</span>
                           </div>
                         </div>
                         <div className="text-[11px] font-sans text-textMuted/70 text-right pt-1.5">
@@ -1139,7 +1175,7 @@ export const Profile = () => {
                   >
                     <option value="">(Ingresso Geral - Sem Lote)</option>
                     {selectedEventForParticipants.tickets.map(t => {
-                      const available = t.capacity - (t.sold || 0);
+                      const available = t.capacity - soldCount(selectedEventForParticipants, t);
                       return (
                         <option key={t.id} value={t.id} disabled={available <= 0} className="text-stone-900 bg-white">
                           {t.name} - R$ {t.price.toFixed(2)} ({available} restam)

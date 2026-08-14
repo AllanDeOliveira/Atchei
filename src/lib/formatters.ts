@@ -22,6 +22,39 @@ export const formatDateExtenso = (dateStr: string): string => {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' });
 };
 
+/** Link "adicionar ao Google Agenda". O evento não tem hora de término no modelo —
+ *  assume 3h de duração. Horário "flutuante" (sem fuso): o Agenda usa o fuso do usuário. */
+export const googleCalendarUrl = (title: string, date: string, time: string, location?: string, details?: string): string => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const fmt = (x: Date) =>
+    `${x.getFullYear()}${pad(x.getMonth() + 1)}${pad(x.getDate())}T${pad(x.getHours())}${pad(x.getMinutes())}00`;
+  const inicio = new Date(`${date}T${time || '20:00'}`);
+  const fim = new Date(inicio.getTime() + 3 * 60 * 60 * 1000);
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: `${fmt(inicio)}/${fmt(fim)}`,
+    ...(location ? { location } : {}),
+    ...(details ? { details } : {}),
+  });
+  return `https://calendar.google.com/calendar/render?${params}`;
+};
+
+/** CPF mascarado para telas de terceiros (LGPD, minimização): ***.123.456-** — o miolo
+ *  visível ainda permite conferir com o documento na portaria. */
+export const maskCPF = (cpf: string): string => {
+  const d = (cpf || '').replace(/\D/g, '');
+  if (d.length !== 11) return cpf;
+  return `***.${d.slice(3, 6)}.${d.slice(6, 9)}-**`;
+};
+
+/** Telefone mascarado para telas de terceiros: (65) *****-1234. */
+export const maskPhone = (phone: string): string => {
+  const d = (phone || '').replace(/\D/g, '');
+  if (d.length < 8) return phone;
+  return `(${d.slice(0, 2)}) *****-${d.slice(-4)}`;
+};
+
 /**
  * Consulta de geocodificação: nome do local + endereço — só o endereço (sem número/
  * cidade) faz o Google marcar o bairro em vez do estabelecimento. Evita duplicar

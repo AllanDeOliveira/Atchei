@@ -90,4 +90,15 @@ describe('EventCard component', () => {
     expect(screen.getByText('25/12/2026 22:00')).toBeInTheDocument();
     expect(screen.getByText('Clube Aliança')).toBeInTheDocument();
   });
+
+  it('renders category badge when event has category', () => {
+    const eventWithCat = { ...mockEvent, category: 'Show' as const };
+    render(
+      <MemoryRouter>
+        <EventCard event={eventWithCat} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Show')).toBeInTheDocument();
+  });
 });

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
-import { storage } from '../lib/storage';
+import { storage, soldCount } from '../lib/storage';
 import type { EventItem, AppProfile, Registration } from '../lib/storage';
 import { Button } from '../components/ui/Button';
 import { useRateLimit } from '../hooks/useRateLimit';
@@ -10,7 +10,7 @@ import { Calendar, Clock, MapPin, User, Ticket, Mail, Phone, CreditCard, Copy, C
 import toast from 'react-hot-toast';
 
 import { formatCPF, isValidCPF } from '../lib/cpf';
-import { formatDateExtenso, isValidEmail, mapsDirUrl } from '../lib/formatters';
+import { formatDateExtenso, isValidEmail, mapsDirUrl, mapsQuery, googleCalendarUrl } from '../lib/formatters';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import { httpsCallable } from 'firebase/functions';
 import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
@@ -143,8 +143,8 @@ export const EventDetails = () => {
       const next = Math.max(0, current + delta);
 
       const tkt = event?.tickets?.find(t => t.id === ticketId);
-      if (tkt && tkt.capacity !== undefined) {
-        const available = tkt.capacity - (tkt.sold || 0);
+      if (tkt && tkt.capacity !== undefined && event) {
+        const available = tkt.capacity - soldCount(event, tkt);
         if (next > available) {
           toast.error(`Restam apenas ${available} ingresso(s) de "${tkt.name}".`);
           return prev;
@@ -286,7 +286,7 @@ export const EventDetails = () => {
     setLoadingTestTicket(true);
     try {
       // Usa o primeiro lote disponível (qty 1) quando o evento tem lotes; senão ingresso simples.
-      const primeiroLote = (event.tickets || []).find(t => (t.capacity - (t.sold || 0)) > 0) || event.tickets?.[0];
+      const primeiroLote = (event.tickets || []).find(t => (t.capacity - soldCount(event, t)) > 0) || event.tickets?.[0];
       const itensSelecionados = primeiroLote
         ? [{ id: primeiroLote.id, name: primeiroLote.name, quantity: 1 }]
         : [];
@@ -471,14 +471,15 @@ export const EventDetails = () => {
   };
 
   const handleShare = () => {
+    const shareUrl = `${window.location.origin}/e/${event.id}`;
     if (navigator.share) {
       navigator.share({
         title: event.title,
         text: event.description,
-        url: window.location.href,
+        url: shareUrl,
       });
     } else {
-      navigator.clipboard.writeText(window.location.href);
+      navigator.clipboard.writeText(shareUrl);
       toast.success('Link do evento copiado!');
     }
   };
@@ -562,6 +563,13 @@ export const EventDetails = () => {
                   <p className="text-sm font-sans font-semibold text-textLight leading-tight">{event.time}h</p>
                 </div>
               </div>
+
+              <button
+                onClick={() => window.open(googleCalendarUrl(event.title, event.date, event.time, mapsQuery(event.location, event.address), event.description), '_blank')}
+                className="w-full mb-4 bg-surface border border-glassBorder hover:bg-surfaceHover hover:border-primary/30 text-textLight font-sans font-semibold text-xs py-2.5 rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all duration-200 neo-click cursor-pointer"
+              >
+                <Calendar size={13} /> Adicionar ao calendário
+              </button>
 
               {/* Bloco do Organizador */}
               {organizer && (
@@ -782,7 +790,7 @@ export const EventDetails = () => {
                   <p className="text-xs font-medium text-accent ml-1 mb-1.5 md:mb-2">Selecione seus Ingressos</p>
 
                   {(event?.tickets || []).map((t) => {
-                    const available = t.capacity - (t.sold || 0);
+                    const available = t.capacity - (event ? soldCount(event, t) : (t.sold || 0));
                     const isSoldOut = t.status === 'sold_out' || available <= 0;
                     const qty = selectedTickets[t.id] || 0;
 

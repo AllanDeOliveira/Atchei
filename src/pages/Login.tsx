@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 import { storage } from '../lib/storage';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
@@ -46,6 +48,22 @@ export const Login = () => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      toast.error('Digite seu e-mail acima para recuperar a senha.');
+      return;
+    }
+    if (isLimited) return;
+    triggerCooldown();
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+    } catch (error) {
+      // Resposta neutra de propósito: não revela se o e-mail existe (anti-enumeração).
+      console.warn('Reset de senha:', error);
+    }
+    toast.success('Se o e-mail estiver cadastrado, você receberá o link de redefinição.');
+  };
+
   return (
     <div ref={containerRef} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden">
       <button
@@ -77,13 +95,20 @@ export const Login = () => {
           
           <div className="stagger-el space-y-1.5">
             <label className="text-xs font-medium text-textMuted block ml-1">Senha</label>
-            <Input 
-              type="password" 
-              placeholder="Sua senha" 
-              required 
+            <Input
+              type="password"
+              placeholder="Sua senha"
+              required
               value={password}
               onChange={e => setPassword(e.target.value)}
             />
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="block ml-auto text-xs text-primary font-medium hover:underline cursor-pointer pt-1"
+            >
+              Esqueci minha senha
+            </button>
           </div>
 
           <div className="stagger-el pt-4">

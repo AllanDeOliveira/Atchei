@@ -99,7 +99,7 @@ export const Privacidade = () => (
     </p>
     <p>
       Para exercer seus direitos, contate nosso Encarregado de Proteção de Dados (DPO):{' '}
-      <strong>Allan de Oliveira Francisco</strong> — <strong>suporte.atchei@gmail.com</strong>. A confirmação
+      <strong>Allan de Oliveira Francisco</strong> — <strong>contato.atchei@gmail.com</strong>. A confirmação
       de existência de tratamento e o acesso aos dados serão respondidos em formato simplificado
       imediatamente, ou por declaração completa em até <strong>15 (quinze) dias</strong> contados
       do requerimento (art. 19, II, da LGPD); as demais solicitações, em prazo compatível.

@@ -6,7 +6,7 @@ import type { IScannerControls } from '@zxing/browser';
 import { storage } from '../lib/storage';
 import type { EventItem, Registration } from '../lib/storage';
 import { matchesTicketCode } from '../lib/ticketCode';
-import { formatCPF, onlyDigits } from '../lib/cpf';
+import { maskCPF } from '../lib/formatters';
 import { useAuth } from '../contexts/AuthContext';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import {
@@ -30,11 +30,6 @@ const formatWhen = (iso?: string): string => {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
   return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-};
-
-const formatCpf = (cpf?: string): string => {
-  if (!cpf) return '';
-  return onlyDigits(cpf).length === 11 ? formatCPF(cpf) : cpf;
 };
 
 export const ValidateTickets = () => {
@@ -555,7 +550,7 @@ export const ValidateTickets = () => {
                     <Ticket size={16} className="text-primary shrink-0" />
                     <div className="min-w-0">
                       <p className="text-[11px] text-textMuted">CPF</p>
-                      <p className="font-sans font-medium text-sm tabular-nums">{formatCpf(result.registration.userCpf)}</p>
+                      <p className="font-sans font-medium text-sm tabular-nums">{result.registration.userCpf ? maskCPF(result.registration.userCpf) : '-'}</p>
                     </div>
                   </div>
                 )}

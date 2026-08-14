@@ -34,6 +34,8 @@ if (appCheckSiteKey && !import.meta.env.TEST) {
 }
 
 export const auth = getAuth(app);
+// E-mails de verificação/redefinição saem no template pt-BR do Firebase.
+auth.languageCode = 'pt';
 export const db = getFirestore(app);
 export const storageRef = getStorage(app);
 

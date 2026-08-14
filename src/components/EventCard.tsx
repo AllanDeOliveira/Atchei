@@ -83,6 +83,11 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
 
         {/* Content */}
         <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
+          {event.category && (
+            <span className="inline-block px-2 py-0.5 mb-1.5 rounded-md bg-white/20 backdrop-blur-md text-white text-[10px] font-semibold tracking-wide">
+              {event.category}
+            </span>
+          )}
           <h3 className="font-display font-semibold text-base text-white leading-tight truncate">
             {event.title}
           </h3>
@@ -127,7 +132,14 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
             </div>
           )}
 
-          {/* Badge de quantidade de mídias removido */}
+          {/* Category badge top left */}
+          {event.category && (
+            <div className="absolute top-3 left-3">
+              <span className="bg-surface/90 border border-glassBorder rounded-lg px-2.5 py-1 text-[10px] font-semibold text-textLight backdrop-blur-sm shadow-sm">
+                {event.category}
+              </span>
+            </div>
+          )}
 
           {/* Time badge top right */}
           <div className="absolute top-3 right-3">
@@ -149,7 +161,7 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
               {/* Location - clickable for maps */}
               <button
                 onClick={(e) => { e.stopPropagation(); openMaps(); }}
-                className="mt-2 flex items-center gap-1.5 text-accent hover:text-accentHover transition-colors group/loc cursor-pointer"
+                className="mt-2 w-full min-w-0 flex items-center gap-1.5 text-accent hover:text-accentHover transition-colors group/loc cursor-pointer"
               >
                 <MapPin size={14} className="shrink-0" />
                 <span className="font-mono text-xs truncate group-hover/loc:underline">{event.location}</span>
@@ -159,10 +171,10 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
               {event.address && (
                 <button
                   onClick={(e) => { e.stopPropagation(); openMaps(); }}
-                  className="mt-1 flex items-center gap-1.5 text-textMuted hover:text-textLight transition-colors group/addr cursor-pointer"
+                  className="mt-1 w-full min-w-0 flex items-center gap-1.5 text-textMuted hover:text-textLight transition-colors group/addr cursor-pointer"
                 >
                   <MapPin size={11} className="shrink-0" />
-                  <span className="text-[11px] truncate max-w-[200px] group-hover/addr:underline">
+                  <span className="text-[11px] truncate group-hover/addr:underline">
                     {event.address}
                   </span>
                 </button>

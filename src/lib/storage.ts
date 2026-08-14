@@ -20,7 +20,8 @@ import {
   signInWithEmailAndPassword,
   signOut,
   createUserWithEmailAndPassword,
-  updatePassword
+  updatePassword,
+  sendEmailVerification
 } from 'firebase/auth';
 
 export interface AppProfile {
@@ -59,6 +60,18 @@ export interface TicketType {
   status: 'active' | 'sold_out' | 'paused';
 }
 
+export type EventCategory = 'Festa' | 'Universitário' | 'Show' | 'Esporte' | 'Gastronomia' | 'Cultural' | 'Outros';
+
+export const EVENT_CATEGORIES: EventCategory[] = [
+  'Festa',
+  'Universitário',
+  'Show',
+  'Esporte',
+  'Gastronomia',
+  'Cultural',
+  'Outros'
+];
+
 export type EventItem = {
   id: string;
   title: string;
@@ -68,6 +81,7 @@ export type EventItem = {
   address?: string;
   mediaUrls?: string[];
   publicType: 'Aberto' | 'Geral' | 'Universitário';
+  category?: EventCategory;
   description: string;
   creatorId: string;
   hasTickets?: boolean;
@@ -80,8 +94,15 @@ export type EventItem = {
   isTestEvent?: boolean;
   registrationCount?: number;
   tickets?: TicketType[]; // Múltiplos tipos de ingressos e lotes
+  /** Vendidos por lote, gerido SÓ pelo backend (rules bloqueiam escrita do cliente).
+   *  tickets[].sold é legado — leia via soldCount(). */
+  soldByTicket?: { [ticketId: string]: number };
   hasPresence?: boolean;
 };
+
+/** Vendidos de um lote: soldByTicket (fonte atual) com fallback no sold legado do array. */
+export const soldCount = (event: Pick<EventItem, 'soldByTicket'>, ticket: Pick<TicketType, 'id' | 'sold'>): number =>
+  event.soldByTicket?.[ticket.id] ?? ticket.sold ?? 0;
 
 export type Registration = {
   id: string;
@@ -287,6 +308,10 @@ export const storage = {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const fbUser = userCredential.user;
+
+      // E-mail de verificação: typo no cadastro inviabiliza recuperar ingresso depois.
+      // Não bloqueia o uso — o Perfil mostra aviso enquanto não verificar.
+      sendEmailVerification(fbUser).catch((e) => console.warn('Falha ao enviar verificação de e-mail:', e));
 
       const user: User = {
         id: fbUser.uid,

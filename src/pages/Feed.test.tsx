@@ -21,11 +21,15 @@ vi.mock('../contexts/AuthContext', () => ({
 }));
 
 // Mock storage
-vi.mock('../lib/storage', () => ({
-  storage: {
-    getPaginatedEvents: vi.fn(),
-  },
-}));
+vi.mock('../lib/storage', async () => {
+  const actual = await vi.importActual('../lib/storage');
+  return {
+    ...actual,
+    storage: {
+      getPaginatedEvents: vi.fn(),
+    },
+  };
+});
 
 describe('Feed Page', () => {
   const mockUser: User = {
@@ -76,5 +80,20 @@ describe('Feed Page', () => {
 
     expect(screen.getAllByText('Festival de Música')[0]).toBeInTheDocument();
     expect(screen.getAllByText('Parque Central')[0]).toBeInTheDocument();
+  });
+
+  it('renders category filter buttons', async () => {
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <Feed />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByRole('button', { name: 'Todas' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Festa' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Universitário' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show' })).toBeInTheDocument();
   });
 });

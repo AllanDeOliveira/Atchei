@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { EventCard } from '../components/EventCard';
 import { cn } from '../lib/utils';
-import { storage } from '../lib/storage';
-import type { EventItem } from '../lib/storage';
+import { storage, EVENT_CATEGORIES } from '../lib/storage';
+import type { EventItem, EventCategory } from '../lib/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { Sparkles, Flame, Calendar, Ticket } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -35,11 +36,12 @@ export const Feed = () => {
   const navigate = useNavigate();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [filter, setFilter] = useState<FilterType>('todos');
+  const [selectedCategory, setSelectedCategory] = useState<'Todas' | EventCategory>('Todas');
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   
   // Estados para Paginação de Eventos
-  const [lastDoc, setLastDoc] = useState<any>(null);
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
 
@@ -177,6 +179,11 @@ export const Feed = () => {
   const getFilteredAndSortedEvents = () => {
     let filtered = [...events];
     
+    // Filtro por Categoria
+    if (selectedCategory !== 'Todas') {
+      filtered = filtered.filter(e => e.category === selectedCategory);
+    }
+
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
 
@@ -348,8 +355,8 @@ export const Feed = () => {
         </div>
       </div>
 
-      {/* Filter Pills */}
-      <div className="flex gap-3 px-5 mb-6 overflow-x-auto scrollbar-hide pb-1.5 relative z-10">
+      {/* Filter Pills (Tempo & Popularidade) */}
+      <div className="flex gap-2.5 px-5 mb-3 overflow-x-auto scrollbar-hide pb-1 relative z-10">
         {[
           { key: 'todos' as FilterType, label: 'Todos', icon: Sparkles },
           { key: 'emAlta' as FilterType, label: 'Em alta', icon: Flame },
@@ -360,14 +367,32 @@ export const Feed = () => {
             key={f.key}
             onClick={() => setFilter(f.key)}
             className={cn(
-              "filter-pill flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-sans font-medium text-sm whitespace-nowrap transition-all duration-200 border neo-click cursor-pointer",
+              "filter-pill flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-sans font-medium text-xs md:text-sm whitespace-nowrap transition-all duration-200 border neo-click cursor-pointer",
               filter === f.key
-                ? 'bg-primary text-textDark border-primary'
+                ? 'bg-primary text-textDark border-primary font-semibold shadow-sm'
                 : 'bg-surface border-glassBorder text-textMuted hover:text-textLight hover:bg-surfaceHover'
             )}
           >
-            {f.icon && <f.icon size={15} className={filter === f.key ? "text-textDark" : "text-primary/70"} />}
+            {f.icon && <f.icon size={14} className={filter === f.key ? "text-textDark" : "text-primary/70"} />}
             {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Category Pills (Festa, Universitário, Show, etc.) */}
+      <div className="flex gap-2 px-5 mb-6 overflow-x-auto scrollbar-hide pb-1.5 relative z-10">
+        {(['Todas', ...EVENT_CATEGORIES] as ('Todas' | EventCategory)[]).map(cat => (
+          <button
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            className={cn(
+              "px-3 py-1.5 rounded-full font-sans font-medium text-xs whitespace-nowrap transition-all duration-200 border neo-click cursor-pointer",
+              selectedCategory === cat
+                ? 'bg-textLight text-surface border-textLight font-semibold shadow-sm'
+                : 'bg-surface/80 border-glassBorder text-textMuted hover:text-textLight hover:bg-surface'
+            )}
+          >
+            {cat}
           </button>
         ))}
       </div>

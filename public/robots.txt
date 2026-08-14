@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /financeiro
+Disallow: /change-password
+
+Sitemap: https://atchei.web.app/sitemap.xml
