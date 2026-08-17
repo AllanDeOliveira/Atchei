@@ -2,17 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import type { EventItem } from '../lib/storage';
 import { Navigation, Clock, MapPin, ExternalLink, Ticket, ArrowRight } from 'lucide-react';
 import { isVideoUrl } from '../lib/imageUtils';
-import { mapsDirUrl } from '../lib/formatters';
-
-const formatCardDate = (dateStr: string): string => {
-  if (!dateStr) return '';
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    const [year, month, day] = parts;
-    return `${day}/${month}/${year}`;
-  }
-  return dateStr;
-};
+import { mapsDirUrl, waMeUrl, formatDateBR } from '../lib/formatters';
 
 interface EventCardProps {
   event: EventItem;
@@ -28,18 +18,10 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
   };
 
   const openWhatsApp = () => {
-    const contacts = event.whatsappContacts && event.whatsappContacts.length > 0
-      ? event.whatsappContacts
-      : (event.whatsappNumber ? [{ name: event.whatsappName || '', phone: event.whatsappNumber }] : []);
-    const contact = contacts[0];
+    const contact = (event.whatsappContacts || [])[0];
     if (!contact) return;
-    let cleanPhone = contact.phone.replace(/\D/g, '');
-    if (cleanPhone.length === 10 || cleanPhone.length === 11) {
-      cleanPhone = `55${cleanPhone}`;
-    }
     const message = `Olá${contact.name ? ` ${contact.name}` : ''}! Gostaria de comprar ingresso para o evento *${event.title}* (${event.time} - ${event.location}).`;
-    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+    window.open(waMeUrl(contact.phone, message), '_blank');
   };
 
 
@@ -79,8 +61,6 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
         {/* Gradient Overlay - Dark Shadow (no white fade) */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent z-10" />
 
-        {/* Badge de quantidade de mídias removido */}
-
         {/* Content */}
         <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
           {event.category && (
@@ -93,7 +73,7 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
           </h3>
           <div className="flex items-center gap-2 mt-1.5">
             <Clock size={12} className="text-white/70" />
-            <span className="font-mono text-[10px] text-white/95 font-bold">{formatCardDate(event.date)} {event.time}</span>
+            <span className="font-mono text-[10px] text-white/95 font-bold">{formatDateBR(event.date)} {event.time}</span>
             <span className="text-white/30">·</span>
             <MapPin size={12} className="text-white/70" />
             <span className="font-mono text-[10px] text-white/90 truncate">{event.location}</span>
@@ -145,7 +125,7 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
           <div className="absolute top-3 right-3">
             <div className="bg-surface/90 border border-glassBorder rounded-lg px-3 py-1 flex items-center gap-1.5 backdrop-blur-sm">
               <Clock size={12} className="text-primary" />
-              <span className="font-mono text-[10px] font-bold text-textLight">{formatCardDate(event.date)} {event.time}</span>
+              <span className="font-mono text-[10px] font-bold text-textLight">{formatDateBR(event.date)} {event.time}</span>
             </div>
           </div>
         </button>

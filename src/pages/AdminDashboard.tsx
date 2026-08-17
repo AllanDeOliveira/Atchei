@@ -143,8 +143,6 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5500000000000",
-        whatsappName: "Contato",
         whatsappContacts: [
           { name: "Contato 1", phone: "(00) 00000-0000" },
           { name: "Contato 2", phone: "(00) 00000-0000" }
@@ -169,8 +167,6 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5500000000000",
-        whatsappName: "Contato",
         whatsappContacts: [
           { name: "Contato 1", phone: "(00) 00000-0000" },
           { name: "Contato 2", phone: "(00) 00000-0000" }
@@ -195,8 +191,6 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5500000000000",
-        whatsappName: "Contato",
         whatsappContacts: [
           { name: "Contato 1", phone: "(00) 00000-0000" },
           { name: "Contato 2", phone: "(00) 00000-0000" }
@@ -221,8 +215,6 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5500000000000",
-        whatsappName: "Contato",
         whatsappContacts: [
           { name: "Contato 1", phone: "(00) 00000-0000" },
           { name: "Contato 2", phone: "(00) 00000-0000" }
@@ -247,8 +239,6 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5500000000000",
-        whatsappName: "Contato",
         whatsappContacts: [
           { name: "Contato 1", phone: "(00) 00000-0000" },
           { name: "Contato 2", phone: "(00) 00000-0000" }
@@ -273,8 +263,6 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5500000000000",
-        whatsappName: "Contato",
         whatsappContacts: [
           { name: "Contato 1", phone: "(00) 00000-0000" },
           { name: "Contato 2", phone: "(00) 00000-0000" }
@@ -299,8 +287,6 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5500000000000",
-        whatsappName: "Contato",
         whatsappContacts: [
           { name: "Contato 1", phone: "(00) 00000-0000" },
           { name: "Contato 2", phone: "(00) 00000-0000" }
@@ -325,8 +311,6 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5500000000000",
-        whatsappName: "Contato",
         whatsappContacts: [
           { name: "Contato 1", phone: "(00) 00000-0000" },
           { name: "Contato 2", phone: "(00) 00000-0000" }
@@ -351,8 +335,6 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5500000000000",
-        whatsappName: "Contato",
         whatsappContacts: [
           { name: "Contato 1", phone: "(00) 00000-0000" },
           { name: "Contato 2", phone: "(00) 00000-0000" }
@@ -377,8 +359,6 @@ export const AdminDashboard = () => {
         hasPixTickets: true,
         ticketPrice: "30",
         pixTicketPrice: "30",
-        whatsappNumber: "5500000000000",
-        whatsappName: "Contato",
         whatsappContacts: [
           { name: "Contato 1", phone: "(00) 00000-0000" },
           { name: "Contato 2", phone: "(00) 00000-0000" }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '../components/ui/Input';
-import { storage } from '../lib/storage';
+import { storage, eventoVigente } from '../lib/storage';
 import type { EventItem, AppProfile } from '../lib/storage';
 import { EventCard } from '../components/EventCard';
 import { ProfileCard } from '../components/ProfileCard';
@@ -35,13 +35,10 @@ export const Search = () => {
           storage.getUpcomingEvents(),
           storage.getPublicProfiles()
         ]);
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
         const visibleEvents = allEvents
           // Eventos de teste só aparecem para admins.
           .filter(e => isAdmin || !e.isTestEvent)
-          // Evento expira só no fim do seu dia: visível durante todo o dia da data marcada.
-          .filter(e => new Date(`${e.date}T00:00`) >= startOfToday);
+          .filter(eventoVigente);
         setEvents(visibleEvents);
         setProfiles(allProfiles);
       } catch (error) {

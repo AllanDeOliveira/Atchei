@@ -15,7 +15,7 @@ import { compressImage, dataURLtoBlob } from '../lib/imageUtils';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
 
-import { formatCPF, formatPhone, maskCPF, maskPhone, mapsDirUrl } from '../lib/formatters';
+import { formatCPF, formatPhone, maskCPF, maskPhone, mapsDirUrl, waMeUrl } from '../lib/formatters';
 
 export const Profile = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -402,18 +402,10 @@ export const Profile = () => {
   };
 
   const openWhatsApp = (event: EventItem) => {
-    const contacts = event.whatsappContacts && event.whatsappContacts.length > 0
-      ? event.whatsappContacts
-      : (event.whatsappNumber ? [{ name: (event as any).whatsappName || '', phone: event.whatsappNumber }] : []);
-    const contact = contacts[0];
+    const contact = (event.whatsappContacts || [])[0];
     if (!contact) return;
-    let cleanPhone = contact.phone.replace(/\D/g, '');
-    if (cleanPhone.length === 10 || cleanPhone.length === 11) {
-      cleanPhone = `55${cleanPhone}`;
-    }
     const message = `Olá${contact.name ? ` ${contact.name}` : ''}! Gostaria de comprar ingresso para o evento *${event.title}* (${event.time} - ${event.location}).`;
-    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+    window.open(waMeUrl(contact.phone, message), '_blank');
   };
 
   const filteredEvents = myEvents.filter(event => {

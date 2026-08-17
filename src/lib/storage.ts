@@ -57,7 +57,7 @@ export interface TicketType {
   price: number;
   capacity: number;
   sold: number;
-  status: 'active' | 'sold_out' | 'paused';
+  status: 'active' | 'sold_out';
 }
 
 export type EventCategory = 'Festa' | 'Universitário' | 'Show' | 'Esporte' | 'Gastronomia' | 'Cultural' | 'Outros';
@@ -88,8 +88,6 @@ export type EventItem = {
   hasPixTickets?: boolean;
   ticketPrice?: string;
   pixTicketPrice?: string;
-  whatsappNumber?: string;
-  whatsappName?: string;
   whatsappContacts?: { name: string; phone: string }[];
   isTestEvent?: boolean;
   registrationCount?: number;
@@ -98,6 +96,13 @@ export type EventItem = {
    *  tickets[].sold é legado — leia via soldCount(). */
   soldByTicket?: { [ticketId: string]: number };
   hasPresence?: boolean;
+};
+
+/** Evento expira só no fim do seu dia: visível durante todo o dia da data marcada. */
+export const eventoVigente = (e: Pick<EventItem, 'date'>): boolean => {
+  const inicioHoje = new Date();
+  inicioHoje.setHours(0, 0, 0, 0);
+  return new Date(`${e.date}T00:00`) >= inicioHoje;
 };
 
 /** Vendidos de um lote: soldByTicket (fonte atual) com fallback no sold legado do array. */
@@ -207,11 +212,8 @@ export const storage = {
   },
 
   getPaginatedEvents: async (lastVisibleDoc: QueryDocumentSnapshot<DocumentData> | null = null, pageSize: number = 10) => {
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-    const todayStr = `${yyyy}-${mm}-${dd}`;
+    // en-CA formata como YYYY-MM-DD no fuso local.
+    const todayStr = new Date().toLocaleDateString('en-CA');
 
     const eventsRef = collection(db, 'events');
     const q = lastVisibleDoc
@@ -240,11 +242,7 @@ export const storage = {
   },
 
   getUpcomingEvents: async (): Promise<EventItem[]> => {
-    const now = new Date();
-    const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-    const todayStr = `${yyyy}-${mm}-${dd}`;
+    const todayStr = new Date().toLocaleDateString('en-CA');
 
     const eventsRef = collection(db, 'events');
     const q = query(
@@ -339,11 +337,11 @@ export const storage = {
 
   login: async (email: string, password?: string): Promise<User | null> => {
     try {
-      // Usar exclusivament Firebase Auth (senhas e admins mockados removidos)
+      // Usa exclusivamente Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password || '');
       const fbUser = userCredential.user;
 
-      // 4. Buscar perfil no Firestore para saber a role
+      // Buscar perfil no Firestore para saber a role
       // Tenta buscar por ID ou por Email
       let profile = await storage.getProfileById(fbUser.uid);
       if (!profile) {

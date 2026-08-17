@@ -41,16 +41,12 @@ const eventSchema = z.object({
   isTestEvent: z.boolean().optional(),
   hasPresence: z.boolean().optional(),
   whatsappContacts: z.array(z.object({ name: z.string(), phone: z.string() })).optional(),
-  whatsappNumber: z.string().optional(),
   mediaUrls: z.array(z.string())
 }).refine(data => {
   if (!data.hasTickets) return true;
   if (data.whatsappContacts && data.whatsappContacts.length > 0) {
     const firstPhone = data.whatsappContacts[0].phone.replace(/\D/g, '');
     return firstPhone.length >= 10;
-  }
-  if (data.whatsappNumber) {
-    return data.whatsappNumber.replace(/\D/g, '').length >= 10;
   }
   return false;
 }, {
@@ -94,8 +90,7 @@ const CreateEventContent = () => {
       pixTicketPrice: '',
       isTestEvent: false,
       hasPresence: false,
-      whatsappContacts: [{ name: '', phone: '' }],
-      whatsappNumber: ''
+      whatsappContacts: [{ name: '', phone: '' }]
     }
   });
 
@@ -163,8 +158,7 @@ const CreateEventContent = () => {
               // Eventos antigos sem hasPresence (undefined) tratam como habilitado —
               // difere de propósito do default de evento NOVO (desligado, defaultValues acima).
               hasPresence: ev.hasPresence ?? true,
-              whatsappContacts: ev.whatsappContacts || (ev.whatsappNumber ? [{ name: ev.whatsappName || '', phone: ev.whatsappNumber }] : [{ name: '', phone: '' }]),
-              whatsappNumber: ev.whatsappNumber || ''
+              whatsappContacts: ev.whatsappContacts?.length ? ev.whatsappContacts : [{ name: '', phone: '' }]
             });
             setTickets(ev.tickets || []);
             setOriginalCreatorId(ev.creatorId);

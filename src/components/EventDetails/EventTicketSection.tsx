@@ -2,6 +2,7 @@ import React from 'react';
 import { CheckCircle2, QrCode, Ticket, FlaskConical, Loader2 } from 'lucide-react';
 import type { EventItem, User } from '../../lib/storage';
 import { PIX_ENABLED } from '../../lib/flags';
+import { waMeUrl } from '../../lib/formatters';
 
 interface EventTicketSectionProps {
   event: EventItem;
@@ -36,25 +37,14 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
     return price;
   };
 
-  const getContacts = () => {
-    if (event.whatsappContacts && event.whatsappContacts.length > 0) {
-      return event.whatsappContacts;
-    }
-    return event.whatsappNumber ? [{ name: event.whatsappName || '', phone: event.whatsappNumber }] : [];
-  };
-
   const handleWhatsAppClick = () => {
-    const contacts = getContacts();
+    const contacts = event.whatsappContacts || [];
     if (contacts.length > 1) {
       onOpenContactsModal();
     } else if (contacts.length === 1) {
       const contact = contacts[0];
-      let cleanPhone = contact.phone.replace(/\D/g, '');
-      if (cleanPhone.length === 10 || cleanPhone.length === 11) {
-        cleanPhone = `55${cleanPhone}`;
-      }
       const message = `Olá${contact.name ? ` ${contact.name}` : ''}! Tenho interesse no ingresso para o evento *${event.title}*`;
-      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+      window.open(waMeUrl(contact.phone, message), '_blank');
     }
   };
 

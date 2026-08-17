@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { EventCard } from '../components/EventCard';
 import { cn } from '../lib/utils';
-import { storage, EVENT_CATEGORIES } from '../lib/storage';
+import { storage, EVENT_CATEGORIES, eventoVigente } from '../lib/storage';
 import type { EventItem, EventCategory } from '../lib/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { Sparkles, Flame, Calendar, Ticket } from 'lucide-react';
@@ -107,31 +107,23 @@ export const Feed = () => {
     }
   };
 
+  // Busca uma página de 10 e aplica os filtros de visibilidade (testes só para admin,
+  // evento vigente até o fim do próprio dia). Compartilhada pela carga inicial e o "ver mais".
+  const fetchPage = async (cursor: QueryDocumentSnapshot<DocumentData> | null) => {
+    const { events: newEvents, lastDoc: nextLastDoc } = await storage.getPaginatedEvents(cursor, 10);
+    const isUserAdmin = user?.role === 'admin';
+    const visiveis = (isUserAdmin ? newEvents : newEvents.filter(e => !e.isTestEvent)).filter(eventoVigente);
+    setLastDoc(nextLastDoc);
+    if (newEvents.length < 10) setHasMore(false);
+    return visiveis;
+  };
+
   const loadEvents = async () => {
     setIsLoading(true);
     setLastDoc(null);
     setHasMore(true);
-    
     try {
-      // Busca a primeira página de 10 eventos
-      const { events: newEvents, lastDoc: nextLastDoc } = await storage.getPaginatedEvents(null, 10);
-
-      const isUserAdmin = user?.role === 'admin';
-      const visibleEvents = isUserAdmin ? newEvents : newEvents.filter(e => !e.isTestEvent);
-
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      const upcomingEvents = visibleEvents.filter(e => {
-        // Evento expira só no fim do seu dia: visível durante todo o dia da data marcada.
-        const eventDay = new Date(`${e.date}T00:00`);
-        return eventDay >= startOfToday;
-      });
-
-      setEvents(upcomingEvents);
-      setLastDoc(nextLastDoc);
-      if (newEvents.length < 10) {
-        setHasMore(false);
-      }
+      setEvents(await fetchPage(null));
     } catch (error) {
       console.error("Erro ao carregar eventos:", error);
     } finally {
@@ -142,27 +134,9 @@ export const Feed = () => {
   const handleLoadMoreEvents = async () => {
     if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
-    
     try {
-      // Busca a próxima página de 10 eventos a partir do lastDoc
-      const { events: newEvents, lastDoc: nextLastDoc } = await storage.getPaginatedEvents(lastDoc, 10);
-
-      const isUserAdmin = user?.role === 'admin';
-      const visibleEvents = isUserAdmin ? newEvents : newEvents.filter(e => !e.isTestEvent);
-
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      const upcomingEvents = visibleEvents.filter(e => {
-        // Evento expira só no fim do seu dia: visível durante todo o dia da data marcada.
-        const eventDay = new Date(`${e.date}T00:00`);
-        return eventDay >= startOfToday;
-      });
-
-      setEvents(prev => [...prev, ...upcomingEvents]);
-      setLastDoc(nextLastDoc);
-      if (newEvents.length < 10) {
-        setHasMore(false);
-      }
+      const novos = await fetchPage(lastDoc);
+      setEvents(prev => [...prev, ...novos]);
     } catch (error) {
       console.error("Erro ao carregar mais eventos:", error);
     } finally {

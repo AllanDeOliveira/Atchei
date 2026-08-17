@@ -10,7 +10,7 @@ import { Calendar, Clock, MapPin, User, Ticket, Mail, Phone, CreditCard, Copy, C
 import toast from 'react-hot-toast';
 
 import { formatCPF, isValidCPF } from '../lib/cpf';
-import { formatDateExtenso, isValidEmail, mapsDirUrl, mapsQuery, googleCalendarUrl } from '../lib/formatters';
+import { formatDateExtenso, isValidEmail, mapsDirUrl, mapsQuery, googleCalendarUrl, waMeUrl } from '../lib/formatters';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import { httpsCallable } from 'firebase/functions';
 import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
@@ -674,18 +674,12 @@ export const EventDetails = () => {
               Escolha com qual promoter você deseja falar para garantir sua vaga:
             </p>
             <div className="space-y-3 overflow-y-auto pr-2 pb-4 flex-1">
-              {(event?.whatsappContacts && event.whatsappContacts.length > 0
-                ? event.whatsappContacts
-                : (event?.whatsappNumber ? [{ name: event.whatsappName || '', phone: event.whatsappNumber }] : [])).map((contact, i) => (
+              {(event?.whatsappContacts || []).map((contact, i) => (
                   <button
                     key={i}
                     onClick={() => {
-                      let cleanPhone = contact.phone.replace(/\D/g, '');
-                      if (cleanPhone.length === 10 || cleanPhone.length === 11) {
-                        cleanPhone = `55${cleanPhone}`;
-                      }
                       const message = `Olá${contact.name ? ` ${contact.name}` : ''}! Tenho interesse no ingresso para o evento *${event?.title}*`;
-                      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+                      window.open(waMeUrl(contact.phone, message), '_blank');
                     }}
                     className="w-full surface hover:border-primary/30 rounded-xl p-4 flex items-center justify-between group hover:bg-surfaceHover transition-all duration-200 neo-click cursor-pointer"
                   >

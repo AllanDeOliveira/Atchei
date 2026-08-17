@@ -585,5 +585,3 @@ export const ValidateTickets = () => {
     </div>
   );
 };
-
-export default ValidateTickets;

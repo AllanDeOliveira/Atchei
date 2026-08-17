@@ -22,6 +22,13 @@ export const formatDateExtenso = (dateStr: string): string => {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' });
 };
 
+/** Link wa.me: limpa o telefone, prefixa 55 (BR) quando faltar o DDI e embute a mensagem. */
+export const waMeUrl = (phone: string, message: string): string => {
+  let d = (phone || '').replace(/\D/g, '');
+  if (d.length === 10 || d.length === 11) d = `55${d}`;
+  return `https://wa.me/${d}?text=${encodeURIComponent(message)}`;
+};
+
 /** Link "adicionar ao Google Agenda". O evento não tem hora de término no modelo —
  *  assume 3h de duração. Horário "flutuante" (sem fuso): o Agenda usa o fuso do usuário. */
 export const googleCalendarUrl = (title: string, date: string, time: string, location?: string, details?: string): string => {
