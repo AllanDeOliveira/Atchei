@@ -202,7 +202,10 @@ const CreateEventContent = () => {
       navigate('/profile');
     } catch (err) {
       console.error(err);
-      toast.error('Erro ao salvar o evento.');
+      const code = (err as { code?: string })?.code;
+      toast.error(code === 'permission-denied'
+        ? 'Sem permissão para salvar o evento nesta conta.'
+        : `Erro ao salvar o evento${code ? ` (${code})` : '.'}`);
     }
   };
 

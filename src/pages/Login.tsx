@@ -58,8 +58,15 @@ export const Login = () => {
     try {
       await sendPasswordResetEmail(auth, email.trim());
     } catch (error) {
-      // Resposta neutra de propósito: não revela se o e-mail existe (anti-enumeração).
       console.warn('Reset de senha:', error);
+      const code = (error as { code?: string })?.code;
+      // Só "usuário não existe" fica neutro (anti-enumeração); erro operacional aparece.
+      if (code && code !== 'auth/user-not-found') {
+        if (code === 'auth/invalid-email') toast.error('E-mail inválido.');
+        else if (code === 'auth/too-many-requests') toast.error('Muitas tentativas. Aguarde alguns minutos.');
+        else toast.error(`Falha ao enviar (${code}). Verifique a conexão e tente novamente.`);
+        return;
+      }
     }
     toast.success('Se o e-mail estiver cadastrado, você receberá o link de redefinição.');
   };

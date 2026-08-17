@@ -15,11 +15,25 @@ service cloud.firestore {
       return isAuthed() && 'admin' in request.auth.token && request.auth.token.admin == true;
     }
 
+    // Dono efetivo de um creatorId: bate com o uid, ou o creatorId é o doc de
+    // perfil do PRÓPRIO usuário (contas legadas têm perfil com id != uid; o
+    // vínculo é o e-mail autenticado, mesmo critério do update de profiles).
+    function isCreator(creatorId) {
+      return isAuthed() && (
+        creatorId == request.auth.uid ||
+        (
+          'email' in request.auth.token &&
+          exists(/databases/$(database)/documents/profiles/$(creatorId)) &&
+          get(/databases/$(database)/documents/profiles/$(creatorId)).data.email.lower() == request.auth.token.email.lower()
+        )
+      );
+    }
+
     // Verifica se o usuário autenticado é o criador (dono) de um evento.
     function isEventOwner(eventId) {
       return isAuthed() &&
         exists(/databases/$(database)/documents/events/$(eventId)) &&
-        get(/databases/$(database)/documents/events/$(eventId)).data.creatorId == request.auth.uid;
+        isCreator(get(/databases/$(database)/documents/events/$(eventId)).data.creatorId);
     }
 
     // Verifica se um evento aceita presença gratuita. Um evento sem o campo
@@ -67,21 +81,22 @@ service cloud.firestore {
     match /events/{eventId} {
       // Eventos são públicos para visualização
       allow read: if true;
-      // Qualquer usuário autenticado pode criar eventos, e o creatorId deve ser o próprio UID
-      allow create: if isAuthed() && request.resource.data.creatorId == request.auth.uid;
+      // Criação: o creatorId precisa ser o próprio usuário (uid ou seu perfil
+      // legado); admin pode criar em nome de um parceiro.
+      allow create: if isCreator(request.resource.data.creatorId) || isAdmin();
       // Somente o criador do evento ou o administrador podem editar/excluir.
       // O criador NÃO pode transferir a posse (creatorId) nem forjar contadores
       // geridos pelo backend (registrationCount e soldByTicket — escritos pelas
       // triggers/webhook via Admin SDK, que ignora estas regras). Admin irrestrito.
       allow update: if isAuthed() && (
         (
-          resource.data.creatorId == request.auth.uid &&
+          isCreator(resource.data.creatorId) &&
           !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['creatorId', 'registrationCount', 'soldByTicket'])
         ) ||
         isAdmin()
       );
-      allow delete: if isAuthed() && (resource.data.creatorId == request.auth.uid || isAdmin());
+      allow delete: if isCreator(resource.data.creatorId) || isAdmin();
     }
 
     match /registrations/{registrationId} {
