@@ -15,6 +15,10 @@ export const MainLayout = () => (
           <a href="mailto:contato.atchei@gmail.com" className="text-primary hover:underline">
             contato.atchei@gmail.com
           </a>
+          {' · '}
+          <a href="https://instagram.com/atchei.app" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+            @atchei.app
+          </a>
         </p>
         <p>
           <Link to="/termos" className="hover:underline">Termos de Uso</Link>
