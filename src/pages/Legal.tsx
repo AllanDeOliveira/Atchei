@@ -140,6 +140,60 @@ export const Privacidade = () => (
   </LegalLayout>
 );
 
+export const QuemSomos = () => (
+  <LegalLayout titulo="Quem somos">
+    <p>
+      O <strong>Atchei</strong> é a plataforma de <strong>eventos e ingressos de Cáceres-MT</strong>.
+      Reunimos em um só lugar o que está acontecendo na cidade — festas, eventos universitários,
+      shows, esporte e gastronomia — para você <strong>descobrir, confirmar presença e comprar
+      ingressos por Pix</strong> em poucos toques, direto do celular.
+    </p>
+
+    <h2>Nossa história</h2>
+    <p>
+      O Atchei nasceu em Cáceres de uma percepção simples: os eventos da cidade viviam espalhados
+      em stories, grupos de WhatsApp e cartazes — e quem organizava dependia de listas de papel e
+      transferências manuais para vender. A ideia começou com <strong>Allan</strong>, que convidou{' '}
+      <strong>Theo</strong> para o projeto; juntos, os dois desenvolveram o conceito até ele virar
+      o que você usa hoje: o <strong>ponto de encontro entre quem faz e quem vive os eventos da
+      região</strong> — divulgação num feed único, venda digital segura e portaria sem fila.
+    </p>
+    <p>
+      Começamos por Cáceres, mas a visão é maior: <strong>levar o Atchei para o interior</strong>,
+      cidade por cidade — porque evento bom não acontece só nas capitais.
+    </p>
+
+    <h2>O que oferecemos</h2>
+    <ul>
+      <li><strong>Feed de eventos da cidade:</strong> tudo o que vai acontecer, organizado por categoria e data.</li>
+      <li><strong>Ingressos por Pix:</strong> pagamento instantâneo e ingresso com QR Code na hora, direto no app.</li>
+      <li><strong>Confirmação de presença:</strong> em eventos gratuitos, garanta sua vaga com um toque.</li>
+      <li><strong>Recuperação fácil:</strong> perdeu o ingresso? Recupere pelo e-mail ou CPF a qualquer momento.</li>
+    </ul>
+
+    <h2>Para organizadores</h2>
+    <ul>
+      <li><strong>Divulgação local:</strong> seu evento visto por quem realmente está na região.</li>
+      <li><strong>Venda digital com repasse direto:</strong> receba as vendas na sua conta, com controle total.</li>
+      <li><strong>Portaria digital:</strong> valide ingressos pelo QR Code usando só o celular — sem lista de papel, sem fila.</li>
+      <li><strong>Venda por promoters:</strong> cadastre sua equipe de vendas e atenda os compradores pelo WhatsApp.</li>
+    </ul>
+
+    <h2>Nossos diferenciais</h2>
+    <ul>
+      <li><strong>Feito para o interior:</strong> pensado para a realidade de Cáceres e região, não adaptado dos grandes centros.</li>
+      <li><strong>Simples de verdade:</strong> criar um evento leva minutos; comprar, segundos.</li>
+      <li><strong>Segurança:</strong> pagamentos processados por instituição regulada, dados protegidos conforme a LGPD e ingresso validado uma única vez.</li>
+    </ul>
+
+    <p>
+      Tem um evento para divulgar ou uma dúvida? Fale com a gente:{' '}
+      <strong>contato.atchei@gmail.com</strong> ou{' '}
+      <a href="https://instagram.com/atchei.app" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">@atchei.app</a>.
+    </p>
+  </LegalLayout>
+);
+
 export const Termos = () => (
   <LegalLayout titulo="Termos de Uso e Diretrizes">
     <p>

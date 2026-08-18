@@ -23,6 +23,7 @@ const Financeiro = React.lazy(() => import('./pages/Financeiro').then(m => ({ de
 const RecuperarIngresso = React.lazy(() => import('./pages/RecuperarIngresso').then(m => ({ default: m.RecuperarIngresso })));
 const Privacidade = React.lazy(() => import('./pages/Legal').then(m => ({ default: m.Privacidade })));
 const Termos = React.lazy(() => import('./pages/Legal').then(m => ({ default: m.Termos })));
+const QuemSomos = React.lazy(() => import('./pages/Legal').then(m => ({ default: m.QuemSomos })));
 
 // Spinner simples de carregamento exibido enquanto uma página lazy é baixada
 const LoadingSpinner = () => (
@@ -64,6 +65,7 @@ function App() {
               {/* Documentos legais (acesso público) */}
               <Route path="/privacidade" element={<Privacidade />} />
               <Route path="/termos" element={<Termos />} />
+              <Route path="/quem-somos" element={<QuemSomos />} />
               {/* Scanner de validação em tela cheia (autenticação tratada na própria página) */}
               <Route path="/validar/:eventId" element={<ValidateTickets />} />
               

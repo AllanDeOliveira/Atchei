@@ -224,6 +224,10 @@ export const Feed = () => {
         </div>
       </div>
 
+      {/* H1 da marca: invisível na tela (a logo cumpre o papel visual), mas presente
+          para leitores de tela e para o Google associar "Atchei" a este site. */}
+      <h1 className="sr-only">Atchei — eventos e ingressos em Cáceres-MT</h1>
+
       {/* Cabeçalho */}
       <div className="feed-header px-5 pt-8 pb-4 relative z-10">
         <div className="flex justify-between items-center mb-6 md:hidden">

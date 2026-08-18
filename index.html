@@ -24,6 +24,30 @@
 
     <meta name="theme-color" content="#FFFCF8" />
 
+    <!-- Dados estruturados: ensinam ao Google que "Atchei" é esta marca/site -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "name": "Atchei",
+          "url": "https://atchei.web.app/",
+          "logo": "https://atchei.web.app/logo.png",
+          "email": "contato.atchei@gmail.com",
+          "sameAs": ["https://instagram.com/atchei.app"],
+          "address": { "@type": "PostalAddress", "addressLocality": "Cáceres", "addressRegion": "MT", "addressCountry": "BR" }
+        },
+        {
+          "@type": "WebSite",
+          "name": "Atchei",
+          "alternateName": "Atchei Eventos",
+          "url": "https://atchei.web.app/"
+        }
+      ]
+    }
+    </script>
+
     <!-- Google Fonts — Plus Jakarta Sans (família unificada) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
