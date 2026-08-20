@@ -542,6 +542,23 @@ export const storage = {
     return !querySnapshot.empty;
   },
 
+  /** Inscrição do usuário neste evento (com id real), ou null. */
+  getUserRegistration: async (eventId: string, userId: string): Promise<Registration | null> => {
+    const q = query(
+      collection(db, 'registrations'),
+      where('eventId', '==', eventId),
+      where('userId', '==', userId)
+    );
+    const qs = await getDocs(q);
+    if (qs.empty) return null;
+    return { id: qs.docs[0].id, ...qs.docs[0].data() } as Registration;
+  },
+
+  /** Cancela a própria presença gratuita (rules bloqueiam paga/pós-check-in). */
+  deleteRegistration: async (id: string) => {
+    await deleteDoc(doc(db, 'registrations', id));
+  },
+
   uploadFile: async (file: File, folder: string): Promise<string> => {
     try {
       const currentUser = storage.getCurrentUser();

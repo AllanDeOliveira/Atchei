@@ -153,8 +153,19 @@ service cloud.firestore {
         request.resource.data.checkedIn == true
       );
 
-      // Apenas administradores podem deletar inscrições
-      allow delete: if isAdmin();
+      // Deletar: admin, ou o PRÓPRIO usuário cancelando uma presença gratuita
+      // (a confirmação funciona como "curtida" — reversível). Nunca após check-in
+      // e nunca uma inscrição paga (estorno é fluxo do backend).
+      allow delete: if isAdmin() || (
+        isAuthed() &&
+        resource.data.userId == request.auth.uid &&
+        (
+          !('paymentStatus' in resource.data) ||
+          resource.data.paymentStatus == 'Gratuito' ||
+          resource.data.paymentStatus == null
+        ) &&
+        resource.data.checkedIn != true
+      );
     }
 
     match /pedidos/{pedidoId} {

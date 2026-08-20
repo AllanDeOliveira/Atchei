@@ -180,6 +180,11 @@ const CreateEventContent = () => {
   }, [userId, navigate]);
 
   const onSubmit = async (data: EventFormValues) => {
+    // Regra da instituição de pagamento: cobrança Pix mínima de R$ 5,00.
+    if (data.hasPixTickets && tickets.some(t => t.price < 5)) {
+      toast.error('O valor mínimo por ingresso Pix é R$ 5,00.');
+      return;
+    }
     const targetCreatorId = selectedCreatorId || user?.profileId || userId!;
     const eventData: EventItem = {
       ...data,

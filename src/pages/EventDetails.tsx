@@ -24,7 +24,8 @@ export const EventDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [event, setEvent] = useState<EventItem | null>(null);
-  const [isRegistered, setIsRegistered] = useState(false);
+  // Inscrição do usuário logado neste evento (null = não confirmado/comprado).
+  const [myReg, setMyReg] = useState<Registration | null>(null);
   const [showModal, setShowModal] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { user: currentUser } = useAuth();
@@ -37,7 +38,6 @@ export const EventDetails = () => {
 
   // PIX STATES
   const [showPixModal, setShowPixModal] = useState(false);
-  const [showFreeTicketModal, setShowFreeTicketModal] = useState(false);
   const [loadingPix, setLoadingPix] = useState(false);
   const { isLimited: isPixLimited, remainingMs: pixRemainingMs, trigger: triggerPixCooldown } = useRateLimit(10000);
   const [qrCodeData, setQrCodeData] = useState<{ qr_code: string, qr_code_base64: string } | null>(null);
@@ -52,7 +52,6 @@ export const EventDetails = () => {
   // Fechar modais com Escape (acessibilidade de diálogo)
   useEscapeToClose(showModal, () => setShowModal(false));
   useEscapeToClose(showContactsModal, () => setShowContactsModal(false));
-  useEscapeToClose(showFreeTicketModal, () => setShowFreeTicketModal(false));
   useEscapeToClose(showPixModal, () => setShowPixModal(false));
   // Mantém a referência da inscrição para o fechamento agendado do modal de sucesso
   const registrationForTicketRef = useRef<Registration | null>(null);
@@ -187,7 +186,6 @@ export const EventDetails = () => {
         if (dados.status === 'pago') {
           // Ativar transição de sucesso dentro do próprio modal
           setPixStep('success');
-          setIsRegistered(true);
 
           try {
             const regsRef = collection(db, 'registrations');
@@ -197,6 +195,7 @@ export const EventDetails = () => {
               const regs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Registration));
               registrationForTicketRef.current = regs[0];
               setRegistrationForTicket(regs[0]);
+              setMyReg(regs[0]);
             }
           } catch (err) {
             console.error("Erro ao buscar inscrições do pedido:", err);
@@ -268,9 +267,12 @@ export const EventDetails = () => {
       setPixStep('qr_code');
     } catch (error) {
       console.error("Erro ao gerar Pix:", error);
-      const code = (error as { code?: string })?.code;
+      const { code, message } = (error as { code?: string; message?: string });
       if (code === 'functions/resource-exhausted') {
         toast.error("Limite de cobranças atingido. Tente novamente mais tarde.");
+      } else if (code === 'functions/failed-precondition' && message) {
+        // Erros de validação (estoque, valor mínimo do Asaas etc.) chegam com mensagem legível.
+        toast.error(message);
       } else {
         toast.error('Não foi possível gerar o Pix. Tente novamente em instantes.');
       }
@@ -398,8 +400,7 @@ export const EventDetails = () => {
         }
 
         if (userId) {
-          const registered = await storage.hasUserRegistered(id, userId);
-          setIsRegistered(registered);
+          setMyReg(await storage.getUserRegistration(id, userId));
         }
       } catch (error) {
         console.error("Erro ao carregar detalhes do evento:", error);
@@ -434,39 +435,45 @@ export const EventDetails = () => {
     );
   }
 
-  const handleRegister = async () => {
-    if (!buyerName.trim() || !buyerPhone.trim()) {
-      toast.error('Preencha nome e telefone para confirmar presença.');
-      return;
-    }
-
+  // Confirmação de presença em 1 toque — funciona como "curtida" com peso social:
+  // sem formulário, sem QR; os dados vêm da conta. O contador (registrationCount,
+  // via trigger) alimenta o "Em alta" e a mensagem de prova social.
+  const handleConfirmPresence = async () => {
     if (!event) return;
     if (!exigirLogin() || !currentUser) return;
-
-    const buyerId = currentUser.id;
 
     const registration: Registration = {
       id: Date.now().toString(),
       eventId: event.id,
-      userId: buyerId,
-      userName: buyerName,
-      userEmail: buyerEmail,
-      userPhone: buyerPhone,
-      userCpf: buyerCpf,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userEmail: currentUser.username,
       paymentStatus: 'Gratuito',
       timestamp: new Date().toISOString()
     };
 
     try {
       const docId = await storage.saveRegistration(registration);
-      const regWithRealId = { ...registration, id: docId };
-      setRegistrationForTicket(regWithRealId);
-      setShowFreeTicketModal(false);
-      setIsRegistered(true);
-      setShowTicketModal(true);
+      setMyReg({ ...registration, id: docId });
+      // Reflete no contador local sem esperar o trigger do backend.
+      setEvent(prev => prev ? { ...prev, registrationCount: (prev.registrationCount || 0) + 1 } : prev);
+      toast.success('Presença confirmada! 🎉');
     } catch (error) {
-      console.error("Erro ao registrar no evento:", error);
-      toast.error('Ocorreu um erro ao confirmar sua vaga. Tente novamente.');
+      console.error("Erro ao confirmar presença:", error);
+      toast.error('Não foi possível confirmar. Tente novamente.');
+    }
+  };
+
+  const handleCancelPresence = async () => {
+    if (!myReg) return;
+    try {
+      await storage.deleteRegistration(myReg.id);
+      setMyReg(null);
+      setEvent(prev => prev ? { ...prev, registrationCount: Math.max(0, (prev.registrationCount || 0) - 1) } : prev);
+      toast('Presença cancelada.');
+    } catch (error) {
+      console.error("Erro ao cancelar presença:", error);
+      toast.error('Não foi possível cancelar. Tente novamente.');
     }
   };
 
@@ -531,9 +538,10 @@ export const EventDetails = () => {
             <EventTicketSection
               event={event}
               currentUser={currentUser}
-              isRegistered={isRegistered}
+              myRegistration={myReg}
               loadingTestTicket={loadingTestTicket}
-              onOpenFreeTicketModal={() => { if (exigirLogin()) setShowFreeTicketModal(true); }}
+              onConfirmPresence={handleConfirmPresence}
+              onCancelPresence={handleCancelPresence}
               onOpenPixModal={handleOpenPixModal}
               onOpenContactsModal={() => setShowContactsModal(true)}
               onGerarIngressoTeste={handleGerarIngressoTeste}
@@ -697,67 +705,6 @@ export const EventDetails = () => {
             >
               Cancelar
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Free Ticket Modal */}
-      {showFreeTicketModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4 modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="event-freeticket-title"
-        >
-          <div className="glass border-none rounded-[2.5rem] p-8 max-w-sm md:max-w-lg w-full text-center relative overflow-hidden backdrop-blur-3xl shadow-float bg-surface/98">
-            <button onClick={() => setShowFreeTicketModal(false)} className="absolute top-5 right-5 bg-white/10 hover:bg-white/20 p-2 rounded-2xl text-textLight transition-all duration-300 cursor-pointer neo-click">
-              <span className="sr-only">Fechar</span>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-            <h3 id="event-freeticket-title" className="font-display text-xl font-semibold text-accent mb-1 mt-2">Confirmar presença</h3>
-            <p className="text-sm text-textMuted mb-6">Confirme seus dados para garantir sua presença.</p>
-
-            <div className="flex flex-col gap-4 text-left">
-              <div className="space-y-4 bg-white/40 p-5 rounded-[1.75rem] shadow-glass-shadow mb-2 border border-glassBorder/30">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-textMuted block ml-1">Nome completo</label>
-                  <div className="relative flex items-center">
-                    <span className="absolute left-4 text-textMuted/60 pointer-events-none">
-                      <User size={15} />
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Seu nome"
-                      value={buyerName}
-                      onChange={e => setBuyerName(e.target.value)}
-                      className="w-full text-sm pl-11 pr-4 py-3.5 rounded-xl bg-white/90 text-textLight outline-none border border-glassBorder/60 focus:border-primary/40 focus:bg-white focus:shadow-glow-primary transition-all duration-300 placeholder:text-textMuted/50 font-sans"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-textMuted block ml-1">Telefone / WhatsApp</label>
-                  <div className="relative flex items-center">
-                    <span className="absolute left-4 text-textMuted/60 pointer-events-none">
-                      <Phone size={15} />
-                    </span>
-                    <input
-                      type="tel"
-                      placeholder="(00) 00000-0000"
-                      value={buyerPhone}
-                      onChange={e => setBuyerPhone(e.target.value)}
-                      className="w-full text-sm pl-11 pr-4 py-3.5 rounded-xl bg-white/90 text-textLight outline-none border border-glassBorder/60 focus:border-primary/40 focus:bg-white focus:shadow-glow-primary transition-all duration-300 placeholder:text-textMuted/50 font-sans"
-                    />
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={handleRegister}
-                disabled={!buyerName || !buyerPhone}
-                className="w-full bg-primary text-textDark border-0 font-sans font-semibold py-4 rounded-xl transition-all duration-200 hover:bg-primaryHover active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-sm neo-click"
-              >
-                Confirmar presença
-              </button>
-            </div>
           </div>
         </div>
       )}

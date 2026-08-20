@@ -1,15 +1,17 @@
 import React from 'react';
-import { CheckCircle2, QrCode, Ticket, FlaskConical, Loader2 } from 'lucide-react';
-import type { EventItem, User } from '../../lib/storage';
+import { CheckCircle2, QrCode, Ticket, FlaskConical, Loader2, Flame } from 'lucide-react';
+import type { EventItem, User, Registration } from '../../lib/storage';
 import { PIX_ENABLED } from '../../lib/flags';
-import { waMeUrl } from '../../lib/formatters';
+import { waMeUrl, confirmadosLabel } from '../../lib/formatters';
 
 interface EventTicketSectionProps {
   event: EventItem;
   currentUser: User | null;
-  isRegistered: boolean;
+  /** Inscrição do usuário logado neste evento (null = nenhuma). */
+  myRegistration: Registration | null;
   loadingTestTicket: boolean;
-  onOpenFreeTicketModal: () => void;
+  onConfirmPresence: () => void;
+  onCancelPresence: () => void;
   onOpenPixModal: () => void;
   onOpenContactsModal: () => void;
   onGerarIngressoTeste: () => void;
@@ -18,13 +20,18 @@ interface EventTicketSectionProps {
 export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
   event,
   currentUser,
-  isRegistered,
+  myRegistration,
   loadingTestTicket,
-  onOpenFreeTicketModal,
+  onConfirmPresence,
+  onCancelPresence,
   onOpenPixModal,
   onOpenContactsModal,
   onGerarIngressoTeste,
 }) => {
+  const isRegistered = !!myRegistration;
+  // Presença gratuita funciona como "curtida": pode ser desfeita. Ingresso pago, não.
+  const presencaCancelavel = isRegistered && myRegistration?.paymentStatus === 'Gratuito';
+  const provaSocial = confirmadosLabel(event.registrationCount || 0);
   const formatPriceDisplay = () => {
     if (!event.hasTickets) return 'Gratuito';
     if (!event.ticketPrice) return 'Consulte';
@@ -64,21 +71,40 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
           </div>
         </div>
 
+        {/* Prova social: contador de confirmados alimenta o "Em alta" e convence quem chega */}
+        {provaSocial && (
+          <div className="flex items-center gap-1.5 text-primary font-sans font-semibold text-xs z-10">
+            <Flame size={14} />
+            <span>{provaSocial} 🎉</span>
+          </div>
+        )}
+
         {/* Ações de Inscrição */}
         <div className="flex flex-col gap-2.5 z-10">
           {isRegistered ? (
-            <div className="w-full rounded-xl py-4 bg-accent/10 border border-accent/20 text-accent flex items-center justify-center gap-2 font-sans font-semibold text-sm select-none">
-              <CheckCircle2 size={16} className="text-accent" />
-              <span>Presença confirmada · ingresso garantido</span>
-            </div>
+            <>
+              <div className="w-full rounded-xl py-4 bg-accent/10 border border-accent/20 text-accent flex items-center justify-center gap-2 font-sans font-semibold text-sm select-none">
+                <CheckCircle2 size={16} className="text-accent" />
+                <span>{presencaCancelavel ? 'Presença confirmada!' : 'Presença confirmada · ingresso garantido'}</span>
+              </div>
+              {presencaCancelavel && (
+                <button
+                  onClick={onCancelPresence}
+                  className="text-xs text-textMuted hover:text-danger underline underline-offset-2 transition-colors cursor-pointer self-center"
+                >
+                  Cancelar presença
+                </button>
+              )}
+            </>
           ) : (
             <>
               {event.hasPresence !== false && (
                 <button
-                  onClick={onOpenFreeTicketModal}
+                  onClick={onConfirmPresence}
                   className="w-full rounded-xl py-4 shadow-sm flex items-center justify-center gap-2 transition-all duration-200 font-sans font-semibold text-sm border-0 cursor-pointer neo-click bg-primary text-textDark hover:bg-primaryHover"
                 >
-                  Confirmar presença
+                  <Flame size={16} />
+                  Eu vou! Confirmar presença
                 </button>
               )}
 

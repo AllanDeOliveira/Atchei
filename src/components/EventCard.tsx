@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import type { EventItem } from '../lib/storage';
-import { Navigation, Clock, MapPin, ExternalLink, Ticket, ArrowRight } from 'lucide-react';
+import { Navigation, Clock, MapPin, ExternalLink, Ticket, ArrowRight, Flame } from 'lucide-react';
 import { isVideoUrl } from '../lib/imageUtils';
-import { mapsDirUrl, waMeUrl, formatDateBR } from '../lib/formatters';
+import { mapsDirUrl, waMeUrl, formatDateBR, confirmadosLabel } from '../lib/formatters';
 
 interface EventCardProps {
   event: EventItem;
@@ -158,6 +158,12 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
                     {event.address}
                   </span>
                 </button>
+              )}
+
+              {confirmadosLabel(event.registrationCount || 0) && (
+                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-primary">
+                  <Flame size={11} className="shrink-0" /> {confirmadosLabel(event.registrationCount || 0)}
+                </p>
               )}
             </div>
 

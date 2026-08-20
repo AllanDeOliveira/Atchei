@@ -61,11 +61,15 @@ export const TicketTypesEditor = ({ tickets, onChange }: Props) => {
                 <label className="text-[11px] font-medium text-textMuted ml-1 block">Preço (R$)</label>
                 <Input
                   type="number"
-                  placeholder="0.00"
-                  className="text-xs bg-surface border-glassBorder text-textLight"
+                  min={5}
+                  placeholder="5.00"
+                  className={`text-xs bg-surface text-textLight ${t.price > 0 && t.price < 5 ? 'border-danger' : 'border-glassBorder'}`}
                   value={t.price || ''}
                   onChange={e => atualizar(idx, 'price', e.target.value)}
                 />
+                {t.price > 0 && t.price < 5 && (
+                  <p className="text-[10px] text-danger ml-1">Mínimo R$ 5,00</p>
+                )}
               </div>
               <div className="w-20 space-y-1">
                 <label className="text-[11px] font-medium text-textMuted ml-1 block">Capacidade</label>

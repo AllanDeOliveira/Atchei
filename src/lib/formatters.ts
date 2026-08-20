@@ -22,6 +22,14 @@ export const formatDateExtenso = (dateStr: string): string => {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'UTC' });
 };
 
+/** Prova social: "Mais de X pessoas confirmadas" (marco anterior à contagem) a partir
+ *  de 6; contagem exata de 3 a 5; null abaixo de 3 (número baixo não convence ninguém). */
+export const confirmadosLabel = (count: number): string | null => {
+  if (count < 3) return null;
+  const marco = [500, 200, 100, 50, 20, 10, 5].find(m => count > m);
+  return marco ? `Mais de ${marco} pessoas confirmadas` : `${count} pessoas confirmadas`;
+};
+
 /** Link wa.me: limpa o telefone, prefixa 55 (BR) quando faltar o DDI e embute a mensagem. */
 export const waMeUrl = (phone: string, message: string): string => {
   let d = (phone || '').replace(/\D/g, '');

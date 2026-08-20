@@ -31,7 +31,7 @@ describe('TicketTypesEditor', () => {
   it('converte preço e capacidade para número', () => {
     render(<TicketTypesEditor tickets={[lote()]} onChange={onChange} />);
 
-    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '75.5' } });
+    fireEvent.change(screen.getByPlaceholderText('5.00'), { target: { value: '75.5' } });
     expect(onChange.mock.calls[0][0][0].price).toBe(75.5);
 
     fireEvent.change(screen.getByPlaceholderText('100'), { target: { value: '250' } });
@@ -40,7 +40,7 @@ describe('TicketTypesEditor', () => {
 
   it('preço inválido vira 0 em vez de NaN', () => {
     render(<TicketTypesEditor tickets={[lote()]} onChange={onChange} />);
-    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: 'abc' } });
+    fireEvent.change(screen.getByPlaceholderText('5.00'), { target: { value: 'abc' } });
     expect(onChange.mock.calls[0][0][0].price).toBe(0);
   });
 
@@ -62,7 +62,7 @@ describe('TicketTypesEditor', () => {
     const lotes = [lote({ id: 'a', name: 'A', sold: 7 }), lote({ id: 'b', name: 'B', sold: 3 })];
     render(<TicketTypesEditor tickets={lotes} onChange={onChange} />);
 
-    fireEvent.change(screen.getAllByPlaceholderText('0.00')[0], { target: { value: '99' } });
+    fireEvent.change(screen.getAllByPlaceholderText('5.00')[0], { target: { value: '99' } });
     const [resultado] = onChange.mock.calls[0];
     expect(resultado[0]).toMatchObject({ name: 'A', price: 99, sold: 7 });
     expect(resultado[1]).toEqual(lotes[1]);

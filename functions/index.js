@@ -278,6 +278,11 @@ exports.criarCobrancaPix = onCall({ cors: true, secrets: [ASAAS_API_KEY] }, asyn
             throw error;
         }
         logger.error("Erro ao criar cobrança Pix:", error);
+        // 400 do Asaas é erro de validação com mensagem limpa em PT-BR (ex.: valor
+        // mínimo de R$ 5,00) — repassa ao comprador em vez do genérico.
+        if (error.status === 400 && error.message) {
+            throw new HttpsError('failed-precondition', error.message);
+        }
         throw new HttpsError('internal', 'Erro ao processar pagamento Pix.');
     }
 });

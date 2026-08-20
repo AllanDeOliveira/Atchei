@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { EventTicketSection } from './EventTicketSection';
-import type { EventItem, User } from '../../lib/storage';
+import type { EventItem, User, Registration } from '../../lib/storage';
 
 describe('EventTicketSection Component', () => {
   const mockEvent: EventItem = {
@@ -33,23 +33,53 @@ describe('EventTicketSection Component', () => {
   const mockProps = {
     event: mockEvent,
     currentUser: mockUser,
-    isRegistered: false,
+    myRegistration: null as Registration | null,
     loadingTestTicket: false,
-    onOpenFreeTicketModal: vi.fn(),
+    onConfirmPresence: vi.fn(),
+    onCancelPresence: vi.fn(),
     onOpenPixModal: vi.fn(),
     onOpenContactsModal: vi.fn(),
     onGerarIngressoTeste: vi.fn(),
   };
 
+  const regGratuita: Registration = {
+    id: 'reg-1',
+    eventId: 'event-1',
+    userId: 'admin-1',
+    userName: 'Admin User',
+    userEmail: 'admin@test.com',
+    paymentStatus: 'Gratuito',
+    timestamp: '2026-08-01T00:00:00.000Z',
+  };
+
   it('renders ticket price and action buttons for un-registered user', () => {
     render(<EventTicketSection {...mockProps} />);
-    expect(screen.getByText('Confirmar presença')).toBeInTheDocument();
+    expect(screen.getByText(/Confirmar presença/)).toBeInTheDocument();
     expect(screen.getByText('Gerar ingresso de teste (admin)')).toBeInTheDocument();
   });
 
-  it('renders confirmed status when user is registered', () => {
-    render(<EventTicketSection {...mockProps} isRegistered={true} />);
+  it('confirma presença em 1 toque (sem modal)', () => {
+    render(<EventTicketSection {...mockProps} />);
+    fireEvent.click(screen.getByText(/Confirmar presença/));
+    expect(mockProps.onConfirmPresence).toHaveBeenCalled();
+  });
+
+  it('presença gratuita mostra estado confirmado com opção de cancelar', () => {
+    render(<EventTicketSection {...mockProps} myRegistration={regGratuita} />);
+    expect(screen.getByText('Presença confirmada!')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Cancelar presença'));
+    expect(mockProps.onCancelPresence).toHaveBeenCalled();
+  });
+
+  it('ingresso pago mostra estado garantido SEM opção de cancelar', () => {
+    render(<EventTicketSection {...mockProps} myRegistration={{ ...regGratuita, paymentStatus: 'Pago' }} />);
     expect(screen.getByText('Presença confirmada · ingresso garantido')).toBeInTheDocument();
+    expect(screen.queryByText('Cancelar presença')).toBeNull();
+  });
+
+  it('mostra prova social a partir de 3 confirmados', () => {
+    render(<EventTicketSection {...mockProps} event={{ ...mockEvent, registrationCount: 23 }} />);
+    expect(screen.getByText(/Mais de 20 pessoas confirmadas/)).toBeInTheDocument();
   });
 
   it('abre o checkout Pix quando o evento tem ingressos via Pix', () => {

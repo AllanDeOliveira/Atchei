@@ -29,6 +29,19 @@ function validateEnv() {
 // Executa a validação de ambiente na inicialização
 validateEnv();
 
+// Deploy novo renomeia os chunks; uma aba aberta no build antigo que navegar para uma
+// rota lazy pede um arquivo que não existe mais e cai neste evento do Vite. Recarregar
+// pega o build atual e o usuário nem vê erro. O carimbo de tempo evita loop de reload
+// caso o problema seja outro (aí o ErrorBoundary assume).
+window.addEventListener('vite:preloadError', (event) => {
+  const chave = 'atchei:preload-error-reload';
+  const ultimoReload = Number(sessionStorage.getItem(chave) || 0);
+  if (Date.now() - ultimoReload < 10_000) return;
+  event.preventDefault();
+  sessionStorage.setItem(chave, String(Date.now()));
+  window.location.reload();
+});
+
 // Registra o Service Worker (PWA) em modo autoUpdate: ao detectar um novo deploy, o Workbox
 // instala a nova versão, assume o controle (skipWaiting + clientsClaim) e recarrega a página
 // automaticamente — sem depender de o usuário clicar em nada. Isso evita que bundles antigos

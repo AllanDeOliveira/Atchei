@@ -28,6 +28,7 @@ vi.mock('../lib/storage', () => ({
     getCurrentUser: vi.fn(),
     getProfileById: vi.fn(),
     hasUserRegistered: vi.fn(),
+    getUserRegistration: vi.fn(),
   },
 }));
 
