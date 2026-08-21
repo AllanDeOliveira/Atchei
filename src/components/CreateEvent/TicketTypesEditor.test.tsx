@@ -24,7 +24,7 @@ describe('TicketTypesEditor', () => {
 
     const [novos] = onChange.mock.calls[0];
     expect(novos).toHaveLength(1);
-    expect(novos[0]).toMatchObject({ name: '', price: 0, capacity: 100, sold: 0, status: 'active' });
+    expect(novos[0]).toMatchObject({ name: '', price: 0, capacity: 100, status: 'active' });
     expect(novos[0].id).toMatch(/^tkt-/);
   });
 

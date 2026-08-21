@@ -3,7 +3,7 @@ import { getAuth, initializeAuth, inMemoryPersistence, browserPopupRedirectResol
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
-import { getAnalytics, isSupported } from 'firebase/analytics';
+import { getAnalytics, isSupported, setConsent } from 'firebase/analytics';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import type { Functions } from 'firebase/functions';
 
@@ -39,8 +39,32 @@ auth.languageCode = 'pt';
 export const db = getFirestore(app);
 export const storageRef = getStorage(app);
 
-// O GA4 só coleta depois desta inicialização — o measurementId na config sozinho não
-// envia nada. isSupported() evita crash em navegadores/webviews sem suporte.
+export const COOKIE_CONSENT_KEY = 'atchei:cookie-consent';
+
+/**
+ * Consent Mode v2. O GA4 sobe sempre, mas o estado de consentimento decide COMO:
+ * - negado (padrão): medição sem cookie — pings agregados, sem identificador e sem
+ *   rastreio entre sites. Base legal: legítimo interesse (art. 7º, IX), no espírito
+ *   do guia da ANPD para medição de audiência própria e não invasiva.
+ * - aceito: cookies `_ga` e medição completa (art. 7º, I — consentimento).
+ * Publicidade fica NEGADA nos dois casos: o Atchei não faz ads nem perfilamento.
+ */
+export const aplicarConsentimento = (aceitouAnalytics: boolean) => {
+  setConsent({
+    analytics_storage: aceitouAnalytics ? 'granted' : 'denied',
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    functionality_storage: 'granted',
+    security_storage: 'granted',
+  });
+};
+
+// Estado inicial ANTES de qualquer coleta (senão o GA4 já teria gravado cookie).
+aplicarConsentimento(
+  typeof localStorage !== 'undefined' && localStorage.getItem(COOKIE_CONSENT_KEY) === 'all'
+);
+// isSupported() evita crash em navegadores/webviews sem suporte a GA.
 isSupported().then((ok) => { if (ok) getAnalytics(app); });
 
 // Instância única do Functions, com hookup do emulador em dev local.

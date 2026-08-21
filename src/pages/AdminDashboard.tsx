@@ -2,13 +2,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storage } from '../lib/storage';
 import { formatDateBR } from '../lib/formatters';
+import { Modal } from '../components/ui/Modal';
 import type { EventItem, Registration } from '../lib/storage';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Calendar, Users, Settings, Trash2, Search as SearchIcon, Building2, UserPlus, Mail, Lock, ShieldCheck, X, Copy, Check, Upload } from 'lucide-react';
 import { Input } from '../components/ui/Input';
 import { cn } from '../lib/utils';
-import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import type { AppProfile } from '../lib/storage';
 import { httpsCallable } from 'firebase/functions';
 import { getFunctionsInstance } from '../lib/firebase';
@@ -87,9 +87,6 @@ export const AdminDashboard = () => {
   });
 
   // Fechar modais com Escape (acessibilidade de diálogo)
-  useEscapeToClose(!!editingPartner, () => setEditingPartner(null));
-  useEscapeToClose(showPartnerModal, () => setShowPartnerModal(false));
-  useEscapeToClose(confirmModal.show, () => setConfirmModal(prev => ({ ...prev, show: false })));
 
   // Basic auth check for MVP
   const currentUser = storage.getCurrentUser();
@@ -702,13 +699,13 @@ export const AdminDashboard = () => {
 
         {/* Modal Editar Parceiro */}
         {editingPartner && (
-          <div
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 modal-backdrop"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="admin-edit-partner-title"
-          >
-            <div className="glass rounded-3xl p-6 md:p-8 max-w-md w-full relative max-h-[90vh] overflow-y-auto border border-glassBorder backdrop-blur-3xl text-left shadow-md">
+        <Modal
+          open
+          onClose={() => setEditingPartner(null)}
+          labelledBy="admin-edit-partner-title"
+          backdropClassName="fixed inset-0 z-[100] flex items-center justify-center p-4 modal-backdrop"
+          className="glass rounded-3xl p-6 md:p-8 max-w-md w-full relative max-h-[90vh] overflow-y-auto border border-glassBorder backdrop-blur-3xl text-left shadow-md"
+        >
               <button aria-label="Fechar modal" title="Fechar modal" onClick={() => setEditingPartner(null)} className="absolute top-6 right-6 p-2 border border-glassBorder rounded-xl bg-surface/50 hover:bg-surfaceHover hover:border-accent/40 text-textLight cursor-pointer transition-colors duration-200">
                 <X size={16} />
               </button>
@@ -772,19 +769,17 @@ export const AdminDashboard = () => {
                   {isSavingPartner ? 'Salvando...' : 'Salvar alterações'}
                 </Button>
               </form>
-            </div>
-          </div>
+        </Modal>
         )}
 
         {/* Modal Novo Parceiro */}
-        {showPartnerModal && (
-          <div
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 modal-backdrop"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="admin-new-partner-title"
-          >
-            <div className="glass rounded-3xl p-6 md:p-8 max-w-md w-full relative border border-glassBorder backdrop-blur-3xl text-left shadow-md">
+        <Modal
+          open={showPartnerModal}
+          onClose={() => setShowPartnerModal(false)}
+          labelledBy="admin-new-partner-title"
+          backdropClassName="fixed inset-0 z-[100] flex items-center justify-center p-4 modal-backdrop"
+          className="glass rounded-3xl p-6 md:p-8 max-w-md w-full relative border border-glassBorder backdrop-blur-3xl text-left shadow-md"
+        >
               <button aria-label="Fechar modal" title="Fechar modal" onClick={() => setShowPartnerModal(false)} className="absolute top-6 right-6 p-2 border border-glassBorder rounded-xl bg-surface/50 hover:bg-surfaceHover hover:border-accent/40 text-textLight cursor-pointer transition-colors duration-200">
                 <X size={16} />
               </button>
@@ -912,25 +907,20 @@ export const AdminDashboard = () => {
                   </Button>
                 </div>
               )}
-            </div>
-          </div>
-        )}
+        </Modal>
       </div>
 
       {/* Custom Confirm Modal */}
-      {confirmModal.show && (
-        <div
-          className="fixed inset-0 z-[100] modal-backdrop flex items-center justify-center p-6"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="admin-confirm-title"
-          aria-describedby="admin-confirm-desc"
-          onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}
-        >
-          <div
-            className="glass rounded-3xl p-6 md:p-8 max-w-sm w-full border border-glassBorder backdrop-blur-3xl text-center shadow-md"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Modal
+        open={confirmModal.show}
+        onClose={() => setConfirmModal(prev => ({ ...prev, show: false }))}
+        role="alertdialog"
+        labelledBy="admin-confirm-title"
+        describedBy="admin-confirm-desc"
+        closeOnBackdrop
+        backdropClassName="fixed inset-0 z-[100] modal-backdrop flex items-center justify-center p-6"
+        className="glass rounded-3xl p-6 md:p-8 max-w-sm w-full border border-glassBorder backdrop-blur-3xl text-center shadow-md"
+      >
             <div className="flex flex-col items-center">
               <div className={cn(
                 "w-16 h-16 rounded-2xl border flex items-center justify-center mb-6",
@@ -962,9 +952,7 @@ export const AdminDashboard = () => {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 };

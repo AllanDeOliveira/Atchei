@@ -27,7 +27,6 @@ vi.mock('../lib/storage', () => ({
     getEvents: vi.fn(),
     getCurrentUser: vi.fn(),
     getProfileById: vi.fn(),
-    hasUserRegistered: vi.fn(),
     getUserRegistration: vi.fn(),
   },
 }));
@@ -91,7 +90,7 @@ describe('EventDetails Page', () => {
       type: 'profissional',
       description: '',
     });
-    vi.mocked(storage.hasUserRegistered).mockResolvedValue(false);
+    vi.mocked(storage.getUserRegistration).mockResolvedValue(null);
   });
 
   it('renders event details correctly', async () => {

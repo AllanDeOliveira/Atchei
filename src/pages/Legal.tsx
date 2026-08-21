@@ -54,8 +54,12 @@ export const Privacidade = () => (
     <p>Utilizamos as seguintes categorias de armazenamento no seu navegador:</p>
     <ul>
       <li><strong>Estritamente necessários:</strong> dados de sessão de login e tokens de segurança (autenticação e App Check), indispensáveis ao funcionamento da Plataforma — dispensam consentimento.</li>
-      <li><strong>Analíticos:</strong> cookies do Google Analytics (GA4), usados para métricas agregadas de uso. Você pode bloqueá-los nas configurações do navegador sem perder acesso à Plataforma.</li>
+      <li><strong>Analíticos:</strong> métricas do Google Analytics (GA4) para entender o desempenho e aprimorar a Plataforma. Se você optar por aceitar apenas essenciais, o sistema opera via <strong>Google Consent Mode v2</strong> com medição anônima e sem gravação de cookies no seu navegador. Caso você autorize expressamente, cookies analíticos são ativados para medição completa — a escolha não afeta nem limita o uso da Plataforma.</li>
     </ul>
+    <p>
+      Sua escolha fica salva no navegador e pode ser alterada ou revogada a qualquer momento em{' '}
+      <strong>Preferências de cookies</strong>, no rodapé do site.
+    </p>
 
     <h2>2. Para que usamos e com quais bases legais</h2>
     <ul>

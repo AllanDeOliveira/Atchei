@@ -11,13 +11,13 @@ import toast from 'react-hot-toast';
 
 import { formatCPF, isValidCPF } from '../lib/cpf';
 import { formatDateExtenso, isValidEmail, mapsDirUrl, mapsQuery, googleCalendarUrl, waMeUrl } from '../lib/formatters';
-import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import { httpsCallable } from 'firebase/functions';
 import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { db, getFunctionsInstance } from '../lib/firebase';
 import { EventHeader } from '../components/EventDetails/EventHeader';
 import { EventLocationMap } from '../components/EventDetails/EventLocationMap';
 import { EventTicketSection } from '../components/EventDetails/EventTicketSection';
+import { Modal } from '../components/ui/Modal';
 
 
 export const EventDetails = () => {
@@ -50,9 +50,6 @@ export const EventDetails = () => {
   const [loadingTestTicket, setLoadingTestTicket] = useState(false);
 
   // Fechar modais com Escape (acessibilidade de diálogo)
-  useEscapeToClose(showModal, () => setShowModal(false));
-  useEscapeToClose(showContactsModal, () => setShowContactsModal(false));
-  useEscapeToClose(showPixModal, () => setShowPixModal(false));
   // Mantém a referência da inscrição para o fechamento agendado do modal de sucesso
   const registrationForTicketRef = useRef<Registration | null>(null);
 
@@ -634,14 +631,14 @@ export const EventDetails = () => {
       </div>
 
       {/* Success Modal */}
-      {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4 modal-backdrop"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="event-success-title"
-        >
-          <div className="glass border-none rounded-[2.5rem] p-8 max-w-sm md:max-w-lg w-full text-center relative overflow-hidden backdrop-blur-3xl shadow-float bg-surface/98">
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        role="alertdialog"
+        labelledBy="event-success-title"
+        backdropClassName="fixed inset-0 z-50 flex items-center justify-center px-4 modal-backdrop"
+        className="glass border-none rounded-[2.5rem] p-8 max-w-sm md:max-w-lg w-full text-center relative overflow-hidden backdrop-blur-3xl shadow-float bg-surface/98"
+      >
             {/* Animação premium do Checkmark */}
             <div className="payment-success-icon-wrapper mx-auto mb-6">
               <div className="payment-success-pulse-ring"></div>
@@ -660,19 +657,16 @@ export const EventDetails = () => {
             >
               Entendido
             </button>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Contacts Modal */}
-      {showContactsModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4 modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="event-contacts-title"
-        >
-          <div className="glass border-none rounded-[2.5rem] p-8 max-w-sm md:max-w-lg w-full text-center max-h-[80vh] flex flex-col relative overflow-hidden backdrop-blur-3xl shadow-float bg-surface/98">
+      <Modal
+        open={showContactsModal}
+        onClose={() => setShowContactsModal(false)}
+        labelledBy="event-contacts-title"
+        backdropClassName="fixed inset-0 z-50 flex items-center justify-center px-4 modal-backdrop"
+        className="glass border-none rounded-[2.5rem] p-8 max-w-sm md:max-w-lg w-full text-center max-h-[80vh] flex flex-col relative overflow-hidden backdrop-blur-3xl shadow-float bg-surface/98"
+      >
             <button onClick={() => setShowContactsModal(false)} className="absolute top-5 right-5 bg-white/10 hover:bg-white/20 p-2 rounded-2xl text-textLight transition-all duration-300 cursor-pointer neo-click">
               <span className="sr-only">Fechar</span>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -705,19 +699,16 @@ export const EventDetails = () => {
             >
               Cancelar
             </button>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Pix Modal */}
-      {showPixModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4 modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="event-pix-title"
-        >
-          <div className="glass border-none rounded-[2.5rem] p-5 md:p-8 max-w-sm md:max-w-lg w-full text-center relative overflow-hidden backdrop-blur-3xl shadow-float bg-surface/98">
+      <Modal
+        open={showPixModal}
+        onClose={() => setShowPixModal(false)}
+        labelledBy="event-pix-title"
+        backdropClassName="fixed inset-0 z-50 flex items-center justify-center px-4 modal-backdrop"
+        className="glass border-none rounded-[2.5rem] p-5 md:p-8 max-w-sm md:max-w-lg w-full text-center relative overflow-hidden backdrop-blur-3xl shadow-float bg-surface/98"
+      >
             <button onClick={() => setShowPixModal(false)} className="absolute top-4 right-4 md:top-5 md:right-5 bg-white/10 hover:bg-white/20 p-2 rounded-2xl text-textLight transition-all duration-300 cursor-pointer neo-click">
               <span className="sr-only">Fechar</span>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -731,7 +722,7 @@ export const EventDetails = () => {
                   <p className="text-xs font-medium text-accent ml-1 mb-1.5 md:mb-2">Selecione seus Ingressos</p>
 
                   {(event?.tickets || []).map((t) => {
-                    const available = t.capacity - (event ? soldCount(event, t) : (t.sold || 0));
+                    const available = t.capacity - soldCount(event, t);
                     const isSoldOut = t.status === 'sold_out' || available <= 0;
                     const qty = selectedTickets[t.id] || 0;
 
@@ -977,9 +968,7 @@ export const EventDetails = () => {
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {registrationForTicket && (
         <TicketModal

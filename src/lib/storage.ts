@@ -56,7 +56,8 @@ export interface TicketType {
   name: string;
   price: number;
   capacity: number;
-  sold: number;
+  /** Legado: os vendidos moram em EventItem.soldByTicket (só o backend escreve). */
+  sold?: number;
   status: 'active' | 'sold_out';
 }
 
@@ -92,8 +93,7 @@ export type EventItem = {
   isTestEvent?: boolean;
   registrationCount?: number;
   tickets?: TicketType[]; // Múltiplos tipos de ingressos e lotes
-  /** Vendidos por lote, gerido SÓ pelo backend (rules bloqueiam escrita do cliente).
-   *  tickets[].sold é legado — leia via soldCount(). */
+  /** Vendidos por lote, gerido SÓ pelo backend (rules bloqueiam escrita do cliente). */
   soldByTicket?: { [ticketId: string]: number };
   hasPresence?: boolean;
 };
@@ -105,9 +105,9 @@ export const eventoVigente = (e: Pick<EventItem, 'date'>): boolean => {
   return new Date(`${e.date}T00:00`) >= inicioHoje;
 };
 
-/** Vendidos de um lote: soldByTicket (fonte atual) com fallback no sold legado do array. */
-export const soldCount = (event: Pick<EventItem, 'soldByTicket'>, ticket: Pick<TicketType, 'id' | 'sold'>): number =>
-  event.soldByTicket?.[ticket.id] ?? ticket.sold ?? 0;
+/** Vendidos de um lote — fonte única, escrita só pelo backend. */
+export const soldCount = (event: Pick<EventItem, 'soldByTicket'>, ticket: Pick<TicketType, 'id'>): number =>
+  event.soldByTicket?.[ticket.id] ?? 0;
 
 export type Registration = {
   id: string;
@@ -530,16 +530,6 @@ export const storage = {
     const lastDoc = querySnapshot.docs.length > 0 ? querySnapshot.docs[querySnapshot.docs.length - 1] : null;
 
     return { registrations, lastDoc };
-  },
-
-  hasUserRegistered: async (eventId: string, userId: string): Promise<boolean> => {
-    const q = query(
-      collection(db, 'registrations'),
-      where('eventId', '==', eventId),
-      where('userId', '==', userId)
-    );
-    const querySnapshot = await getDocs(q);
-    return !querySnapshot.empty;
   },
 
   /** Inscrição do usuário neste evento (com id real), ou null. */

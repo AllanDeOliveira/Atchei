@@ -23,6 +23,17 @@ export const MainLayout = () => (
               <li><Link to="/termos" className="hover:text-primary transition-colors">Termos de Uso</Link></li>
               <li><Link to="/privacidade" className="hover:text-primary transition-colors">Política de Privacidade</Link></li>
               <li><Link to="/ingresso" className="hover:text-primary transition-colors">Recuperar ingresso</Link></li>
+              <li>
+                {/* Reabre o modal de preferências de cookies (LGPD: consentimento revogável a qualquer momento). */}
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('atchei:open-cookie-preferences'));
+                  }}
+                  className="hover:text-primary transition-colors cursor-pointer"
+                >
+                  Preferências de cookies
+                </button>
+              </li>
             </ul>
           </div>
           <div>

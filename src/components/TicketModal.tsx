@@ -6,7 +6,7 @@ import type { EventItem, Registration } from '../lib/storage';
 import { makeTicketCode } from '../lib/ticketCode';
 import { formatCPF } from '../lib/cpf';
 import { formatDateExtenso } from '../lib/formatters';
-import { useEscapeToClose } from '../hooks/useEscapeToClose';
+import { Modal } from './ui/Modal';
 
 interface TicketModalProps {
   isOpen: boolean;
@@ -30,7 +30,6 @@ export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModa
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEscapeToClose(isOpen, onClose);
 
   const shortCode = makeTicketCode(registration.id);
 
@@ -119,13 +118,13 @@ export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModa
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[100] modal-backdrop flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="ticket-modal-title"
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      labelledBy="ticket-modal-title"
+      backdropClassName="fixed inset-0 z-[100] modal-backdrop flex items-center justify-center p-4"
+      className="relative w-full max-w-md flex flex-col max-h-[92vh]"
     >
-      <div className="relative w-full max-w-md flex flex-col max-h-[92vh]">
         {/* Close */}
         <button
           onClick={onClose}
@@ -247,7 +246,6 @@ export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModa
             Fechar
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 };

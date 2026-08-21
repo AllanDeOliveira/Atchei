@@ -204,7 +204,9 @@ describe('Cloud Functions Tests', () => {
         exists: true,
         data: () => ({
           creatorId: 'org-1',
-          tickets: [{ id: 'lote-1', name: 'Lote VIP', capacity: 10, sold: 10, price: 50 }],
+          tickets: [{ id: 'lote-1', name: 'Lote VIP', capacity: 10, price: 50 }],
+          // Estoque vem de soldByTicket (escrito só pelo backend), não do array de tickets.
+          soldByTicket: { 'lote-1': 10 },
         }),
       });
 

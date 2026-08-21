@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, MapPin, Loader2, Search as SearchIcon } from 'lucide-react';
 import { useMap, useMapsLibrary, Map, AdvancedMarker } from '@vis.gl/react-google-maps';
 import { Button } from '../ui/Button';
-import { useEscapeToClose } from '../../hooks/useEscapeToClose';
+import { Modal } from '../ui/Modal';
 
 const GOOGLE_MAP_ID = 'bf51a910020fa25a';
 const CENTRO_PADRAO: [number, number] = [-16.0669, -57.6868]; // Cuiabá
@@ -136,7 +136,6 @@ export const LocationPickerModal = ({ open, endereco, onPick, onClose }: Props) 
   const [marcador, setMarcador] = useState<[number, number] | null>(null);
   const [buscando, setBuscando] = useState(false);
 
-  useEscapeToClose(open, onClose);
 
   // Geocodificação reversa do ponto clicado. Nominatim é gratuito e não exige chave;
   // o Google já está carregado, mas o Geocoding é cobrado à parte.
@@ -162,13 +161,12 @@ export const LocationPickerModal = ({ open, endereco, onPick, onClose }: Props) 
   if (!open) return null;
 
   return (
-    <div
-      className="modal-backdrop fixed inset-0 z-[99999] flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="create-map-title"
+    <Modal
+      open
+      onClose={onClose}
+      labelledBy="create-map-title"
+      className="bg-background w-full max-w-lg h-[80vh] rounded-3xl border border-glassBorder shadow-md flex flex-col p-6 relative overflow-hidden animate-in zoom-in duration-300"
     >
-      <div className="bg-background w-full max-w-lg h-[80vh] rounded-3xl border border-glassBorder shadow-md flex flex-col p-6 relative overflow-hidden animate-in zoom-in duration-300">
         <div className="flex justify-between items-center mb-4">
           <div className="text-left">
             <h3 id="create-map-title" className="font-display font-semibold text-xl text-textLight">Escolher localização</h3>
@@ -245,7 +243,6 @@ export const LocationPickerModal = ({ open, endereco, onPick, onClose }: Props) 
         >
           Confirmar localização
         </Button>
-      </div>
-    </div>
+    </Modal>
   );
 };

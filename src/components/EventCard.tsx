@@ -11,6 +11,7 @@ interface EventCardProps {
 
 export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
   const navigate = useNavigate();
+  const provaSocial = confirmadosLabel(event.registrationCount || 0);
 
 
   const openMaps = () => {
@@ -160,9 +161,9 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
                 </button>
               )}
 
-              {confirmadosLabel(event.registrationCount || 0) && (
+              {provaSocial && (
                 <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-primary">
-                  <Flame size={11} className="shrink-0" /> {confirmadosLabel(event.registrationCount || 0)}
+                  <Flame size={11} className="shrink-0" /> {provaSocial}
                 </p>
               )}
             </div>

@@ -49,4 +49,5 @@ vi.mock('firebase/storage', () => ({
 vi.mock('firebase/analytics', () => ({
   getAnalytics: vi.fn(() => ({})),
   isSupported: vi.fn(() => Promise.resolve(false)),
+  setConsent: vi.fn(),
 }));

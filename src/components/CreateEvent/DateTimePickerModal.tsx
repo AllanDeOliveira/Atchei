@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, CalendarPlus, Clock } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { Modal } from '../ui/Modal';
 import { cn } from '../../lib/utils';
-import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 
 interface Props {
   open: boolean;
@@ -70,8 +70,6 @@ const Conteudo = ({ date, time, onConfirm, onClose }: Omit<Props, 'open'>) => {
   const [dataSel, setDataSel] = useState<Date | null>(inicial);
   const [horaSel, setHoraSel] = useState(time || '20:00');
 
-  useEscapeToClose(true, onClose);
-
   const celulas = gerarCelulas(mesAtual);
   const hoje = new Date();
   const [hh, mm] = horaSel.split(':');
@@ -102,13 +100,12 @@ const Conteudo = ({ date, time, onConfirm, onClose }: Omit<Props, 'open'>) => {
   };
 
   return (
-    <div
-      className="modal-backdrop fixed inset-0 z-[99999] flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="datepicker-title"
+    <Modal
+      open
+      onClose={onClose}
+      labelledBy="datepicker-title"
+      className="bg-background w-full max-w-sm rounded-3xl border border-glassBorder shadow-md p-6 relative animate-in zoom-in duration-300"
     >
-      <div className="bg-background w-full max-w-sm rounded-3xl border border-glassBorder shadow-md p-6 relative animate-in zoom-in duration-300">
         <div className="flex justify-between items-center mb-5">
           <div className="text-left">
             <h3 id="datepicker-title" className="font-display font-semibold text-xl text-textLight">Data e horário</h3>
@@ -224,7 +221,6 @@ const Conteudo = ({ date, time, onConfirm, onClose }: Omit<Props, 'open'>) => {
           <CalendarPlus size={16} />
           Confirmar
         </Button>
-      </div>
-    </div>
+    </Modal>
   );
 };

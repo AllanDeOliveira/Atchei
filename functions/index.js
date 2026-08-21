@@ -146,14 +146,12 @@ exports.criarCobrancaPix = onCall({ cors: true, secrets: [ASAAS_API_KEY] }, asyn
 
         if (eventData.tickets && itensSelecionados.length > 0) {
             const tickets = eventData.tickets || [];
-            // Vendidos moram em soldByTicket (campo protegido nas rules, escrito só pelo
-            // backend). tickets[].sold é legado de eventos antigos — fallback de leitura.
+            // Vendidos moram em soldByTicket — campo protegido nas rules, escrito só pelo backend.
             const soldMap = eventData.soldByTicket || {};
             for (const item of itensSelecionados) {
                 const ticketOriginal = tickets.find(t => t.id === item.id);
                 if (ticketOriginal) {
-                    const vendidos = soldMap[item.id] ?? ticketOriginal.sold ?? 0;
-                    const available = ticketOriginal.capacity - vendidos;
+                    const available = ticketOriginal.capacity - (soldMap[item.id] || 0);
                     if (Number(item.quantity) > available) {
                         throw new HttpsError('failed-precondition', `Desculpe, o ingresso "${ticketOriginal.name}" esgotou ou não possui a quantidade solicitada disponível.`);
                     }
@@ -456,8 +454,7 @@ exports.webhookAsaas = onRequest({ cors: true, secrets: [ASAAS_API_KEY, ASAAS_WE
                         if (eventDoc.exists) {
                             const eventData = eventDoc.data();
                             const tickets = eventData.tickets || [];
-                            // Contadores em soldByTicket (protegido nas rules); tickets[].sold
-                            // do array fica intocado (legado, só leitura de fallback).
+                            // Contadores em soldByTicket (protegido nas rules).
                             const soldMap = eventData.soldByTicket || {};
 
                             // Mapear as compras de cada ticketId neste pedido
@@ -470,7 +467,7 @@ exports.webhookAsaas = onRequest({ cors: true, secrets: [ASAAS_API_KEY, ASAAS_WE
                             for (const [ticketId, qtdVendida] of Object.entries(vendasMap)) {
                                 const ticket = tickets.find(t => t.id === ticketId);
                                 if (!ticket) continue;
-                                const novoSold = (soldMap[ticketId] ?? ticket.sold ?? 0) + qtdVendida;
+                                const novoSold = (soldMap[ticketId] || 0) + qtdVendida;
                                 if (novoSold > ticket.capacity) {
                                     isOverbooked = true; // Houve estouro de estoque (venda simultânea)
                                 }
@@ -598,18 +595,14 @@ exports.webhookAsaas = onRequest({ cors: true, secrets: [ASAAS_API_KEY, ASAAS_WE
 
                     // 2. Devolve o estoque dos lotes ao evento
                     if (eventDoc && eventDoc.exists) {
-                        const eventData = eventDoc.data();
-                        const tickets = eventData.tickets || [];
-                        const soldMap = eventData.soldByTicket || {};
+                        const soldMap = eventDoc.data().soldByTicket || {};
                         const devolucoesMap = {};
                         for (const item of itensComprados) {
                             devolucoesMap[item.id] = (devolucoesMap[item.id] || 0) + (Number(item.quantity) || 0);
                         }
                         const updates = {};
                         for (const [ticketId, qtdDevolvida] of Object.entries(devolucoesMap)) {
-                            const ticket = tickets.find(t => t.id === ticketId);
-                            const atual = soldMap[ticketId] ?? ticket?.sold ?? 0;
-                            updates[`soldByTicket.${ticketId}`] = Math.max(0, atual - qtdDevolvida);
+                            updates[`soldByTicket.${ticketId}`] = Math.max(0, (soldMap[ticketId] || 0) - qtdDevolvida);
                         }
                         if (Object.keys(updates).length > 0) {
                             transaction.update(eventRef, updates);

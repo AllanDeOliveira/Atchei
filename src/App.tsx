@@ -8,6 +8,8 @@ import { PrivateRoute } from './components/PrivateRoute';
 import { MainLayout } from './components/MainLayout';
 import { Toaster } from 'react-hot-toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { CookieBanner } from './components/CookieBanner';
+import { InstallAppCard } from './components/InstallAppCard';
 
 // CARREGAMENTO PREGUIÇOSO (LAZY LOADING)
 // Importações dinâmicas sob demanda para reduzir o tamanho inicial do bundle do app
@@ -52,6 +54,8 @@ function App() {
           }}
         />
         <Router>
+          <CookieBanner />
+          <InstallAppCard />
           {/* Suspense envolve todas as rotas para tratar carregamentos lazy de forma assíncrona */}
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>

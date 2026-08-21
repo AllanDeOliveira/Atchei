@@ -7,12 +7,12 @@ import type { EventItem, Registration } from '../lib/storage';
 import { User, LogOut, Calendar, MapPin, Clock, Trash2, Navigation, Ticket, Camera, X, Users, Edit2, Mail, Download, Plus, ScanLine, Wallet, ChevronRight } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
 import { TicketModal } from '../components/TicketModal';
+import { Modal } from '../components/ui/Modal';
 import { NotificationToggle } from '../components/NotificationToggle';
 import { AsaasRecebedor } from '../components/AsaasRecebedor';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useAuth } from '../contexts/AuthContext';
 import { compressImage, dataURLtoBlob } from '../lib/imageUtils';
-import { useEscapeToClose } from '../hooks/useEscapeToClose';
 import toast from 'react-hot-toast';
 
 import { formatCPF, formatPhone, maskCPF, maskPhone, mapsDirUrl, waMeUrl } from '../lib/formatters';
@@ -113,10 +113,6 @@ export const Profile = () => {
   const [isLoadingMoreParticipants, setIsLoadingMoreParticipants] = useState<boolean>(false);
 
   // Fechar modais com Escape (acessibilidade de diálogo)
-  useEscapeToClose(!!deleteConfirm, () => setDeleteConfirm(null));
-  useEscapeToClose(showEditModal, () => setShowEditModal(false));
-  useEscapeToClose(showParticipantsModal, () => setShowParticipantsModal(false));
-  useEscapeToClose(showManualTicketModal, () => setShowManualTicketModal(false));
 
   const loadEvents = useCallback(async () => {
     try {
@@ -327,7 +323,7 @@ export const Profile = () => {
           ...prev,
           soldByTicket: {
             ...prev.soldByTicket,
-            [manualTicketTypeId]: soldCount(prev, { id: manualTicketTypeId, sold: prev.tickets?.find(t => t.id === manualTicketTypeId)?.sold ?? 0 }) + 1,
+            [manualTicketTypeId]: soldCount(prev, { id: manualTicketTypeId }) + 1,
           },
         } : prev);
       }
@@ -761,17 +757,15 @@ export const Profile = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div
-          className="fixed inset-0 z-[100] modal-backdrop flex items-center justify-center p-6"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="profile-delete-title"
-          onClick={() => setDeleteConfirm(null)}
-        >
-          <div
-            className="glass rounded-[2rem] p-6 max-w-sm w-full relative overflow-hidden backdrop-blur-2xl border border-glassBorder"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Modal
+        open
+        onClose={() => setDeleteConfirm(null)}
+        role="alertdialog"
+        labelledBy="profile-delete-title"
+        closeOnBackdrop
+        backdropClassName="fixed inset-0 z-[100] modal-backdrop flex items-center justify-center p-6"
+        className="glass rounded-[2rem] p-6 max-w-sm w-full relative overflow-hidden backdrop-blur-2xl border border-glassBorder"
+      >
             <div className="flex flex-col items-center text-center">
               <div className="w-14 h-14 rounded-2xl bg-danger/10 text-danger border border-danger/20 flex items-center justify-center mb-4 shadow-md">
                 <Trash2 size={22} />
@@ -795,23 +789,18 @@ export const Profile = () => {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+      </Modal>
       )}
 
       {/* Modal Editar Perfil Completo */}
-      {showEditModal && (
-        <div
-          className="fixed inset-0 z-[100] modal-backdrop flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="profile-edit-title"
-          onClick={() => setShowEditModal(false)}
-        >
-          <div
-            className="glass rounded-[2.5rem] p-6 max-w-md w-full relative flex flex-col max-h-[90vh] backdrop-blur-3xl border border-glassBorder"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <Modal
+        open={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        labelledBy="profile-edit-title"
+        closeOnBackdrop
+        backdropClassName="fixed inset-0 z-[100] modal-backdrop flex items-center justify-center p-4"
+        className="glass rounded-[2.5rem] p-6 max-w-md w-full relative flex flex-col max-h-[90vh] backdrop-blur-3xl border border-glassBorder"
+      >
             <button 
               title="Fechar"
               aria-label="Fechar"
@@ -924,23 +913,18 @@ export const Profile = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Modal de Participantes Inscritos */}
-      {showParticipantsModal && selectedEventForParticipants && (
-        <div
-          className="fixed inset-0 z-[100] modal-backdrop flex items-center justify-center p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="profile-participants-title"
-          onClick={() => setShowParticipantsModal(false)}
-        >
-          <div
-            className="glass rounded-[2rem] p-5 md:p-8 max-w-lg md:max-w-2xl w-full relative flex flex-col max-h-[85vh] border border-glassBorder backdrop-blur-3xl shadow-float bg-surface/98"
-            onClick={(e) => e.stopPropagation()}
-          >
+      {selectedEventForParticipants && (
+      <Modal
+        open={showParticipantsModal}
+        onClose={() => setShowParticipantsModal(false)}
+        labelledBy="profile-participants-title"
+        closeOnBackdrop
+        backdropClassName="fixed inset-0 z-[100] modal-backdrop flex items-center justify-center p-6"
+        className="glass rounded-[2rem] p-5 md:p-8 max-w-lg md:max-w-2xl w-full relative flex flex-col max-h-[85vh] border border-glassBorder backdrop-blur-3xl shadow-float bg-surface/98"
+      >
             <div className="absolute top-5 right-5 md:top-6 md:right-6 flex items-center gap-1.5 md:gap-2">
               <button 
                 onClick={exportToCSV}
@@ -1079,19 +1063,18 @@ export const Profile = () => {
                 Fechar
               </button>
             </div>
-          </div>
-        </div>
+      </Modal>
       )}
 
       {/* Modal Gerar Ingresso Manual */}
-      {showManualTicketModal && selectedEventForParticipants && (
-        <div
-          className="fixed inset-0 z-[110] modal-backdrop flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="profile-manual-title"
-        >
-          <div className="glass rounded-[2.5rem] p-6 md:p-8 max-w-md w-full relative border border-glassBorder backdrop-blur-3xl shadow-float bg-surface/98 text-left animate-in zoom-in duration-300">
+      {selectedEventForParticipants && (
+      <Modal
+        open={showManualTicketModal}
+        onClose={() => setShowManualTicketModal(false)}
+        labelledBy="profile-manual-title"
+        backdropClassName="fixed inset-0 z-[110] modal-backdrop flex items-center justify-center p-4"
+        className="glass rounded-[2.5rem] p-6 md:p-8 max-w-md w-full relative border border-glassBorder backdrop-blur-3xl shadow-float bg-surface/98 text-left animate-in zoom-in duration-300"
+      >
             <button
               onClick={() => setShowManualTicketModal(false)}
               className="absolute top-6 right-6 p-2 bg-surface/50 border border-glassBorder rounded-xl text-textLight hover:bg-surfaceHover hover:border-primary/40 active:scale-95 transition-all duration-300 cursor-pointer neo-click z-10"
@@ -1209,8 +1192,7 @@ export const Profile = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+      </Modal>
       )}
 
       {selectedRegForTicket && selectedEventForTicket && (

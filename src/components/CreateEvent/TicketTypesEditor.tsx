@@ -12,7 +12,7 @@ export const TicketTypesEditor = ({ tickets, onChange }: Props) => {
   const adicionar = () =>
     onChange([
       ...tickets,
-      { id: `tkt-${crypto.randomUUID()}`, name: '', price: 0, capacity: 100, sold: 0, status: 'active' },
+      { id: `tkt-${crypto.randomUUID()}`, name: '', price: 0, capacity: 100, status: 'active' },
     ]);
 
   const remover = (index: number) => onChange(tickets.filter((_, i) => i !== index));
