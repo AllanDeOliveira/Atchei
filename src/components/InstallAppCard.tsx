@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Share, X, HelpCircle, Download } from 'lucide-react';
 import { Modal } from './ui/Modal';
+import { INSTALL_DISMISS_KEY as DISMISS_KEY } from '../lib/storageKeys';
+import { INSTALL_RESOLVED_EVENT } from '../hooks/useInstallCardPending';
 
 // O evento `beforeinstallprompt` (Chrome/Android) não faz parte dos tipos padrão do DOM
 type BeforeInstallPromptEvent = Event & {
@@ -17,7 +19,7 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export const DISMISS_KEY = '@chain:install-dismissed';
+export { DISMISS_KEY };
 
 /**
  * Pop-up flutuante para adicionar o app à tela inicial (PWA), com o mesmo design do aviso de cookies.
@@ -58,6 +60,8 @@ export const InstallAppCard = () => {
     }
     setDismissed(true);
     setShowGuideModal(false);
+    // Libera a vez para o aviso de cookies, que ocupa a mesma posição na tela.
+    window.dispatchEvent(new Event(INSTALL_RESOLVED_EVENT));
   };
 
   const instalar = async () => {

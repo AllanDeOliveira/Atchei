@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { storage } from './storage';
+import { USER_KEY } from './storageKeys';
 
 describe('storage helpers', () => {
   beforeEach(() => {
@@ -12,7 +13,7 @@ describe('storage helpers', () => {
 
   it('getCurrentUser deve retornar o usuário armazenado no localStorage', () => {
     const mockUser = { id: 'u1', name: 'Teste', username: 'teste@exemplo.com', role: 'user' as const };
-    localStorage.setItem('@chain:user', JSON.stringify(mockUser));
+    localStorage.setItem(USER_KEY, JSON.stringify(mockUser));
     expect(storage.getCurrentUser()).toEqual(mockUser);
   });
 });

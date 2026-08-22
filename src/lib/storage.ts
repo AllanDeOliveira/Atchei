@@ -1,4 +1,5 @@
 import { auth, db, storageRef } from './firebase';
+import { USER_KEY } from './storageKeys';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   collection,
@@ -293,7 +294,7 @@ export const storage = {
 
   // Auth (Sessão mantida localmente para rapidez, sincronizada com Firebase)
   getCurrentUser: (): User | null => {
-    const data = localStorage.getItem('@chain:user');
+    const data = localStorage.getItem(USER_KEY);
     if (!data) return null;
     const user = JSON.parse(data);
     if (!user.role) user.role = 'user';
@@ -327,7 +328,7 @@ export const storage = {
         ...(birthDate ? { birthDate } : {})
       });
 
-      localStorage.setItem('@chain:user', JSON.stringify(user));
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
       return user;
     } catch (error) {
       console.error("Erro no registro:", error);
@@ -362,7 +363,7 @@ export const storage = {
         profileId: profile?.id
       };
 
-      localStorage.setItem('@chain:user', JSON.stringify(user));
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
       return user;
     } catch (error) {
       console.error("Erro no login:", error);
@@ -372,7 +373,7 @@ export const storage = {
 
   logout: async () => {
     await signOut(auth);
-    localStorage.removeItem('@chain:user');
+    localStorage.removeItem(USER_KEY);
   },
 
   updatePartnerPassword: async (partnerId: string, newPassword: string) => {
@@ -402,7 +403,7 @@ export const storage = {
     // Atualizar a sessão local
     if (currentUser && currentUser.id === partnerId) {
       currentUser.mustChangePassword = false;
-      localStorage.setItem('@chain:user', JSON.stringify(currentUser));
+      localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
     }
   },
 
@@ -421,7 +422,7 @@ export const storage = {
             name: updates.name || currentUser.name,
             imageUrl: updates.imageUrl !== undefined ? updates.imageUrl : currentUser.imageUrl
           };
-          localStorage.setItem('@chain:user', JSON.stringify(updatedUser));
+          localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
         }
 
         return { id: qs.docs[0].id, ...qs.docs[0].data(), ...updates } as AppProfile;

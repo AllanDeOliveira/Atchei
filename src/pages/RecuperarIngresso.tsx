@@ -10,12 +10,11 @@ import { Button } from '../components/ui/Button';
 import { TicketModal } from '../components/TicketModal';
 import type { EventItem, Registration } from '../lib/storage';
 import { formatDateBR } from '../lib/formatters';
-
-type RecoveredTicket = { registration: Registration; event: EventItem };
-
 // Onde guardamos o e-mail entre o "enviar link" e o retorno pelo link mágico.
 // Necessário porque o clique no e-mail recarrega o app numa nova aba/sessão.
-const STORAGE_KEY = '@chain:recoveryEmail';
+import { RECOVERY_EMAIL_KEY as STORAGE_KEY } from '../lib/storageKeys';
+
+type RecoveredTicket = { registration: Registration; event: EventItem };
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

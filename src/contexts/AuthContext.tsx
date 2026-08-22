@@ -5,6 +5,7 @@ import { auth } from '../lib/firebase';
 import { storage } from '../lib/storage';
 import type { User } from '../lib/storage';
 import { syncNotificationToken } from '../lib/notifications';
+import { USER_KEY } from '../lib/storageKeys';
 
 interface AuthContextType {
   user: User | null;
@@ -38,7 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const currentRole = isAppAdmin ? 'admin' : localUser.role;
           if (localUser.role !== currentRole) {
             localUser.role = currentRole;
-            localStorage.setItem('@chain:user', JSON.stringify(localUser));
+            localStorage.setItem(USER_KEY, JSON.stringify(localUser));
           }
           setUser(localUser);
           setIsLoading(false);
@@ -85,14 +86,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
           if (hasChanges) {
             setUser(updatedUser);
-            localStorage.setItem('@chain:user', JSON.stringify(updatedUser));
+            localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
           }
         } catch (error) {
           console.error("Erro ao sincronizar perfil do Firestore:", error);
         }
       } else {
         setUser(null);
-        localStorage.removeItem('@chain:user');
+        localStorage.removeItem(USER_KEY);
       }
       setIsLoading(false);
     });
@@ -107,7 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const handleUpdateUser = (newUser: User) => {
     setUser(newUser);
-    localStorage.setItem('@chain:user', JSON.stringify(newUser));
+    localStorage.setItem(USER_KEY, JSON.stringify(newUser));
   };
 
   return (
