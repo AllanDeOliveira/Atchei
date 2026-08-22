@@ -3,6 +3,8 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { CookieBanner } from './CookieBanner';
 import { COOKIE_CONSENT_KEY, aplicarConsentimento } from '../lib/firebase';
+import { INSTALL_DISMISS_KEY } from '../lib/storageKeys';
+import { INSTALL_RESOLVED_EVENT } from '../hooks/useInstallCardPending';
 
 vi.mock('../lib/firebase', () => ({
   COOKIE_CONSENT_KEY: 'atchei:cookie-consent',
@@ -13,6 +15,9 @@ describe('CookieBanner Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    // O banner só aparece depois que o convite de instalação sai da tela. Os testes
+    // abaixo tratam do banner em si, então partem do convite já dispensado.
+    localStorage.setItem(INSTALL_DISMISS_KEY, '1');
   });
 
   // O aviso não depende de login: quem chega por link de evento (a maior parte do
@@ -131,6 +136,43 @@ describe('CookieBanner Component', () => {
     );
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('atchei:open-cookie-preferences'));
+    });
+
+    expect(screen.getByText('Preferências de cookies')).toBeInTheDocument();
+  });
+
+  // A ordem pedida: "adicionar à tela inicial" primeiro, cookies depois.
+  it('só mostra o banner depois que o convite de instalação sai da tela', () => {
+    localStorage.removeItem(INSTALL_DISMISS_KEY);
+
+    render(
+      <MemoryRouter>
+        <CookieBanner />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByText('Primeiro, vamos falar dos cookies 🍪')).not.toBeInTheDocument();
+
+    act(() => {
+      localStorage.setItem(INSTALL_DISMISS_KEY, '1');
+      window.dispatchEvent(new Event(INSTALL_RESOLVED_EVENT));
+    });
+
+    expect(screen.getByText('Primeiro, vamos falar dos cookies 🍪')).toBeInTheDocument();
+  });
+
+  // O link do rodapé precisa funcionar mesmo antes de o convite ser resolvido.
+  it('abre as preferências pelo rodapé mesmo com o convite de instalação na tela', () => {
+    localStorage.removeItem(INSTALL_DISMISS_KEY);
+
+    render(
+      <MemoryRouter>
+        <CookieBanner />
+      </MemoryRouter>
+    );
 
     act(() => {
       window.dispatchEvent(new CustomEvent('atchei:open-cookie-preferences'));

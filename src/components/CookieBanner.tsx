@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { X, ShieldCheck, BarChart3, Check } from 'lucide-react';
 import { COOKIE_CONSENT_KEY, aplicarConsentimento } from '../lib/firebase';
 import { Modal } from './ui/Modal';
+import { useInstallCardPending } from '../hooks/useInstallCardPending';
 
 /** Aviso de cookies para TODO visitante (logado ou não): quem chega por link de evento
  *  é a maior parte do público, e é dele que vêm as métricas. */
@@ -17,6 +18,11 @@ export const CookieBanner = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [analyticsChecked, setAnalyticsChecked] = useState(true);
+
+  // O convite de "adicionar à tela inicial" vem primeiro: os dois pop-ups dividem a
+  // mesma posição, e antes o de cookies cobria o outro. O modal de preferências
+  // (aberto pelo rodapé) não é afetado — só o banner espera a vez.
+  const installCardPending = useInstallCardPending();
 
   const lerEscolha = () => {
     try {
@@ -64,7 +70,7 @@ export const CookieBanner = () => {
   return (
     <>
       {/* Banner Principal (Estilo Canva - apenas para usuários logados) */}
-      {!escolha && !showModal && (
+      {!escolha && !showModal && !installCardPending && (
         <aside
           role="region"
           aria-label="Aviso de cookies"
@@ -137,9 +143,6 @@ export const CookieBanner = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-semibold text-textLight">Cookies essenciais</span>
-                    <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300">
-                      Sempre ativo
-                    </span>
                   </div>
                   <p className="text-xs text-textMuted mt-1 leading-relaxed">
                     Indispensáveis para o funcionamento da plataforma, login, autenticação segura e proteção contra fraudes (reCAPTCHA / App Check).
