@@ -30,6 +30,16 @@ vi.mock('../lib/storage', () => ({
   },
 }));
 
+// O reset de senha passa pela function `solicitarResetSenha`, não pelo SDK do Auth.
+vi.mock('../lib/firebase', () => ({
+  getFunctionsInstance: vi.fn(() => ({})),
+}));
+
+const mockCallable = vi.fn();
+vi.mock('firebase/functions', () => ({
+  httpsCallable: vi.fn(() => mockCallable),
+}));
+
 describe('Login Page', () => {
   const mockNavigate = vi.fn();
 
@@ -124,5 +134,54 @@ describe('Login Page', () => {
 
     expect(storage.login).toHaveBeenCalledWith('errado@example.com', 'senhaErrada');
     expect(toast.error).toHaveBeenCalledWith('Credenciais inválidas!');
+  });
+
+  it('chama solicitarResetSenha com o e-mail digitado', async () => {
+    mockCallable.mockResolvedValue({ data: { ok: true } });
+
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    );
+
+    await userEvent.type(screen.getByPlaceholderText('Seu e-mail'), '  Pessoa@Exemplo.com  ');
+    await userEvent.click(screen.getByRole('button', { name: /esqueci minha senha/i }));
+
+    expect(mockCallable).toHaveBeenCalledWith({ email: 'Pessoa@Exemplo.com' });
+    expect(toast.success).toHaveBeenCalledWith(
+      'Se o e-mail estiver cadastrado, você receberá o link de redefinição.'
+    );
+  });
+
+  it('não chama a function quando o campo de e-mail está vazio', async () => {
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /esqueci minha senha/i }));
+
+    expect(mockCallable).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith('Digite seu e-mail acima para recuperar a senha.');
+  });
+
+  // A mensagem de sucesso é neutra por design (anti-enumeração), mas falha de rede
+  // precisa aparecer — senão o usuário acha que o link foi enviado e nunca chega.
+  it('avisa quando a chamada falha por rede', async () => {
+    mockCallable.mockRejectedValue(new Error('offline'));
+
+    render(
+      <MemoryRouter>
+        <Login />
+      </MemoryRouter>
+    );
+
+    await userEvent.type(screen.getByPlaceholderText('Seu e-mail'), 'pessoa@exemplo.com');
+    await userEvent.click(screen.getByRole('button', { name: /esqueci minha senha/i }));
+
+    expect(toast.error).toHaveBeenCalledWith('Falha ao enviar. Verifique a conexão e tente novamente.');
+    expect(toast.success).not.toHaveBeenCalled();
   });
 });

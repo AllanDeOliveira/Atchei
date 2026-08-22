@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { getFunctionsInstance } from '../lib/firebase';
 import { storage } from '../lib/storage';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
@@ -56,17 +56,17 @@ export const Login = () => {
     if (isLimited) return;
     triggerCooldown();
     try {
-      await sendPasswordResetEmail(auth, email.trim());
+      // Function própria em vez de sendPasswordResetEmail: o Google não deixa
+      // personalizar os templates deste projeto, então o e-mail e o link são
+      // montados no servidor e apontam para /auth/action. Ela responde neutro
+      // por design — conta inexistente não se distingue de envio feito.
+      const solicitarResetSenha = httpsCallable(getFunctionsInstance(), 'solicitarResetSenha');
+      await solicitarResetSenha({ email: email.trim() });
     } catch (error) {
       console.warn('Reset de senha:', error);
-      const code = (error as { code?: string })?.code;
-      // Só "usuário não existe" fica neutro (anti-enumeração); erro operacional aparece.
-      if (code && code !== 'auth/user-not-found') {
-        if (code === 'auth/invalid-email') toast.error('E-mail inválido.');
-        else if (code === 'auth/too-many-requests') toast.error('Muitas tentativas. Aguarde alguns minutos.');
-        else toast.error(`Falha ao enviar (${code}). Verifique a conexão e tente novamente.`);
-        return;
-      }
+      // Só falha de transporte chega aqui; a function engole os erros de negócio.
+      toast.error('Falha ao enviar. Verifique a conexão e tente novamente.');
+      return;
     }
     toast.success('Se o e-mail estiver cadastrado, você receberá o link de redefinição.');
   };

@@ -3,7 +3,7 @@ import { getAuth, initializeAuth, inMemoryPersistence, browserPopupRedirectResol
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
-import { getAnalytics, isSupported, setConsent } from 'firebase/analytics';
+import { initializeAnalytics, isSupported, setConsent } from 'firebase/analytics';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import type { Functions } from 'firebase/functions';
 
@@ -65,7 +65,15 @@ aplicarConsentimento(
   typeof localStorage !== 'undefined' && localStorage.getItem(COOKIE_CONSENT_KEY) === 'all'
 );
 // isSupported() evita crash em navegadores/webviews sem suporte a GA.
-isSupported().then((ok) => { if (ok) getAnalytics(app); });
+//
+// cookie_domain: 'none' fixa o cookie no host exato. Sem isso o GA4 tenta subir a
+// árvore de domínios e chega em ".web.app", que está na Public Suffix List — o
+// navegador recusa o cookie ("domínio inválido") e o _ga nunca persiste, fazendo
+// cada visita ser contada como um usuário novo. Em domínio próprio isso não
+// aparece; em <projeto>.web.app, sim.
+isSupported().then((ok) => {
+  if (ok) initializeAnalytics(app, { config: { cookie_domain: 'none' } });
+});
 
 // Instância única do Functions, com hookup do emulador em dev local.
 // Lazy para que testes que mockam os módulos do Firebase não a inicializem.

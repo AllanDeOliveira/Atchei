@@ -161,6 +161,35 @@ describe('Cloud Functions Tests', () => {
       await expect(wrapped({ data: { valor: null } })).rejects.toThrow('Dados incompletos para gerar o Pix.');
     });
 
+    // Kill switch do Pix. Esconder o botão no front não basta: o endpoint é público
+    // e precisa recusar sozinho enquanto as vendas estiverem em stand-by.
+    it('recusa cobranca nova quando o Pix esta em stand-by', async () => {
+      const anterior = process.env.PIX_ENABLED;
+      process.env.PIX_ENABLED = 'false';
+      try {
+        const wrapped = fft.wrap(myFunctions.criarCobrancaPix);
+        filaPadrao();
+
+        await expect(wrapped({ data: pedidoBase(), auth: { uid: 'user-1' } }))
+          .rejects.toThrow('As vendas por Pix estão temporariamente indisponíveis.');
+        expect(mockAsaasCriarCobranca).not.toHaveBeenCalled();
+      } finally {
+        if (anterior === undefined) delete process.env.PIX_ENABLED;
+        else process.env.PIX_ENABLED = anterior;
+      }
+    });
+
+    // O valor do cliente nunca pode virar a cobrança: sem itens e sem preço no
+    // evento não há origem confiável, então o pedido é recusado.
+    it('recusa quando nao ha itens nem preco configurado no evento', async () => {
+      const wrapped = fft.wrap(myFunctions.criarCobrancaPix);
+      filaPadrao({ pixTicketPrice: '' });
+
+      await expect(wrapped({ data: pedidoBase({ itensSelecionados: [], valor: 0.01 }), auth: { uid: 'user-1' } }))
+        .rejects.toThrow('Este evento não tem preço de ingresso configurado.');
+      expect(mockAsaasCriarCobranca).not.toHaveBeenCalled();
+    });
+
     it('recusa compra sem autenticacao', async () => {
       const wrapped = fft.wrap(myFunctions.criarCobrancaPix);
       await expect(wrapped({ data: pedidoBase() }))
