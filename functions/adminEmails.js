@@ -2,7 +2,7 @@
 // scripts/set-admins.js para conceder o custom claim { admin: true } — a
 // autorização em runtime (functions e security rules) é 100% via claim.
 const ADMIN_EMAILS = [
-  'admin@chain.app'
+  'suporte.atchei@gmail.com'
 ].map(e => e.toLowerCase());
 
 // Política de autorização de admin: exclusivamente via custom claim.

@@ -122,7 +122,7 @@ export const ValidateTickets = () => {
 
   // ─── Resolve um texto lido para uma inscrição ───
   // Aceita o id completo do documento (lido do QR, exato) OU o código curto
-  // CHN-XXXX-XXXX (digitação manual), casando contra as inscrições do evento.
+  // ATX-XXXX-XXXX (digitação manual), casando contra as inscrições do evento.
   const resolveRegistration = useCallback(
     async (text: string): Promise<Registration | 'ambiguous' | null> => {
       const matchIn = (list: Registration[]): Registration | 'ambiguous' | null => {

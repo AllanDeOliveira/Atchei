@@ -427,8 +427,12 @@ export const AdminDashboard = () => {
 
   const handleAddPartner = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Remove acentos e espaços do nome para gerar e-mail válido no Firebase Auth
-    const email = `${newPartner.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '')}@chain.app`;
+    // Remove acentos e espaços do nome para gerar e-mail válido no Firebase Auth.
+    // O domínio é o do Hosting do projeto de propósito: subdomínio do Firebase que
+    // ninguém de fora consegue registrar, então não dá para sequestrar o endereço e
+    // pedir redefinição por ele. Como não recebe e-mail, a redefinição destas contas
+    // é sempre pelo painel (adminResetPassword), nunca por link.
+    const email = `${newPartner.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '')}@atchei.web.app`;
     const password = generateSecurePassword();
 
     setIsSavingPartner(true);

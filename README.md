@@ -83,7 +83,7 @@ O organizador vira recebedor cadastrando seus dados no perfil (`asaasCadastrarRe
 O scanner aceita duas entradas:
 
 - **QR Code** — o id completo do documento de inscrição
-- **Código curto** — formato `CHN-XXXX-XXXX`, para digitar quando a câmera falha (o prefixo legado `ATX-` continua aceito)
+- **Código curto** — formato `ATX-XXXX-XXXX`, para digitar quando a câmera falha (o prefixo legado `CHN-` continua aceito)
 
 O código curto é derivado do id por FNV-1a → base32 Crockford, sem campo extra no banco. Se mais de uma inscrição casar com o mesmo código, o sistema **recusa a validação** em vez de arriscar liberar a pessoa errada. Check-ins não podem ser revertidos.
 

@@ -38,15 +38,15 @@ const ticketCodeCore = (id: string): string => {
   return core;
 };
 
-// Código formatado para exibição no ingresso: CHN-XXXX-XXXX
+// Código formatado para exibição no ingresso: ATX-XXXX-XXXX
 export const makeTicketCode = (id: string): string => {
   const core = ticketCodeCore(id);
-  return `CHN-${core.slice(0, 4)}-${core.slice(4)}`;
+  return `ATX-${core.slice(0, 4)}-${core.slice(4)}`;
 };
 
 // Normaliza um texto lido/digitado para comparação: maiúsculas, mapeia os
 // caracteres comumente confundidos (O→0, I/L→1) e remove tudo que não for
-// alfanumérico (espaços, hifens, o prefixo "CHN-", etc.).
+// alfanumérico (espaços, hifens, o prefixo "ATX-", etc.).
 const normalizeLoose = (raw: string): string => {
   const upper = (raw || '').toUpperCase();
   const mapped = upper.replace(/O/g, '0').replace(/[IL]/g, '1');
@@ -54,8 +54,8 @@ const normalizeLoose = (raw: string): string => {
 };
 
 // Verifica se um texto livre corresponde ao código curto de um id.
-// Aceita o núcleo puro ("12AB34CD") ou com prefixo ("CHN12AB34CD").
-// "ATX" é o prefixo legado — ingressos antigos ainda o exibem.
+// Aceita o núcleo puro ("12AB34CD") ou com prefixo ("ATX12AB34CD").
+// "CHN" é o prefixo legado — ingressos emitidos sob o nome Chain ainda o exibem.
 export const matchesTicketCode = (raw: string, id: string): boolean => {
   const norm = normalizeLoose(raw);
   if (norm.length < 6) return false;
