@@ -23,6 +23,7 @@ const ChangePassword = React.lazy(() => import('./pages/ChangePassword').then(m 
 const ValidateTickets = React.lazy(() => import('./pages/ValidateTickets').then(m => ({ default: m.ValidateTickets })));
 const Financeiro = React.lazy(() => import('./pages/Financeiro').then(m => ({ default: m.Financeiro })));
 const RecuperarIngresso = React.lazy(() => import('./pages/RecuperarIngresso').then(m => ({ default: m.RecuperarIngresso })));
+const AuthAction = React.lazy(() => import('./pages/AuthAction').then(m => ({ default: m.AuthAction })));
 const Privacidade = React.lazy(() => import('./pages/Legal').then(m => ({ default: m.Privacidade })));
 const Termos = React.lazy(() => import('./pages/Legal').then(m => ({ default: m.Termos })));
 const QuemSomos = React.lazy(() => import('./pages/Legal').then(m => ({ default: m.QuemSomos })));
@@ -54,8 +55,10 @@ function App() {
           }}
         />
         <Router>
-          <CookieBanner />
+          {/* Nesta ordem: o convite de instalação aparece primeiro e o aviso de
+              cookies só entra quando ele sai — os dois ocupam a mesma posição. */}
           <InstallAppCard />
+          <CookieBanner />
           {/* Suspense envolve todas as rotas para tratar carregamentos lazy de forma assíncrona */}
           <Suspense fallback={<LoadingSpinner />}>
             <Routes>
@@ -63,6 +66,9 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/change-password" element={<ChangePassword />} />
+              {/* Handler das ações de e-mail do Auth. Só entra em uso quando os templates
+                  do Console apontarem "Personalizar URL de ação" para esta rota. */}
+              <Route path="/auth/action" element={<AuthAction />} />
               <Route path="/event/:id" element={<EventDetails />} />
               {/* Recuperação de ingresso por CPF (acesso público, sem login) */}
               <Route path="/ingresso" element={<RecuperarIngresso />} />
