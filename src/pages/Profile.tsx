@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
 import { auth } from '../lib/firebase';
-import { storage, soldCount } from '../lib/storage';
+import { storage, soldCount, STATUS_AGUARDANDO, STATUS_PAGO_WHATSAPP } from '../lib/storage';
 import type { EventItem, Registration } from '../lib/storage';
 import { User, LogOut, Calendar, MapPin, Clock, Trash2, Navigation, Ticket, Camera, X, Users, Edit2, Mail, Download, Plus, ScanLine, Wallet, ChevronRight } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
@@ -346,6 +346,30 @@ export const Profile = () => {
       toast.error("Erro ao gerar ingresso manual.");
     } finally {
       setIsGeneratingManualTicket(false);
+    }
+  };
+
+  // Vendedor confirma o pagamento combinado no WhatsApp — a intenção vira ingresso.
+  const handleConfirmarPagamento = async (reg: Registration) => {
+    try {
+      await storage.confirmRegistrationPayment(reg.id);
+      setParticipantsList(prev => prev.map(r => r.id === reg.id ? { ...r, paymentStatus: STATUS_PAGO_WHATSAPP } : r));
+      toast.success('Pagamento confirmado! O ingresso já está no perfil do comprador.');
+    } catch (error) {
+      console.error('Erro ao confirmar pagamento:', error);
+      toast.error('Não foi possível confirmar o pagamento.');
+    }
+  };
+
+  // Comprador desistiu (ou nunca pagou): sai da lista sem virar ingresso.
+  const handleRemoverDaLista = async (reg: Registration) => {
+    try {
+      await storage.deleteRegistration(reg.id);
+      setParticipantsList(prev => prev.filter(r => r.id !== reg.id));
+      toast('Removido da lista.');
+    } catch (error) {
+      console.error('Erro ao remover da lista:', error);
+      toast.error('Não foi possível remover.');
     }
   };
 
@@ -704,7 +728,10 @@ export const Profile = () => {
                       <button
                         onClick={() => {
                           const reg = myRegistrations.find(r => r.eventId === event.id);
-                          if (reg) {
+                          if (reg?.paymentStatus === STATUS_AGUARDANDO) {
+                            // Intenção via WhatsApp ainda sem confirmação — não há QR pra mostrar.
+                            toast('Aguardando o vendedor confirmar o pagamento. Seu ingresso aparece aqui assim que ele confirmar.');
+                          } else if (reg) {
                             setSelectedRegForTicket(reg);
                             setSelectedEventForTicket(event);
                             setShowTicketModal(true);
@@ -984,7 +1011,8 @@ export const Profile = () => {
                   {participantsList.map((reg) => {
                     const isPaid = reg.paymentStatus === 'Pago' || reg.paymentStatus?.includes('Pago');
                     const hasOverbooking = reg.paymentStatus?.includes('Overbooking');
-                    
+                    const isPending = reg.paymentStatus === STATUS_AGUARDANDO;
+
                     return (
                       <div key={reg.id} className="p-4 md:p-5 bg-white/80 border border-glassBorder/40 rounded-2xl space-y-2.5 md:space-y-3.5 text-left shadow-glass-shadow hover:bg-white/95 transition-colors duration-300">
                         <div className="flex items-center justify-between gap-2.5 md:gap-3">
@@ -1000,9 +1028,11 @@ export const Profile = () => {
                           <span className={`px-2 md:px-3 py-0.5 md:py-1 border rounded-lg text-[11px] font-sans font-semibold shrink-0 ${
                             hasOverbooking
                               ? 'bg-danger/10 text-danger border-danger/20'
-                              : isPaid 
-                                ? 'bg-success/10 text-success border-success/20' 
-                                : 'bg-surface/50 text-textLight border-glassBorder'
+                              : isPending
+                                ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                : isPaid
+                                  ? 'bg-success/10 text-success border-success/20'
+                                  : 'bg-surface/50 text-textLight border-glassBorder'
                           }`}>
                             {reg.paymentStatus || 'Gratuito'}
                           </span>
@@ -1025,8 +1055,26 @@ export const Profile = () => {
                           </div>
                         </div>
                         <div className="text-[11px] font-sans text-textMuted/70 text-right pt-1.5">
-                          Confirmado em: {new Date(reg.timestamp).toLocaleDateString('pt-BR')} {new Date(reg.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          {isPending ? 'Entrou na lista em' : 'Confirmado em'}: {new Date(reg.timestamp).toLocaleDateString('pt-BR')} {new Date(reg.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </div>
+
+                        {/* Intenção via WhatsApp: o vendedor decide — confirma o pagamento ou remove */}
+                        {isPending && (
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => handleConfirmarPagamento(reg)}
+                              className="flex-1 py-2.5 rounded-xl bg-success/10 border border-success/30 text-success font-sans font-semibold text-xs hover:bg-success/20 active:scale-95 transition-all cursor-pointer"
+                            >
+                              Pagamento confirmado
+                            </button>
+                            <button
+                              onClick={() => handleRemoverDaLista(reg)}
+                              className="flex-1 py-2.5 rounded-xl bg-surface border border-glassBorder text-textMuted font-sans font-semibold text-xs hover:text-danger hover:border-danger/30 active:scale-95 transition-all cursor-pointer"
+                            >
+                              Remover da lista
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

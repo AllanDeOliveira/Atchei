@@ -46,6 +46,16 @@ service cloud.firestore {
         get(/databases/$(database)/documents/events/$(eventId)).data.hasPresence != false;
     }
 
+    // Evento que vende ingresso (WhatsApp ou Pix) — alvo válido para uma
+    // intenção de compra "Aguardando pagamento".
+    function eventSellsTickets(eventId) {
+      return exists(/databases/$(database)/documents/events/$(eventId)) &&
+        (
+          get(/databases/$(database)/documents/events/$(eventId)).data.hasTickets == true ||
+          get(/databases/$(database)/documents/events/$(eventId)).data.hasPixTickets == true
+        );
+    }
+
     match /profiles/{profileId} {
       // Leitura de UM perfil é pública (página do organizador; UID não é enumerável).
       // LISTAGEM é restrita: visitante anônimo só enxerga o diretório profissional
@@ -126,6 +136,10 @@ service cloud.firestore {
       //    3. A inscrição não pode nascer já validada (check-in é ação de portaria).
       //    4. Só em nome PRÓPRIO (userId == uid) — impede inscrição forjada em nome
       //       de outra pessoa.
+      // C) INTENÇÃO DE COMPRA VIA WHATSAPP — o comprador logado entra na lista do
+      //    vendedor como 'Aguardando pagamento'. NÃO é ingresso: a portaria recusa
+      //    este status, e só o dono do evento pode promovê-lo a 'Pago (WhatsApp)'.
+      //    Sem ticketTypeId (não mexe em estoque de lote) e sempre em nome próprio.
       allow create: if
         isAdmin() ||
         isEventOwner(request.resource.data.eventId) ||
@@ -141,30 +155,54 @@ service cloud.firestore {
             request.resource.data.checkedIn == false
           ) &&
           isAuthed() && request.resource.data.userId == request.auth.uid
+        ) ||
+        (
+          eventSellsTickets(request.resource.data.eventId) &&
+          request.resource.data.paymentStatus == 'Aguardando pagamento' &&
+          !('ticketTypeId' in request.resource.data) &&
+          (
+            !('checkedIn' in request.resource.data) ||
+            request.resource.data.checkedIn == false
+          ) &&
+          isAuthed() && request.resource.data.userId == request.auth.uid
         );
 
       // Atualização: admin (irrestrita) OU o dono do evento, mas SÓ para registrar
       // o check-in na portaria — restrito aos campos de validação e sem permitir
       // reverter um check-in (impede reabrir reentrada / apagar a trilha de auditoria).
+      // ... ou o dono do evento confirmando o pagamento de uma intenção WhatsApp —
+      // só a transição 'Aguardando pagamento' → 'Pago (WhatsApp)', nada mais.
       allow update: if isAdmin() || (
         isEventOwner(resource.data.eventId) &&
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['checkedIn', 'checkedInAt', 'checkedInBy']) &&
         request.resource.data.checkedIn == true
+      ) || (
+        isEventOwner(resource.data.eventId) &&
+        resource.data.paymentStatus == 'Aguardando pagamento' &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['paymentStatus']) &&
+        request.resource.data.paymentStatus == 'Pago (WhatsApp)'
       );
 
-      // Deletar: admin, ou o PRÓPRIO usuário cancelando uma presença gratuita
-      // (a confirmação funciona como "curtida" — reversível). Nunca após check-in
-      // e nunca uma inscrição paga (estorno é fluxo do backend).
+      // Deletar: admin, ou o PRÓPRIO usuário cancelando uma presença gratuita ou
+      // uma intenção WhatsApp ainda não confirmada (reversíveis). Nunca após
+      // check-in e nunca uma inscrição paga (estorno é fluxo do backend).
+      // O dono do evento também remove intenções 'Aguardando pagamento' da sua
+      // lista (comprador que desistiu) — mas nunca um ingresso já pago.
       allow delete: if isAdmin() || (
         isAuthed() &&
         resource.data.userId == request.auth.uid &&
         (
           !('paymentStatus' in resource.data) ||
           resource.data.paymentStatus == 'Gratuito' ||
-          resource.data.paymentStatus == null
+          resource.data.paymentStatus == null ||
+          resource.data.paymentStatus == 'Aguardando pagamento'
         ) &&
         resource.data.checkedIn != true
+      ) || (
+        isEventOwner(resource.data.eventId) &&
+        resource.data.paymentStatus == 'Aguardando pagamento'
       );
     }
 

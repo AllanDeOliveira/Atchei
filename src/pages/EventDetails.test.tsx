@@ -23,6 +23,8 @@ vi.mock('../contexts/AuthContext', () => ({
 
 // Mock storage
 vi.mock('../lib/storage', () => ({
+  STATUS_AGUARDANDO: 'Aguardando pagamento',
+  STATUS_PAGO_WHATSAPP: 'Pago (WhatsApp)',
   storage: {
     getEvents: vi.fn(),
     getCurrentUser: vi.fn(),

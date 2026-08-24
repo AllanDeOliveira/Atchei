@@ -1,8 +1,9 @@
 import React from 'react';
-import { CheckCircle2, QrCode, Ticket, FlaskConical, Loader2, Flame } from 'lucide-react';
+import { CheckCircle2, QrCode, Ticket, FlaskConical, Loader2, Flame, Clock } from 'lucide-react';
 import type { EventItem, User, Registration } from '../../lib/storage';
+import { STATUS_AGUARDANDO } from '../../lib/storage';
 import { PIX_ENABLED } from '../../lib/flags';
-import { waMeUrl, confirmadosLabel } from '../../lib/formatters';
+import { confirmadosLabel } from '../../lib/formatters';
 
 interface EventTicketSectionProps {
   event: EventItem;
@@ -13,7 +14,8 @@ interface EventTicketSectionProps {
   onConfirmPresence: () => void;
   onCancelPresence: () => void;
   onOpenPixModal: () => void;
-  onOpenContactsModal: () => void;
+  /** Compra via WhatsApp: registra a intenção (lista do vendedor) e abre o chat. */
+  onWhatsAppBuy: () => void;
   onGerarIngressoTeste: () => void;
 }
 
@@ -25,12 +27,14 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
   onConfirmPresence,
   onCancelPresence,
   onOpenPixModal,
-  onOpenContactsModal,
+  onWhatsAppBuy,
   onGerarIngressoTeste,
 }) => {
   const isRegistered = !!myRegistration;
   // Presença gratuita funciona como "curtida": pode ser desfeita. Ingresso pago, não.
   const presencaCancelavel = isRegistered && myRegistration?.paymentStatus === 'Gratuito';
+  // Intenção de compra via WhatsApp ainda não confirmada pelo vendedor.
+  const aguardandoVendedor = myRegistration?.paymentStatus === STATUS_AGUARDANDO;
   const provaSocial = confirmadosLabel(event.registrationCount || 0);
   const formatPriceDisplay = () => {
     if (!event.hasTickets) return 'Gratuito';
@@ -42,17 +46,6 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
       return `R$ ${price}`;
     }
     return price;
-  };
-
-  const handleWhatsAppClick = () => {
-    const contacts = event.whatsappContacts || [];
-    if (contacts.length > 1) {
-      onOpenContactsModal();
-    } else if (contacts.length === 1) {
-      const contact = contacts[0];
-      const message = `Olá${contact.name ? ` ${contact.name}` : ''}! Tenho interesse no ingresso para o evento *${event.title}*`;
-      window.open(waMeUrl(contact.phone, message), '_blank');
-    }
   };
 
   return (
@@ -81,7 +74,27 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
 
         {/* Ações de Inscrição */}
         <div className="flex flex-col gap-2.5 z-10">
-          {isRegistered ? (
+          {aguardandoVendedor ? (
+            <>
+              <div className="w-full rounded-xl py-4 bg-primary/10 border border-primary/20 text-primary flex items-center justify-center gap-2 font-sans font-semibold text-sm select-none">
+                <Clock size={16} />
+                <span>Aguardando confirmação do vendedor</span>
+              </div>
+              <button
+                onClick={onWhatsAppBuy}
+                className="w-full rounded-xl py-3.5 flex items-center justify-center gap-2 transition-all duration-200 font-sans font-semibold text-sm border-0 bg-success text-textDark hover:brightness-95 cursor-pointer neo-click"
+              >
+                <Ticket size={18} />
+                Falar com o vendedor no WhatsApp
+              </button>
+              <button
+                onClick={onCancelPresence}
+                className="text-xs text-textMuted hover:text-danger underline underline-offset-2 transition-colors cursor-pointer self-center"
+              >
+                Desistir da compra
+              </button>
+            </>
+          ) : isRegistered ? (
             <>
               <div className="w-full rounded-xl py-4 bg-accent/10 border border-accent/20 text-accent flex items-center justify-center gap-2 font-sans font-semibold text-sm select-none">
                 <CheckCircle2 size={16} className="text-accent" />
@@ -118,7 +131,7 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
                 </button>
               ) : (event.hasTickets || event.hasPixTickets) ? (
                 <button
-                  onClick={handleWhatsAppClick}
+                  onClick={onWhatsAppBuy}
                   className="w-full rounded-xl py-3.5 flex items-center justify-center gap-2 transition-all duration-200 font-sans font-semibold text-sm border-0 bg-success text-textDark hover:brightness-95 cursor-pointer neo-click"
                 >
                   <Ticket size={18} />

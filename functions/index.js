@@ -1,7 +1,7 @@
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
-const { onDocumentCreated, onDocumentDeleted } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const { FieldValue } = require("firebase-admin/firestore");
@@ -517,8 +517,6 @@ exports.webhookAsaas = onRequest({ cors: true, secrets: [ASAAS_API_KEY, ASAAS_WE
                                     userId: currentPedidoData.userId || '',
                                     userName: currentPedidoData.clienteNome || '',
                                     userEmail: currentPedidoData.clienteEmail || '',
-                                    // Chave de busca da recuperação por email-link (e-mail normalizado).
-                                    userEmailLower: (currentPedidoData.clienteEmail || '').trim().toLowerCase(),
                                     userPhone: currentPedidoData.clienteTelefone || '',
                                     userCpf: currentPedidoData.clienteCpf || '',
                                     paymentStatus: isOverbooked ? 'Overbooking (Pago)' : 'Pago',
@@ -540,8 +538,6 @@ exports.webhookAsaas = onRequest({ cors: true, secrets: [ASAAS_API_KEY, ASAAS_WE
                             userId: currentPedidoData.userId || '',
                             userName: currentPedidoData.clienteNome || '',
                             userEmail: currentPedidoData.clienteEmail || '',
-                            // Chave de busca da recuperação por email-link (e-mail normalizado).
-                            userEmailLower: (currentPedidoData.clienteEmail || '').trim().toLowerCase(),
                             userPhone: currentPedidoData.clienteTelefone || '',
                             userCpf: currentPedidoData.clienteCpf || '',
                             paymentStatus: isOverbooked ? 'Overbooking (Pago)' : 'Pago',
@@ -854,83 +850,6 @@ exports.criarIngressoTeste = onCall({ cors: true }, async (request) => {
     }
 });
 
-// Recupera os ingressos do próprio e-mail para acesso SEM conta no app (compra Pix
-// sem login). Resolve o caso em que o comprador fecha a aba antes da confirmação:
-// ele entra em /ingresso, recebe um link mágico (email-link) no e-mail da compra e,
-// ao clicar, autentica-se com o e-mail VERIFICADO — provando posse da caixa de entrada.
-//
-// SEGURANÇA: o e-mail vem do TOKEN autenticado (request.auth.token), NÃO de um campo
-// enviado pelo cliente. Sem acessar o inbox não há como puxar os ingressos de alguém,
-// o que elimina a enumeração por CPF/e-mail do fluxo antigo. Usa Admin SDK (não afeta
-// as security rules). A busca é por userEmailLower (e-mail normalizado em minúsculas).
-exports.recuperarMeusIngressos = onCall({ cors: true }, async (request) => {
-    // Exige sessão criada via email-link, com e-mail verificado pelo Firebase.
-    if (!request.auth || !request.auth.token.email || request.auth.token.email_verified !== true) {
-        throw new HttpsError('unauthenticated', 'Confirme o link enviado ao seu e-mail para acessar os ingressos.');
-    }
-
-    const emailNorm = String(request.auth.token.email).trim().toLowerCase();
-
-    // Rate limit por UID autenticado (10/min).
-    const rl = await checkRateLimit(request.auth.uid, 'recuperarMeusIngressos', LIMITS.RECUPERAR_INGRESSO.max, LIMITS.RECUPERAR_INGRESSO.windowSec);
-    if (!rl.allowed) {
-        throw new HttpsError('resource-exhausted', `Muitas buscas. Tente novamente em ${Math.ceil(rl.retryAfterMs / 1000)} segundos.`);
-    }
-
-    try {
-        const regsSnap = await db.collection('registrations').where('userEmailLower', '==', emailNorm).limit(50).get();
-
-        // Cache de eventos já lidos (vários ingressos podem ser do mesmo evento).
-        const eventosCache = {};
-        const ingressos = [];
-
-        for (const docSnap of regsSnap.docs) {
-            const reg = docSnap.data();
-            if (reg.isTeste === true) continue; // ingressos de teste não entram na recuperação
-
-            const eventId = reg.eventId;
-            if (!eventId) continue;
-
-            if (!(eventId in eventosCache)) {
-                const evDoc = await db.collection('events').doc(eventId).get();
-                eventosCache[eventId] = evDoc.exists ? evDoc.data() : null;
-            }
-            const ev = eventosCache[eventId];
-            if (!ev) continue; // evento deletado — ignora
-
-            ingressos.push({
-                registration: {
-                    id: docSnap.id,
-                    eventId,
-                    userName: reg.userName || '',
-                    userCpf: reg.userCpf || '',
-                    paymentStatus: reg.paymentStatus || '',
-                    ticketTypeName: reg.ticketTypeName || '',
-                    checkedIn: reg.checkedIn === true,
-                    timestamp: reg.timestamp || '',
-                },
-                event: {
-                    id: eventId,
-                    title: ev.title || '',
-                    date: ev.date || '',
-                    time: ev.time || '',
-                    location: ev.location || '',
-                    address: ev.address || '',
-                },
-            });
-        }
-
-        // Próximos/recentes primeiro (por data do evento, desc).
-        ingressos.sort((a, b) => String(b.event.date).localeCompare(String(a.event.date)));
-
-        logger.info(`Recuperação por e-mail retornou ${ingressos.length} ingresso(s).`);
-        return { ingressos };
-    } catch (error) {
-        logger.error('Erro ao recuperar ingressos por e-mail:', error);
-        throw new HttpsError('internal', 'Erro ao buscar ingressos.');
-    }
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Cadastro do organizador como recebedor no Asaas (subconta + walletId)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1072,6 +991,9 @@ exports.onRegistrationCreated = onDocumentCreated("registrations/{registrationId
     const data = event.data?.data() || {};
     // Ingressos de teste (gerados por admin) não entram na contagem real de presença.
     if (!data.eventId || data.isTeste === true) return;
+    // Intenção de compra via WhatsApp não conta como confirmado — só entra quando o
+    // vendedor confirmar o pagamento (onRegistrationConfirmed).
+    if (data.paymentStatus === 'Aguardando pagamento') return;
     try {
         const updates = { registrationCount: FieldValue.increment(1) };
         // Venda manual do organizador (sem pedidoId): o contador de lote é ajustado
@@ -1107,6 +1029,8 @@ exports.onRegistrationDeleted = onDocumentDeleted("registrations/{registrationId
     const data = event.data?.data() || {};
     // Ingressos de teste nunca incrementaram a contagem — não decrementam ao serem removidos.
     if (!data.eventId || data.isTeste === true) return;
+    // Intenção WhatsApp removida ("Remover da lista"): nunca foi contada — não decrementa.
+    if (data.paymentStatus === 'Aguardando pagamento') return;
     try {
         const updates = { registrationCount: FieldValue.increment(-1) };
         // Simétrico ao onRegistrationCreated: só vendas manuais (sem pedidoId);
@@ -1118,6 +1042,34 @@ exports.onRegistrationDeleted = onDocumentDeleted("registrations/{registrationId
         logger.info(`Decremented registration count for event ${data.eventId}`);
     } catch (error) {
         logger.error(`Error decrementing registration count for event ${data.eventId}:`, error);
+    }
+});
+
+// Vendedor confirmou o pagamento de uma intenção WhatsApp ('Aguardando pagamento' →
+// 'Pago (WhatsApp)'): agora sim entra na contagem de confirmados, e o comprador é avisado.
+exports.onRegistrationConfirmed = onDocumentUpdated("registrations/{registrationId}", async (event) => {
+    const before = event.data?.before?.data() || {};
+    const after = event.data?.after?.data() || {};
+    if (before.paymentStatus !== 'Aguardando pagamento' || after.paymentStatus === 'Aguardando pagamento') return;
+    if (!after.eventId || after.isTeste === true) return;
+    try {
+        await db.collection("events").doc(after.eventId).update({ registrationCount: FieldValue.increment(1) });
+    } catch (error) {
+        logger.error(`Error incrementing registration count for event ${after.eventId}:`, error);
+    }
+    if (after.userId) {
+        try {
+            const eventDoc = await db.collection("events").doc(after.eventId).get();
+            const eventTitle = eventDoc.exists ? (eventDoc.data()?.title || 'o evento') : 'o evento';
+            await enviarNotificacaoPush(
+                after.userId,
+                'Pagamento confirmado! 🎟️',
+                `Seu ingresso para "${eventTitle}" já está disponível no seu perfil.`,
+                `/event/${after.eventId}`
+            );
+        } catch (pushErr) {
+            logger.error(`Erro ao enviar push de confirmação WhatsApp para ${after.userId}:`, pushErr);
+        }
     }
 });
 

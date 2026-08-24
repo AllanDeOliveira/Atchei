@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
-import { storage, soldCount } from '../lib/storage';
+import { storage, soldCount, STATUS_AGUARDANDO } from '../lib/storage';
 import type { EventItem, AppProfile, Registration } from '../lib/storage';
 import { Button } from '../components/ui/Button';
 import { useRateLimit } from '../hooks/useRateLimit';
@@ -10,7 +10,7 @@ import { Calendar, Clock, MapPin, User, Ticket, Mail, Phone, CreditCard, Copy, C
 import toast from 'react-hot-toast';
 
 import { formatCPF, isValidCPF } from '../lib/cpf';
-import { formatDateExtenso, isValidEmail, mapsDirUrl, mapsQuery, googleCalendarUrl, waMeUrl } from '../lib/formatters';
+import { formatDateExtenso, formatPhone, isValidEmail, mapsDirUrl, mapsQuery, googleCalendarUrl, waMeUrl } from '../lib/formatters';
 import { httpsCallable } from 'firebase/functions';
 import { doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { db, getFunctionsInstance } from '../lib/firebase';
@@ -31,6 +31,10 @@ export const EventDetails = () => {
   const { user: currentUser } = useAuth();
   const userId = currentUser?.id;
   const [showContactsModal, setShowContactsModal] = useState(false);
+  // Intenção de compra via WhatsApp: telefone do comprador antes de abrir o chat.
+  const [showWhatsIntentModal, setShowWhatsIntentModal] = useState(false);
+  const [whatsPhone, setWhatsPhone] = useState('');
+  const [savingIntent, setSavingIntent] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [organizer, setOrganizer] = useState<AppProfile | null>(null);
@@ -463,14 +467,74 @@ export const EventDetails = () => {
 
   const handleCancelPresence = async () => {
     if (!myReg) return;
+    // Intenção WhatsApp nunca entrou no contador de confirmados — só presença decrementa.
+    const eraIntencao = myReg.paymentStatus === STATUS_AGUARDANDO;
     try {
       await storage.deleteRegistration(myReg.id);
       setMyReg(null);
-      setEvent(prev => prev ? { ...prev, registrationCount: Math.max(0, (prev.registrationCount || 0) - 1) } : prev);
-      toast('Presença cancelada.');
+      if (!eraIntencao) {
+        setEvent(prev => prev ? { ...prev, registrationCount: Math.max(0, (prev.registrationCount || 0) - 1) } : prev);
+      }
+      toast(eraIntencao ? 'Compra cancelada.' : 'Presença cancelada.');
     } catch (error) {
       console.error("Erro ao cancelar presença:", error);
       toast.error('Não foi possível cancelar. Tente novamente.');
+    }
+  };
+
+  // Abre o chat: contato único vai direto pro wa.me; vários, abre o modal de escolha.
+  const abrirChatWhatsApp = () => {
+    const contacts = event.whatsappContacts || [];
+    if (contacts.length > 1) {
+      setShowContactsModal(true);
+    } else if (contacts.length === 1) {
+      const contact = contacts[0];
+      const message = `Olá${contact.name ? ` ${contact.name}` : ''}! Tenho interesse no ingresso para o evento *${event.title}*`;
+      window.open(waMeUrl(contact.phone, message), '_blank');
+    }
+  };
+
+  // Comprar via WhatsApp: antes de abrir o chat, o comprador entra na lista do
+  // vendedor como 'Aguardando pagamento' (nome + WhatsApp visíveis pra ele).
+  const handleWhatsAppBuy = () => {
+    if (!exigirLogin() || !currentUser) return;
+    if (myReg) {
+      // Já está na lista (pendente ou confirmado): só reabre a conversa.
+      abrirChatWhatsApp();
+      return;
+    }
+    setShowWhatsIntentModal(true);
+  };
+
+  const handleConfirmarIntencao = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    const phoneDigits = whatsPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      toast.error('Informe seu WhatsApp com DDD.');
+      return;
+    }
+    setSavingIntent(true);
+    try {
+      const registration: Registration = {
+        id: '',
+        eventId: event.id,
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userEmail: currentUser.username,
+        userPhone: phoneDigits,
+        paymentStatus: STATUS_AGUARDANDO,
+        timestamp: new Date().toISOString(),
+      };
+      const docId = await storage.saveRegistration(registration);
+      setMyReg({ ...registration, id: docId });
+      setShowWhatsIntentModal(false);
+      abrirChatWhatsApp();
+    } catch (error) {
+      console.error('Erro ao registrar intenção de compra:', error);
+      toast.error('Não foi possível registrar. Tente novamente.');
+    } finally {
+      setSavingIntent(false);
     }
   };
 
@@ -540,7 +604,7 @@ export const EventDetails = () => {
               onConfirmPresence={handleConfirmPresence}
               onCancelPresence={handleCancelPresence}
               onOpenPixModal={handleOpenPixModal}
-              onOpenContactsModal={() => setShowContactsModal(true)}
+              onWhatsAppBuy={handleWhatsAppBuy}
               onGerarIngressoTeste={handleGerarIngressoTeste}
             />
 
@@ -657,6 +721,51 @@ export const EventDetails = () => {
             >
               Entendido
             </button>
+      </Modal>
+
+      {/* Intenção de compra via WhatsApp: pega o telefone e entra na lista do vendedor */}
+      <Modal
+        open={showWhatsIntentModal}
+        onClose={() => setShowWhatsIntentModal(false)}
+        labelledBy="whats-intent-title"
+        backdropClassName="fixed inset-0 z-50 flex items-center justify-center px-4 modal-backdrop"
+        className="glass border-none rounded-[2.5rem] p-8 max-w-sm md:max-w-lg w-full text-center relative overflow-hidden backdrop-blur-3xl shadow-float bg-surface/98"
+      >
+            <button onClick={() => setShowWhatsIntentModal(false)} className="absolute top-5 right-5 bg-white/10 hover:bg-white/20 p-2 rounded-2xl text-textLight transition-all duration-300 cursor-pointer neo-click">
+              <span className="sr-only">Fechar</span>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            <h3 id="whats-intent-title" className="font-display text-xl font-semibold text-accent mb-1 mt-2">Quase lá!</h3>
+            <p className="text-xs text-textMuted mb-6 leading-relaxed max-w-[280px] mx-auto">
+              Deixe seu WhatsApp para o vendedor te identificar. Quando ele confirmar o
+              pagamento, seu ingresso aparece automaticamente no seu perfil.
+            </p>
+            <form onSubmit={handleConfirmarIntencao} className="space-y-4 text-left">
+              <div>
+                <label htmlFor="whats-intent-phone" className="text-xs font-medium text-accent ml-1 mb-1.5 block">Seu WhatsApp</label>
+                <div className="relative">
+                  <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-textMuted" />
+                  <input
+                    id="whats-intent-phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="(65) 99999-9999"
+                    value={whatsPhone}
+                    onChange={(e) => setWhatsPhone(formatPhone(e.target.value))}
+                    className="w-full bg-surface border border-glassBorder rounded-xl py-3.5 pl-11 pr-4 text-sm text-textLight placeholder:text-textMuted/50 focus:outline-none focus:border-primary/50"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={savingIntent}
+                className="w-full rounded-xl py-4 flex items-center justify-center gap-2 font-sans font-semibold text-sm bg-success text-textDark hover:brightness-95 transition-all duration-200 cursor-pointer neo-click disabled:opacity-60"
+              >
+                <Ticket size={16} />
+                {savingIntent ? 'Registrando…' : 'Continuar para o WhatsApp'}
+              </button>
+            </form>
       </Modal>
 
       {/* Contacts Modal */}
@@ -931,10 +1040,10 @@ export const EventDetails = () => {
                     Aguardando pagamento…
                   </div>
 
-                  {/* Recuperação por e-mail: tranquiliza quem pode fechar a aba antes de confirmar */}
+                  {/* Tranquiliza quem pode fechar a aba antes de confirmar */}
                   <p className="text-[11px] text-textMuted text-center mt-3 leading-snug max-w-[280px]">
-                    Pode fechar esta tela após pagar. Você acessa o ingresso quando quiser em{' '}
-                    <strong className="text-textLight">/ingresso</strong>, com o e-mail usado na compra.
+                    Pode fechar esta tela após pagar. Seu ingresso fica disponível no seu{' '}
+                    <strong className="text-textLight">perfil</strong>, em "Ver ingresso".
                   </p>
                 </div>
               ) : null
@@ -959,7 +1068,7 @@ export const EventDetails = () => {
                   Sua vaga está garantida. Abrindo seu ingresso em <strong className="text-success tabular-nums">{successCountdown}s</strong>…
                 </p>
                 <p className="success-text text-xs text-textMuted max-w-[250px] mb-6 md:mb-8 font-sans">
-                  Para reabrir depois, acesse <strong className="text-textLight">/ingresso</strong> com o e-mail usado na compra.
+                  Para reabrir depois, é só ir no seu <strong className="text-textLight">perfil</strong>, em "Ver ingresso".
                 </p>
 
                 {/* Barra de progresso indicando o encerramento automático do modal */}

@@ -46,7 +46,7 @@ describe('EventTicketSection Component', () => {
     onConfirmPresence: vi.fn(),
     onCancelPresence: vi.fn(),
     onOpenPixModal: vi.fn(),
-    onOpenContactsModal: vi.fn(),
+    onWhatsAppBuy: vi.fn(),
     onGerarIngressoTeste: vi.fn(),
   };
 
@@ -110,7 +110,22 @@ describe('EventTicketSection Component', () => {
     const semPix = { ...mockProps.event, hasPixTickets: false, hasTickets: true };
     render(<EventTicketSection {...mockProps} event={semPix} />);
     expect(screen.queryByText('Comprar via Pix')).toBeNull();
-    expect(screen.getByText('Comprar ingresso')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Comprar ingresso'));
+    expect(mockProps.onWhatsAppBuy).toHaveBeenCalled();
     expect(mockProps.onOpenPixModal).not.toHaveBeenCalled();
+  });
+
+  // Intenção via WhatsApp ainda não confirmada: sem ingresso garantido, com
+  // atalho para o chat e opção de desistir.
+  it('mostra estado aguardando vendedor para intencao WhatsApp pendente', () => {
+    render(<EventTicketSection {...mockProps} myRegistration={{ ...regGratuita, paymentStatus: 'Aguardando pagamento' }} />);
+    expect(screen.getByText('Aguardando confirmação do vendedor')).toBeInTheDocument();
+    expect(screen.queryByText('Presença confirmada · ingresso garantido')).toBeNull();
+
+    fireEvent.click(screen.getByText('Falar com o vendedor no WhatsApp'));
+    expect(mockProps.onWhatsAppBuy).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText('Desistir da compra'));
+    expect(mockProps.onCancelPresence).toHaveBeenCalled();
   });
 });

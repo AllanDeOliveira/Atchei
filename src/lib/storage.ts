@@ -110,6 +110,11 @@ export const eventoVigente = (e: Pick<EventItem, 'date'>): boolean => {
 export const soldCount = (event: Pick<EventItem, 'soldByTicket'>, ticket: Pick<TicketType, 'id'>): number =>
   event.soldByTicket?.[ticket.id] ?? 0;
 
+/** Intenção de compra via WhatsApp: entra na lista do vendedor sem valer como ingresso.
+ *  Vira ingresso quando o vendedor confirma o pagamento (STATUS_PAGO_WHATSAPP). */
+export const STATUS_AGUARDANDO = 'Aguardando pagamento';
+export const STATUS_PAGO_WHATSAPP = 'Pago (WhatsApp)';
+
 export type Registration = {
   id: string;
   eventId: string;
@@ -465,9 +470,7 @@ export const storage = {
   saveRegistration: async (registration: Registration): Promise<string> => {
     const { id, ...data } = registration;
     void id; // o id é gerado pelo Firestore; descartado do payload de escrita
-    // Chave de busca da recuperação por email-link (e-mail normalizado em minúsculas).
-    const userEmailLower = (data.userEmail || '').trim().toLowerCase();
-    const docRef = await addDoc(collection(db, 'registrations'), { ...data, userEmailLower });
+    const docRef = await addDoc(collection(db, 'registrations'), data);
     return docRef.id;
   },
 
@@ -548,6 +551,12 @@ export const storage = {
   /** Cancela a própria presença gratuita (rules bloqueiam paga/pós-check-in). */
   deleteRegistration: async (id: string) => {
     await deleteDoc(doc(db, 'registrations', id));
+  },
+
+  /** Vendedor confirma o pagamento de uma intenção de compra via WhatsApp.
+   *  As rules só aceitam esta transição (Aguardando → Pago) pelo dono do evento. */
+  confirmRegistrationPayment: async (id: string): Promise<void> => {
+    await updateDoc(doc(db, 'registrations', id), { paymentStatus: STATUS_PAGO_WHATSAPP });
   },
 
   uploadFile: async (file: File, folder: string): Promise<string> => {

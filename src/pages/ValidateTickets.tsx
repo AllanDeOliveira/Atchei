@@ -3,7 +3,7 @@ import type { ReactNode, FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BrowserQRCodeReader } from '@zxing/browser';
 import type { IScannerControls } from '@zxing/browser';
-import { storage } from '../lib/storage';
+import { storage, STATUS_AGUARDANDO } from '../lib/storage';
 import type { EventItem, Registration } from '../lib/storage';
 import { matchesTicketCode } from '../lib/ticketCode';
 import { maskCPF } from '../lib/formatters';
@@ -204,6 +204,14 @@ export const ValidateTickets = () => {
             registration: reg,
             title: 'Ingresso de outro evento',
             detail: 'Este ingresso não pertence a este evento.',
+          });
+        } else if (reg.paymentStatus === STATUS_AGUARDANDO) {
+          // Intenção de compra via WhatsApp sem pagamento confirmado — não é ingresso.
+          setResult({
+            status: 'invalid',
+            registration: reg,
+            title: 'Pagamento não confirmado',
+            detail: 'Este participante está aguardando a confirmação do pagamento. Confirme no painel de inscritos antes de liberar a entrada.',
           });
         } else if (reg.checkedIn) {
           setResult({
