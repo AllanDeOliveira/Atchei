@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   verifyPasswordResetCode,
   confirmPasswordReset,
@@ -49,7 +49,6 @@ const mensagemDeErro = (code: string | undefined): string => {
 
 export const AuthAction = () => {
   const [params] = useSearchParams();
-  const navigate = useNavigate();
 
   const mode = params.get('mode');
   const oobCode = params.get('oobCode');
@@ -62,13 +61,6 @@ export const AuthAction = () => {
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    // O login por link de e-mail continua sendo tratado na página de recuperação de
-    // ingresso, que já sabe ler o link. Repassa a query inteira e sai do caminho.
-    if (mode === 'signIn') {
-      navigate(`/ingresso${window.location.search}`, { replace: true });
-      return;
-    }
-
     if (!mode || !oobCode) {
       setEstado({ fase: 'erro', mensagem: 'Link incompleto. Abra o link direto do e-mail, sem editar o endereço.' });
       return;
@@ -121,7 +113,7 @@ export const AuthAction = () => {
     return () => {
       cancelado = true;
     };
-  }, [mode, oobCode, navigate]);
+  }, [mode, oobCode]);
 
   const salvarSenha = async (e: React.FormEvent) => {
     e.preventDefault();

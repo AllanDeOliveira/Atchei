@@ -10,7 +10,6 @@ const LIMITS = {
   CRIAR_COBRANCA_HORA: { max: 20, windowSec: 3600 }, // 20 por hora
   ADMIN_RESET: { max: 3, windowSec: 300 },           // 3 por 5 minutos
   WEBHOOK: { max: 60, windowSec: 60 },               // 60 por minuto por IP
-  RESET_SENHA: { max: 3, windowSec: 900 },           // 3 pedidos por 15 min por e-mail
 };
 
 /**

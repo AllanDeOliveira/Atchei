@@ -17,7 +17,6 @@ const renderEm = (query: string) =>
     <MemoryRouter initialEntries={[`/auth/action${query}`]}>
       <Routes>
         <Route path="/auth/action" element={<AuthAction />} />
-        <Route path="/ingresso" element={<div>pagina de ingresso</div>} />
         <Route path="/login" element={<div>pagina de login</div>} />
       </Routes>
     </MemoryRouter>
@@ -84,12 +83,12 @@ describe('AuthAction', () => {
     expect(applyActionCode).toHaveBeenCalledWith({}, 'abc123');
   });
 
-  // Trocar a URL de ação redireciona TODOS os e-mails para cá, inclusive o link
-  // mágico — que continua sendo tratado pela página de recuperação de ingresso.
-  it('repassa o login por link de e-mail para /ingresso', async () => {
+  // O login por link de e-mail morreu junto com a página de recuperação de
+  // ingresso — um link desses agora é tratado como não reconhecido.
+  it('mostra erro para o modo signIn (fluxo aposentado)', async () => {
     renderEm('?mode=signIn&oobCode=abc123');
 
-    expect(await screen.findByText('pagina de ingresso')).toBeInTheDocument();
+    expect(await screen.findByText('Este tipo de link não é reconhecido pelo app.')).toBeInTheDocument();
   });
 
   it('avisa quando o link vem sem os parâmetros', async () => {

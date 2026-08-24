@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { httpsCallable } from 'firebase/functions';
-import { getFunctionsInstance } from '../lib/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 import { storage } from '../lib/storage';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
@@ -56,17 +56,18 @@ export const Login = () => {
     if (isLimited) return;
     triggerCooldown();
     try {
-      // Function própria em vez de sendPasswordResetEmail: o Google não deixa
-      // personalizar os templates deste projeto, então o e-mail e o link são
-      // montados no servidor e apontam para /auth/action. Ela responde neutro
-      // por design — conta inexistente não se distingue de envio feito.
-      const solicitarResetSenha = httpsCallable(getFunctionsInstance(), 'solicitarResetSenha');
-      await solicitarResetSenha({ email: email.trim() });
+      // Envio NATIVO do Firebase: e-mail e tela genéricos do Google. O projeto não
+      // permite personalizar templates (EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED); o fluxo
+      // próprio (Resend + /auth/action) volta quando houver domínio verificado.
+      await sendPasswordResetEmail(auth, email.trim());
     } catch (error) {
-      console.warn('Reset de senha:', error);
-      // Só falha de transporte chega aqui; a function engole os erros de negócio.
-      toast.error('Falha ao enviar. Verifique a conexão e tente novamente.');
-      return;
+      const code = (error as { code?: string })?.code;
+      // Resposta neutra: conta inexistente não se distingue de envio feito.
+      if (code !== 'auth/user-not-found' && code !== 'auth/invalid-email') {
+        console.warn('Reset de senha:', error);
+        toast.error('Falha ao enviar. Verifique a conexão e tente novamente.');
+        return;
+      }
     }
     toast.success('Se o e-mail estiver cadastrado, você receberá o link de redefinição.');
   };

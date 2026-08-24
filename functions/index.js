@@ -10,7 +10,6 @@ const { isCallerAdmin } = require("./adminEmails");
 const asaas = require("./asaas");
 const { handleOgPreview } = require("./ogPreview");
 const { getTomorrowDateString, processarLembretesD1 } = require("./reminders");
-const { enviarEmailResetSenha } = require("./email");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -23,7 +22,6 @@ const db = admin.firestore();
 const ASAAS_API_KEY = defineSecret("ASAAS_API_KEY");
 const ASAAS_WEBHOOK_TOKEN = defineSecret("ASAAS_WEBHOOK_TOKEN");
 // Chave do Resend, usada pelos e-mails transacionais escritos por nós.
-const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 
 // Envia uma notificação push (FCM) para todos os dispositivos de um usuário.
 // Nunca lança erro: falha de notificação não pode comprometer o processamento do pagamento.
@@ -1092,51 +1090,7 @@ exports.lembreteEventosD1 = onSchedule({
 
 // Redefinição de senha com e-mail próprio.
 //
-// O Console recusa personalizar os templates deste projeto
-// (EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED), então o fluxo nativo `sendPasswordResetEmail`
-// sempre mandaria o usuário para a tela genérica do Firebase. Aqui o link é gerado
-// no servidor, o oobCode é extraído e remontado sobre /auth/action do próprio app,
-// e o e-mail sai pelo nosso template.
-//
-// Resposta SEMPRE neutra: nunca revela se a conta existe. Toda falha vira log.
-exports.solicitarResetSenha = onCall({ cors: true, secrets: [RESEND_API_KEY] }, async (request) => {
-    const emailBruto = request.data?.email;
-    const email = String(emailBruto || '').trim().toLowerCase();
-
-    // Validação de formato só para evitar trabalho inútil — o retorno é neutro igual.
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return { ok: true };
-    }
-
-    // Rate limit pelo próprio e-mail: impede usar o endpoint para inundar a caixa
-    // de alguém. Estourar o limite também responde neutro, para não vazar nada.
-    const rl = await checkRateLimit(email, 'solicitarResetSenha', LIMITS.RESET_SENHA.max, LIMITS.RESET_SENHA.windowSec);
-    if (!rl.allowed) {
-        logger.warn(`Rate limit de reset de senha atingido para ${email}.`);
-        return { ok: true };
-    }
-
-    try {
-        // Lança auth/user-not-found quando a conta não existe — tratado abaixo.
-        const linkFirebase = await admin.auth().generatePasswordResetLink(email);
-
-        // O link nativo aponta para o handler do Firebase. O token é o mesmo; só
-        // trocamos o destino para a nossa página, que valida o código pelo SDK.
-        const oobCode = new URL(linkFirebase).searchParams.get('oobCode');
-        if (!oobCode) throw new Error('generatePasswordResetLink devolveu link sem oobCode.');
-
-        const baseUrl = (process.env.APP_BASE_URL || 'https://atchei.web.app').replace(/\/$/, '');
-        const link = `${baseUrl}/auth/action?mode=resetPassword&oobCode=${encodeURIComponent(oobCode)}`;
-
-        await enviarEmailResetSenha(email, link);
-    } catch (error) {
-        // Conta inexistente é caso esperado: silencia para não permitir enumeração.
-        if (error?.code === 'auth/user-not-found') {
-            logger.info(`Reset pedido para e-mail sem conta (${email}). Nada enviado.`);
-        } else {
-            logger.error(`Falha ao enviar reset de senha para ${email}:`, error);
-        }
-    }
-
-    return { ok: true };
-});
+// Reset de senha: o app usa o envio NATIVO do Firebase (sendPasswordResetEmail no
+// Login). O fluxo próprio — link server-side sobre /auth/action + e-mail via Resend
+// (módulo ./email) — foi removido do deploy porque exige domínio verificado no
+// Resend; recuperar do git (commit 6874166) quando houver domínio.
