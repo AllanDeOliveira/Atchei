@@ -55,6 +55,8 @@ export const CookieBanner = () => {
     aplicarConsentimento(valor === 'all');
     setEscolha(valor);
     setShowModal(false);
+    // Sinaliza que a decisão foi tomada — o InstallAppCard espera por isso para entrar em cena.
+    window.dispatchEvent(new Event('atchei:cookies-decididos'));
   };
 
   const salvarPreferencias = () => {

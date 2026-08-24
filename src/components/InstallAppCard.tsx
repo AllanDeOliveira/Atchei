@@ -3,6 +3,7 @@ import { Share, X, HelpCircle, Download } from 'lucide-react';
 import { Modal } from './ui/Modal';
 import { INSTALL_DISMISS_KEY as DISMISS_KEY } from '../lib/storageKeys';
 import { INSTALL_RESOLVED_EVENT } from '../hooks/useInstallCardPending';
+import { COOKIE_CONSENT_KEY } from '../lib/firebase';
 
 // O evento `beforeinstallprompt` (Chrome/Android) não faz parte dos tipos padrão do DOM
 type BeforeInstallPromptEvent = Event & {
@@ -23,7 +24,8 @@ export { DISMISS_KEY };
 
 /**
  * Pop-up flutuante para adicionar o app à tela inicial (PWA), com o mesmo design do aviso de cookies.
- * Exibido no primeiro acesso (mobile e desktop) acima da barra inferior.
+ * Só no mobile e em navegadores com caminho de instalação (prompt nativo ou iOS/Safari).
+ * Entra em cena 2s depois da decisão de cookies, para os dois pop-ups não empilharem.
  */
 export const InstallAppCard = () => {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(promptCapturado);
@@ -35,11 +37,30 @@ export const InstallAppCard = () => {
     }
   });
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [liberado, setLiberado] = useState(false);
 
   useEffect(() => {
     const onInstalavel = () => setInstallEvent(promptCapturado);
     window.addEventListener('pwa-instalavel', onInstalavel);
     return () => window.removeEventListener('pwa-instalavel', onInstalavel);
+  }, []);
+
+  // Espera a decisão de cookies (desta visita ou de uma anterior) + 2s antes de aparecer.
+  useEffect(() => {
+    let timer: number | undefined;
+    const liberar = () => { timer = window.setTimeout(() => setLiberado(true), 2000); };
+    let jaDecidiu = false;
+    try {
+      jaDecidiu = typeof localStorage !== 'undefined' && localStorage.getItem(COOKIE_CONSENT_KEY) !== null;
+    } catch {
+      // localStorage indisponível — trata como não decidido
+    }
+    if (jaDecidiu) liberar();
+    else window.addEventListener('atchei:cookies-decididos', liberar);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('atchei:cookies-decididos', liberar);
+    };
   }, []);
 
   const isStandalone =
@@ -48,9 +69,10 @@ export const InstallAppCard = () => {
       (navigator as { standalone?: boolean }).standalone === true);
 
   const isIos = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isMobile = isIos || (typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent));
 
-  // Não exibe se já estiver instalado em modo standalone ou dispensado pelo usuário
-  if (dismissed || isStandalone) return null;
+  // Só mobile, só com caminho de instalação, nunca antes da vez dele na fila de pop-ups.
+  if (!liberado || dismissed || isStandalone || !isMobile || (!installEvent && !isIos)) return null;
 
   const dismiss = () => {
     try {
