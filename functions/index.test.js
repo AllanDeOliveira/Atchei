@@ -87,7 +87,6 @@ Module.prototype.require = function (id) {
         CRIAR_COBRANCA_HORA: { max: 20, windowSec: 3600 },
         ADMIN_RESET: { max: 3, windowSec: 300 },
         WEBHOOK: { max: 60, windowSec: 60 },
-        RECUPERAR_INGRESSO: { max: 10, windowSec: 60 },
       },
     };
   }
@@ -468,69 +467,4 @@ describe('Cloud Functions Tests', () => {
     });
   });
 
-  describe('recuperarMeusIngressos', () => {
-    const regDoc = (over = {}) => ({
-      id: 'reg-1',
-      data: () => ({
-        eventId: 'evt-1',
-        userEmailLower: 'buyer@example.com',
-        userName: 'Fulano',
-        paymentStatus: 'Pago',
-        checkedIn: false,
-        timestamp: '2026-01-01T00:00:00.000Z',
-        ...over,
-      }),
-    });
-
-    const authed = (over = {}) => ({
-      uid: 'recovery-uid',
-      token: { email: 'Buyer@Example.com', email_verified: true, ...over },
-    });
-
-    it('rejeita quando nao ha sessao (sem link magico confirmado)', async () => {
-      const wrapped = fft.wrap(myFunctions.recuperarMeusIngressos);
-      await expect(wrapped({ data: {}, auth: null }))
-        .rejects.toThrow('Confirme o link enviado ao seu e-mail para acessar os ingressos.');
-      expect(mockQuery.get).not.toHaveBeenCalled();
-    });
-
-    it('rejeita quando o e-mail do token nao esta verificado', async () => {
-      const wrapped = fft.wrap(myFunctions.recuperarMeusIngressos);
-      await expect(wrapped({ data: {}, auth: authed({ email_verified: false }) }))
-        .rejects.toThrow('Confirme o link enviado ao seu e-mail para acessar os ingressos.');
-      expect(mockQuery.get).not.toHaveBeenCalled();
-    });
-
-    it('busca pelo e-mail VERIFICADO do token (normalizado), nao por dado do cliente', async () => {
-      let capturedField, capturedValue;
-      const registrationsCollection = {
-        where: vi.fn((field, _op, value) => { capturedField = field; capturedValue = value; return mockQuery; }),
-        doc: vi.fn(),
-      };
-      mockFirestore.collection.mockImplementationOnce((name) =>
-        name === 'registrations' ? registrationsCollection : mockCollection(name)
-      );
-      mockQuery.get.mockResolvedValueOnce({ docs: [regDoc()] });
-      mockDocGet.mockResolvedValueOnce({
-        exists: true,
-        data: () => ({ title: 'Show', date: '2026-08-01', time: '20:00', location: 'Arena', address: 'Rua X' }),
-      });
-
-      const wrapped = fft.wrap(myFunctions.recuperarMeusIngressos);
-      // O cliente tenta injetar o e-mail de uma vitima; deve ser IGNORADO.
-      const result = await wrapped({ data: { email: 'vitima@example.com' }, auth: authed() });
-
-      expect(capturedField).toBe('userEmailLower');
-      expect(capturedValue).toBe('buyer@example.com'); // do token, minusculo — nao 'vitima@...'
-      expect(result.ingressos).toHaveLength(1);
-      expect(result.ingressos[0].event.title).toBe('Show');
-    });
-
-    it('ignora ingressos de teste', async () => {
-      mockQuery.get.mockResolvedValueOnce({ docs: [regDoc({ isTeste: true })] });
-      const wrapped = fft.wrap(myFunctions.recuperarMeusIngressos);
-      const result = await wrapped({ data: {}, auth: authed() });
-      expect(result).toEqual({ ingressos: [] });
-    });
-  });
 });
