@@ -27,11 +27,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-identidade visual.txt
+
+# Cobertura de testes
+coverage/
+
 # Agents
 .agents/
 agents/
 .claude/
+.clinerules/
+AGENTS.md
 
 # Graphify
 graphify-out/
