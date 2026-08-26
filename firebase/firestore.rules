@@ -15,6 +15,17 @@ service cloud.firestore {
       return isAuthed() && 'admin' in request.auth.token && request.auth.token.admin == true;
     }
 
+    // 18+: birthDate 'YYYY-MM-DD' <= hoje menos 18 anos. Comparação de string ISO
+    // equivale a comparação cronológica. string(100 + n)[1:3] zera à esquerda mês/dia
+    // (rules não têm ternário para o padding). Nascido no dia exato do aniversário passa.
+    function isAdult(birthDate) {
+      return birthDate is string && birthDate.size() == 10 && birthDate <= (
+        string(request.time.year() - 18) + '-' +
+        string(100 + request.time.month())[1:3] + '-' +
+        string(100 + request.time.day())[1:3]
+      );
+    }
+
     // Dono efetivo de um creatorId: bate com o uid, ou o creatorId é o doc de
     // perfil do PRÓPRIO usuário (contas legadas têm perfil com id != uid; o
     // vínculo é o e-mail autenticado, mesmo critério do update de profiles).
@@ -63,13 +74,22 @@ service cloud.firestore {
       // logado pode listar (o fallback de login busca o próprio perfil por e-mail).
       // Impede o dump anônimo da base inteira (nomes + e-mails) via query aberta.
       allow get: if true;
-      allow list: if isAuthed() ||
-        resource.data.type in ['profissional', 'atletica', 'estabelecimento'];
-      
+      // Listagem: diretório profissional (público), o próprio perfil (fallback de
+      // login por e-mail) ou admin. Logado comum NÃO lista a base inteira — isso
+      // vazaria nome + e-mail de contas pessoais (type 'user').
+      allow list: if
+        isAdmin() ||
+        resource.data.type in ['profissional', 'atletica', 'estabelecimento'] ||
+        (isAuthed() && 'email' in request.auth.token && 'email' in resource.data &&
+         resource.data.email.lower() == request.auth.token.email.lower());
+
       // Permitir criação se o próprio usuário estiver criando seu perfil com tipo
-      // 'user' (pessoal) ou 'profissional', ou se o solicitante for um administrador.
+      // 'user' (pessoal) ou 'profissional' — exigindo 18+ (não só na tela) —, ou se
+      // o solicitante for um administrador.
       allow create: if isAuthed() && (
-        (request.auth.uid == profileId && request.resource.data.type in ['user', 'profissional']) ||
+        (request.auth.uid == profileId
+          && request.resource.data.type in ['user', 'profissional']
+          && isAdult(request.resource.data.birthDate)) ||
         isAdmin()
       );
       
