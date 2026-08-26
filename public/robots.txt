@@ -4,4 +4,4 @@ Disallow: /admin
 Disallow: /financeiro
 Disallow: /change-password
 
-Sitemap: https://atchei.web.app/sitemap.xml
+Sitemap: https://atchei.app.br/sitemap.xml

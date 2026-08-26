@@ -87,7 +87,7 @@ function generateOgHtml({ event, eventId, appBaseUrl }) {
  * Handler HTTP da Cloud Function para renderizar a página Open Graph.
  */
 async function handleOgPreview(req, res, db) {
-    const appBaseUrl = process.env.APP_BASE_URL || 'https://atchei.web.app';
+    const appBaseUrl = process.env.APP_BASE_URL || 'https://atchei.app.br';
     
     // Extrai o ID do evento da rota (/e/:id ou query param ?id=...)
     const pathParts = (req.path || '').split('/').filter(Boolean);

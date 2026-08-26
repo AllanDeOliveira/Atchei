@@ -67,7 +67,7 @@ describe('enviarEmailResetSenha', () => {
   });
 
   it('inclui o link tanto no HTML quanto na versão texto', async () => {
-    const link = 'https://atchei.web.app/auth/action?mode=resetPassword&oobCode=XYZ';
+    const link = 'https://atchei.app.br/auth/action?mode=resetPassword&oobCode=XYZ';
 
     await enviarEmailResetSenha('pessoa@exemplo.com', link);
 

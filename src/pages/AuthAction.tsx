@@ -16,7 +16,7 @@ import { Lock, ShieldCheck, Eye, EyeOff, CheckCircle2, AlertTriangle, Loader2 } 
  * `<projeto>.firebaseapp.com/__/auth/action`, que não tem identidade visual nenhuma.
  *
  * Para entrar em uso, cada template em Authentication → Modelos precisa apontar
- * "Personalizar URL de ação" para https://atchei.web.app/auth/action — o Firebase
+ * "Personalizar URL de ação" para https://atchei.app.br/auth/action — o Firebase
  * manda os mesmos parâmetros (mode, oobCode, continueUrl, lang) para cá.
  *
  * Todos os modos são tratados de propósito: trocar a URL de ação afeta TODOS os

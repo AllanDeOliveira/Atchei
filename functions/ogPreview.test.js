@@ -73,7 +73,7 @@ describe('Open Graph Preview Generator', () => {
         };
 
         await handleOgPreview(req, res, db);
-        expect(res.redirect).toHaveBeenCalledWith(302, 'https://atchei.web.app/feed');
+        expect(res.redirect).toHaveBeenCalledWith(302, 'https://atchei.app.br/feed');
     });
 
     it('handleOgPreview envia HTML 200 com cache header quando evento existe', async () => {

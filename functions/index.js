@@ -1088,8 +1088,6 @@ exports.lembreteEventosD1 = onSchedule({
 
 
 
-// Redefinição de senha com e-mail próprio.
-//
 // Reset de senha: o app usa o envio NATIVO do Firebase (sendPasswordResetEmail no
 // Login). O fluxo próprio — link server-side sobre /auth/action + e-mail via Resend
 // (módulo ./email) — foi removido do deploy porque exige domínio verificado no
