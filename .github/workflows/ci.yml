@@ -1,17 +1,16 @@
 # CI do Atchei
 #
-# Em Pull Requests e pushes para `main`: instala, builda e roda os testes (frontend e functions).
-# O deploy é feito fora deste workflow (hospedagem própria).
+# Em Pull Requests para `main`: instala, builda e roda os testes (frontend e functions).
+# O check "Build e Testes" é exigido pela branch protection da main.
+# O deploy acontece no deploy.yml, no push para `main` após o merge (que repete os testes).
 #
 # Secret necessário no repositório (Settings > Secrets and variables > Actions):
-#   ENV_FILE   Conteúdo do .env do frontend (todas as linhas VITE_...=valor). O build
+#   VITE_ENV   Conteúdo do .env do frontend (todas as linhas VITE_...=valor). O build
 #              recria o .env a partir desse secret antes de rodar o Vite.
 
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
@@ -30,11 +29,10 @@ jobs:
       - name: Instalar dependências (frontend)
         run: npm ci
 
-      - name: Recriar .env do frontend (a partir do secret ENV_FILE)
-        run: |
-          cat > .env <<'ENVEOF'
-          ${{ secrets.ENV_FILE }}
-          ENVEOF
+      - name: Recriar .env do frontend (a partir do secret VITE_ENV)
+        env:
+          VITE_ENV: ${{ secrets.VITE_ENV }}
+        run: printf '%s' "$VITE_ENV" > .env
 
       - name: Build (tsc + vite)
         run: npm run build

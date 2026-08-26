@@ -1,0 +1,53 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+# Um deploy por vez; push novo espera o anterior terminar (nunca cancela no meio).
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # O .env da raiz é gitignorado — o conteúdo vem do secret do repositório.
+      # As functions deployam SEM .env de propósito: as variáveis dele são só do
+      # Asaas (em stand-by, futuro incerto) e sem elas tudo cai em padrão seguro
+      # (sandbox / taxa 0). Se o Asaas voltar, criar um secret FUNCTIONS_ENV aqui.
+      - name: Restaurar .env do front
+        env:
+          VITE_ENV: ${{ secrets.VITE_ENV }}
+        run: printf '%s' "$VITE_ENV" > .env
+
+      - name: Testes do app
+        run: npm run test:run
+
+      - name: Testes das functions
+        working-directory: functions
+        run: |
+          npm ci
+          npm test
+
+      - name: Build do front
+        run: npm run build
+
+      # --force confirma sozinho a exclusão de functions removidas do código.
+      - name: Deploy (hosting + rules + functions)
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          npx firebase-tools deploy --only hosting,firestore:rules,storage,functions --force --project atchei

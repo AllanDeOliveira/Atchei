@@ -141,9 +141,14 @@ O frontend só conecta nos emuladores do Firebase se o host for `localhost`/`127
 
 ## 🚢 CI e deploy
 
-CI em `.github/workflows/ci.yml`, disparado em push e PR para `main`: build + testes do frontend e das functions. O deploy é feito na hospedagem de sua escolha — o build gera um site estático em `dist/` (SPA: configure rewrite de todas as rotas para `/index.html`).
+Convenção do projeto: todo trabalho entra na `main` por Pull Request com o CI verde — nada de push direto.
 
-Secret necessário no repositório: `ENV_FILE` (conteúdo completo do `.env` do frontend).
+1. **CI** (`.github/workflows/ci.yml`) — roda em todo PR para `main`: build + testes do frontend e das functions. Só mescle com o check "Build e Testes" verde.
+2. **Deploy** (`.github/workflows/deploy.yml`) — roda no push para `main` (ou seja, a cada merge): repete os testes, builda e publica no Firebase (hosting + rules + functions) com `firebase-tools`.
+
+Fluxo do dia a dia: `git checkout -b minha-mudanca` → commits → push → abrir PR → CI verde → merge → deploy automático.
+
+Secrets necessários no repositório: `VITE_ENV` (conteúdo completo do `.env` do frontend) e `FIREBASE_SERVICE_ACCOUNT` (JSON da service account usada no deploy).
 
 ---
 
@@ -159,6 +164,8 @@ functions/
   asaas.js       cliente da API v3 do Asaas + cofre de recebedores
   rateLimiter.js rate limiting transacional
   scripts/       utilitários administrativos
+firebase/        firestore.rules e storage.rules
+docs/            documentação (identidade visual)
 ```
 
 ---
