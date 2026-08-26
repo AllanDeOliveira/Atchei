@@ -136,10 +136,15 @@ service cloud.firestore {
       //    3. A inscrição não pode nascer já validada (check-in é ação de portaria).
       //    4. Só em nome PRÓPRIO (userId == uid) — impede inscrição forjada em nome
       //       de outra pessoa.
+      //    5. O id do doc é OBRIGATORIAMENTE eventId_uid — como criar sobre um doc
+      //       existente é update (negado), o servidor garante no máximo UMA
+      //       inscrição por pessoa por evento; um script não infla a lista do
+      //       organizador nem a prova social (registrationCount).
       // C) INTENÇÃO DE COMPRA VIA WHATSAPP — o comprador logado entra na lista do
       //    vendedor como 'Aguardando pagamento'. NÃO é ingresso: a portaria recusa
       //    este status, e só o dono do evento pode promovê-lo a 'Pago (WhatsApp)'.
-      //    Sem ticketTypeId (não mexe em estoque de lote) e sempre em nome próprio.
+      //    Sem ticketTypeId (não mexe em estoque de lote), sempre em nome próprio,
+      //    e com o mesmo id determinístico da regra 5 acima.
       allow create: if
         isAdmin() ||
         isEventOwner(request.resource.data.eventId) ||
@@ -154,7 +159,8 @@ service cloud.firestore {
             !('checkedIn' in request.resource.data) ||
             request.resource.data.checkedIn == false
           ) &&
-          isAuthed() && request.resource.data.userId == request.auth.uid
+          isAuthed() && request.resource.data.userId == request.auth.uid &&
+          registrationId == request.resource.data.eventId + '_' + request.auth.uid
         ) ||
         (
           eventSellsTickets(request.resource.data.eventId) &&
@@ -164,7 +170,8 @@ service cloud.firestore {
             !('checkedIn' in request.resource.data) ||
             request.resource.data.checkedIn == false
           ) &&
-          isAuthed() && request.resource.data.userId == request.auth.uid
+          isAuthed() && request.resource.data.userId == request.auth.uid &&
+          registrationId == request.resource.data.eventId + '_' + request.auth.uid
         );
 
       // Atualização: admin (irrestrita) OU o dono do evento, mas SÓ para registrar

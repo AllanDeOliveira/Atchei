@@ -454,7 +454,7 @@ export const EventDetails = () => {
     };
 
     try {
-      const docId = await storage.saveRegistration(registration);
+      const docId = await storage.saveSelfRegistration(registration);
       setMyReg({ ...registration, id: docId });
       // Reflete no contador local sem esperar o trigger do backend.
       setEvent(prev => prev ? { ...prev, registrationCount: (prev.registrationCount || 0) + 1 } : prev);
@@ -483,14 +483,20 @@ export const EventDetails = () => {
   };
 
   // Abre o chat: contato único vai direto pro wa.me; vários, abre o modal de escolha.
-  const abrirChatWhatsApp = () => {
+  // `janela` é uma aba pré-aberta de forma síncrona no gesto do clique — obrigatória
+  // quando houver um await antes daqui: o Safari/iOS bloqueia window.open fora do
+  // gesto, e o chat nunca abriria (falha silenciosa, sem erro).
+  const abrirChatWhatsApp = (janela?: Window | null) => {
     const contacts = event.whatsappContacts || [];
-    if (contacts.length > 1) {
-      setShowContactsModal(true);
-    } else if (contacts.length === 1) {
+    if (contacts.length === 1) {
       const contact = contacts[0];
       const message = `Olá${contact.name ? ` ${contact.name}` : ''}! Tenho interesse no ingresso para o evento *${event.title}*`;
-      window.open(waMeUrl(contact.phone, message), '_blank');
+      const url = waMeUrl(contact.phone, message);
+      if (janela) janela.location.href = url;
+      else window.open(url, '_blank');
+    } else {
+      janela?.close();
+      if (contacts.length > 1) setShowContactsModal(true);
     }
   };
 
@@ -514,6 +520,11 @@ export const EventDetails = () => {
       toast.error('Informe seu WhatsApp com DDD.');
       return;
     }
+    // A aba do chat precisa nascer AQUI, ainda dentro do gesto do submit: depois
+    // do await o Safari/iOS bloquearia o window.open. Com vários contatos quem
+    // abre é o modal de escolha, então não há aba a pré-abrir.
+    const contatoUnico = (event.whatsappContacts || []).length === 1;
+    const chatWin = contatoUnico ? window.open('', '_blank') : null;
     setSavingIntent(true);
     try {
       const registration: Registration = {
@@ -526,11 +537,12 @@ export const EventDetails = () => {
         paymentStatus: STATUS_AGUARDANDO,
         timestamp: new Date().toISOString(),
       };
-      const docId = await storage.saveRegistration(registration);
+      const docId = await storage.saveSelfRegistration(registration);
       setMyReg({ ...registration, id: docId });
       setShowWhatsIntentModal(false);
-      abrirChatWhatsApp();
+      abrirChatWhatsApp(chatWin);
     } catch (error) {
+      chatWin?.close();
       console.error('Erro ao registrar intenção de compra:', error);
       toast.error('Não foi possível registrar. Tente novamente.');
     } finally {

@@ -1048,14 +1048,20 @@ exports.onRegistrationDeleted = onDocumentDeleted("registrations/{registrationId
 exports.onRegistrationConfirmed = onDocumentUpdated("registrations/{registrationId}", async (event) => {
     const before = event.data?.before?.data() || {};
     const after = event.data?.after?.data() || {};
-    if (before.paymentStatus !== 'Aguardando pagamento' || after.paymentStatus === 'Aguardando pagamento') return;
     if (!after.eventId || after.isTeste === true) return;
+    // Invariante (espelha onRegistrationCreated/Deleted): o doc conta em
+    // registrationCount enquanto NÃO estiver 'Aguardando pagamento'. Contar a
+    // transição nos DOIS sentidos mantém a simetria mesmo se um admin alternar o
+    // status — sem isso, idas e voltas duplicariam a contagem.
+    const eraPendente = before.paymentStatus === 'Aguardando pagamento';
+    const ficouPendente = after.paymentStatus === 'Aguardando pagamento';
+    if (eraPendente === ficouPendente) return;
     try {
-        await db.collection("events").doc(after.eventId).update({ registrationCount: FieldValue.increment(1) });
+        await db.collection("events").doc(after.eventId).update({ registrationCount: FieldValue.increment(ficouPendente ? -1 : 1) });
     } catch (error) {
-        logger.error(`Error incrementing registration count for event ${after.eventId}:`, error);
+        logger.error(`Error updating registration count for event ${after.eventId}:`, error);
     }
-    if (after.userId) {
+    if (!ficouPendente && after.userId) {
         try {
             const eventDoc = await db.collection("events").doc(after.eventId).get();
             const eventTitle = eventDoc.exists ? (eventDoc.data()?.title || 'o evento') : 'o evento';

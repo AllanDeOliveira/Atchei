@@ -474,6 +474,18 @@ export const storage = {
     return docRef.id;
   },
 
+  /** Inscrição em nome PRÓPRIO (presença gratuita ou intenção WhatsApp).
+   *  O id é determinístico (eventId_userId) para as rules garantirem no servidor
+   *  um único doc por pessoa por evento — com addDoc, um script poderia inflar a
+   *  lista do organizador (e a prova social) criando N inscrições. */
+  saveSelfRegistration: async (registration: Registration): Promise<string> => {
+    const { id, ...data } = registration;
+    void id; // o id é derivado de eventId+userId; descartado do payload de escrita
+    const docId = `${registration.eventId}_${registration.userId}`;
+    await setDoc(doc(db, 'registrations', docId), data);
+    return docId;
+  },
+
   getRegistrationsForEvent: async (eventId: string): Promise<Registration[]> => {
     const q = query(collection(db, 'registrations'), where('eventId', '==', eventId));
     const querySnapshot = await getDocs(q);
