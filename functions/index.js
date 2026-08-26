@@ -263,7 +263,7 @@ exports.criarCobrancaPix = onCall({ cors: true, secrets: [ASAAS_API_KEY] }, asyn
             clienteCpf: cleanCpf,
             eventId: eventId,
             eventTitle: eventTitle, // Guarda o título para usar no texto da notificação push (sem leitura extra)
-            userId: data.userId || '',
+            userId: request.auth.uid, // dono é sempre o chamador autenticado; nunca confiar em data.userId (auth garantido acima)
             status: 'pendente',
             itensComprados: itensSelecionados, // Grava os ingressos do lote para atualizar estoque na aprovação
             asaasPaymentId: cobranca.id,
