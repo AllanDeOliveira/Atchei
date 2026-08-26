@@ -25,7 +25,11 @@ const app = initializeApp(firebaseConfig);
 const appCheckSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 if (appCheckSiteKey && !import.meta.env.TEST) {
   if (import.meta.env.DEV) {
-    (self as { FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean }).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    // Token FIXO vindo do .env.local (VITE_APPCHECK_DEBUG_TOKEN): registre-o UMA vez
+    // no console e todo dev desta máquina passa a contar como verificado. Sem a env,
+    // cai no `true` (token aleatório por navegador — o que sujava a métrica).
+    (self as { FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean | string }).FIREBASE_APPCHECK_DEBUG_TOKEN =
+      import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
   }
   initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider(appCheckSiteKey),
