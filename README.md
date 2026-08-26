@@ -141,9 +141,9 @@ O frontend só conecta nos emuladores do Firebase se o host for `localhost`/`127
 
 ## 🚢 CI e deploy
 
-A `main` é protegida: todo trabalho entra por Pull Request com o CI verde.
+Convenção do projeto: todo trabalho entra na `main` por Pull Request com o CI verde — nada de push direto.
 
-1. **CI** (`.github/workflows/ci.yml`) — roda em todo PR para `main`: build + testes do frontend e das functions. O check "Build e Testes" é obrigatório para o merge.
+1. **CI** (`.github/workflows/ci.yml`) — roda em todo PR para `main`: build + testes do frontend e das functions. Só mescle com o check "Build e Testes" verde.
 2. **Deploy** (`.github/workflows/deploy.yml`) — roda no push para `main` (ou seja, a cada merge): repete os testes, builda e publica no Firebase (hosting + rules + functions) com `firebase-tools`.
 
 Fluxo do dia a dia: `git checkout -b minha-mudanca` → commits → push → abrir PR → CI verde → merge → deploy automático.
