@@ -213,6 +213,15 @@ export const ValidateTickets = () => {
             title: 'Pagamento não confirmado',
             detail: 'Este participante está aguardando a confirmação do pagamento. Confirme no painel de inscritos antes de liberar a entrada.',
           });
+        } else if (reg.paymentStatus === 'Gratuito') {
+          // Confirmação de presença é RSVP social, não ingresso — não emite QR
+          // e não passa na portaria (o participante consta na lista de inscritos).
+          setResult({
+            status: 'invalid',
+            registration: reg,
+            title: 'Confirmação de presença',
+            detail: 'Este código é de uma confirmação de presença gratuita, não de um ingresso. O participante aparece na lista de inscritos do evento.',
+          });
         } else if (reg.checkedIn) {
           setResult({
             status: 'already',

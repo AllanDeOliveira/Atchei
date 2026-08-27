@@ -1,29 +1,28 @@
 # Atchei — Plataforma de Eventos 🎟️
 
-**Atchei** é uma plataforma de descoberta, venda e validação de ingressos para eventos, festivais, casas noturnas e atléticas. Cobre o ciclo inteiro: o cliente descobre o evento no feed, paga por PIX, recebe o ingresso, e a portaria valida por QR Code.
+**Atchei** é uma plataforma para criar e descobrir eventos de qualquer tipo — de festas, shows e festivais a um racha de vôlei, um encontro cultural ou um evento gastronômico. Qualquer pessoa logada cria um evento em minutos e escolhe como ele funciona: **presença gratuita** (só juntar gente) e/ou **venda por WhatsApp** (contato direto com promoters) — os modos são combináveis. A presença confirmada é um RSVP social: conta no evento e entra na lista de inscritos, mas **não emite ingresso**. Para quem vende, o ciclo se fecha na portaria: o ingresso é validado por QR Code.
 
 ---
 
 ## ✨ Funcionalidades
 
 **Para o público**
-- Feed paginado de eventos futuros, com busca e filtros
-- Compra de ingresso por **PIX** — funciona com ou sem conta
-- Confirmação de **presença gratuita** em eventos que permitem
+- Feed paginado de eventos futuros, com busca e filtro por categoria (Festa, Universitário, Show, Esporte, Gastronomia, Cultural, Outros)
+- Confirmação de **presença gratuita** em eventos que permitem — RSVP em 1 toque, sem emitir ingresso
 - Ingresso exportável como imagem
 - Recuperação de ingressos via login com Google, sem precisar de cadastro prévio
 - **PWA instalável** com notificações push
 
-**Para parceiros**
-- Criação e edição dos próprios eventos, com múltiplos lotes
+**Para organizadores** (qualquer conta logada)
+- Criação e edição dos próprios eventos, escolhendo os modos combináveis: presença gratuita e venda por WhatsApp (promoters)
 - Upload de imagens com recorte
 - Painel financeiro dos próprios eventos
 - Inscrições manuais (cortesia, dinheiro, PIX manual)
 - Scanner de portaria em tela cheia, com troca de câmera e feedback por vibração
 
 **Para admin**
-- Gestão irrestrita de eventos, parceiros e inscrições
-- Criação de parceiros com senha temporária e troca obrigatória no primeiro acesso
+- Gestão irrestrita de eventos, perfis e inscrições
+- Criação de perfis com senha temporária e troca obrigatória no primeiro acesso
 - Concessão de privilégio de admin via *custom claim*
 - Geração de ingressos de teste sem afetar estoque
 
@@ -33,12 +32,12 @@
 
 | Papel | O que pode fazer |
 |---|---|
-| **Visitante** | Ver feed, busca e detalhes; confirmar presença gratuita; comprar por PIX; recuperar ingressos via Google |
-| **Cliente** | Tudo acima + perfil, meus ingressos e notificações push |
-| **Parceiro** (`atletica` / `estabelecimento`) | Criar, editar e excluir **os próprios** eventos; painel financeiro; validar ingressos dos próprios eventos; inscrições manuais |
-| **Admin** | Acesso irrestrito, incluindo CRUD de parceiros e concessão de claims |
+| **Visitante** | Ver feed, busca e detalhes; confirmar presença gratuita; recuperar ingressos via Google |
+| **Pessoal** (`user`) | Tudo acima + perfil, meus ingressos, notificações push; criar, editar e excluir **os próprios** eventos; validar ingressos dos próprios eventos; inscrições manuais; painel financeiro |
+| **Profissional** (`profissional`) | Tudo acima + aparece no diretório público de organizadores da busca |
+| **Admin** | Acesso irrestrito, incluindo CRUD de perfis e concessão de claims |
 
-Autorização de admin é **100% via custom claim** do Firebase Auth — não existe fallback por e-mail. O **registro público de contas está desativado**: parceiros são criados pelo admin.
+Os tipos legados `atletica` e `estabelecimento` foram fundidos em `profissional` (documentos antigos continuam valendo como profissionais). O **registro público de contas está aberto** (tipos `user` e `profissional`), com exigência de **18+** validada também nas security rules — o admin ainda pode criar perfis manualmente com senha temporária. Autorização de admin é **100% via custom claim** do Firebase Auth — não existe fallback por e-mail.
 
 ---
 
@@ -59,22 +58,9 @@ Serviços Firebase usados pelo app: Authentication · Firestore · Cloud Functio
 
 ## 💳 Pagamento
 
-Método **exclusivamente PIX**, via Asaas (API v3), com **split de pagamento**. Não há cartão.
+Não há pagamento dentro da plataforma no momento. A venda de ingressos acontece por **WhatsApp**, em contato direto com os promoters cadastrados no evento; o registro do pagamento (dinheiro, PIX manual, cortesia) é feito pelo organizador via inscrição manual.
 
-1. O cliente escolhe os lotes e informa os dados.
-2. A function `criarCobrancaPix` valida o estoque e **recalcula o preço no servidor** a partir do documento do evento — o valor enviado pelo cliente é ignorado.
-3. A cobrança é criada com a chave **da plataforma**; o array `split` repassa a parte do organizador para o `walletId` dele (`PLATFORM_FEE_PERCENT` define a comissão retida). O QR Code vem numa segunda chamada.
-4. O Asaas notifica o webhook. Numa transação Firestore: o pedido vira `pago`, o estoque do lote é decrementado, as inscrições são criadas e uma push é enviada.
-
-O organizador vira recebedor cadastrando seus dados no perfil (`asaasCadastrarRecebedor` cria a subconta). Sem recebedor, a venda acontece sem split e o valor fica integralmente na plataforma.
-
-**Garantias implementadas**
-- Webhook autenticado pelo token estático `asaas-access-token`, comparado *timing-safe*, **fail-closed** — sem o token em produção, o webhook rejeita. O Asaas **não assina o payload** (não há HMAC como no Mercado Pago), então o status de pagamento é sempre **reconsultado na API** antes de emitir ingresso: um payload forjado não vira ingresso.
-- Idempotência por `pedidoId`, com IDs de inscrição determinísticos — retry do Asaas não duplica ingresso.
-- Estados terminais (`pago`, `estornado`, `chargeback`, `cancelado`) bloqueiam reprocessamento.
-- Estorno e chargeback devolvem estoque e **deletam as inscrições** — ingresso estornado não passa na portaria.
-- Venda simultânea que estoure a capacidade marca o pedido como `overbooked` e **estorna automaticamente**.
-- Rate limiting transacional por operação.
+> Existe um fluxo completo de venda integrada por PIX (Asaas v3, com split) implementado no código, mas ele está **pausado** por kill switch duplo: `PIX_ENABLED = false` em `src/lib/flags.ts` (esconde a interface) e `PIX_ENABLED=false` no ambiente das functions (bloqueia `criarCobrancaPix` no servidor). Os dois precisam ser religados juntos para reativar.
 
 ---
 
@@ -87,11 +73,13 @@ O scanner aceita duas entradas:
 
 O código curto é derivado do id por FNV-1a → base32 Crockford, sem campo extra no banco. Se mais de uma inscrição casar com o mesmo código, o sistema **recusa a validação** em vez de arriscar liberar a pessoa errada. Check-ins não podem ser revertidos.
 
+Só ingresso de verdade passa: intenção de compra ainda não confirmada pelo vendedor e **confirmação de presença gratuita** (que não é ingresso) são recusadas pelo scanner.
+
 ---
 
 ## 🔧 Rodando localmente
 
-**Pré-requisitos:** Node 22+, projeto Firebase próprio, conta Asaas (use a chave de **sandbox** para testar pagamento).
+**Pré-requisitos:** Node 22+, projeto Firebase próprio. Conta Asaas só é necessária para mexer no fluxo de PIX, que está pausado (use a chave de **sandbox**).
 
 ```bash
 npm install
@@ -115,11 +103,16 @@ VITE_USE_EMULATORS=          # 'true' para falar com os emuladores
 E um `functions/.env` para o runtime das Cloud Functions:
 
 ```env
+APP_BASE_URL=http://localhost:5173
+RESEND_API_KEY=              # e-mail transacional (redefinição de senha)
+EMAIL_FROM=                  # remetente verificado no Resend
+PIX_ENABLED=false            # kill switch do fluxo de PIX (pausado)
+
+# Só para mexer no fluxo de PIX (pausado):
 ASAAS_API_KEY=               # chave de sandbox para desenvolvimento
 ASAAS_BASE_URL=https://api-sandbox.asaas.com/v3
 ASAAS_WEBHOOK_TOKEN=         # o mesmo valor cadastrado no webhook do Asaas
 PLATFORM_FEE_PERCENT=10      # comissão retida pela plataforma, em %
-APP_BASE_URL=http://localhost:5173
 ```
 
 > Em produção, a chave e o token do webhook vão pelo Secret Manager, não pelo `.env`
