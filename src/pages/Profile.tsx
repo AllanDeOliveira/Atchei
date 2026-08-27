@@ -52,6 +52,8 @@ export const Profile = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'public' | 'test'>('public');
+  // Abas do usuário comum: eventos criados por ele vs. eventos em que se inscreveu.
+  const [userTab, setUserTab] = useState<'meus' | 'inscricoes'>('meus');
 
   // Estados do Ticket
   const [myRegistrations, setMyRegistrations] = useState<Registration[]>([]);
@@ -428,10 +430,16 @@ export const Profile = () => {
     window.open(waMeUrl(contact.phone, message), '_blank');
   };
 
+  const isOwner = (event: EventItem) => event.creatorId === (user?.profileId || user?.id);
+
   const filteredEvents = myEvents.filter(event => {
-    if (userRole !== 'admin') return true;
-    if (activeTab === 'public') return !event.isTestEvent;
-    return !!event.isTestEvent;
+    if (userRole === 'admin') {
+      if (activeTab === 'public') return !event.isTestEvent;
+      return !!event.isTestEvent;
+    }
+    // Evento criado que também tem inscrição própria fica em "Meus eventos" —
+    // as ações de dono (inscritos/editar/excluir) prevalecem no card.
+    return userTab === 'meus' ? isOwner(event) : !isOwner(event);
   });
 
   return (
@@ -638,11 +646,38 @@ export const Profile = () => {
               </div>
             </div>
           ) : (
-            <div className="profile-el flex items-center gap-2.5 px-5 mb-4">
-              <div className="w-1 h-5 bg-primary/40 rounded-full" />
-              <h2 className="font-display font-semibold text-xl text-textLight">
-                Meus eventos
-              </h2>
+            <div className="profile-el px-5 mb-6 text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-glassBorder/40 pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-1 h-5 bg-primary/40 rounded-full" />
+                  <h2 className="font-display font-semibold text-xl text-textLight">
+                    Eventos
+                  </h2>
+                </div>
+
+                <div className="flex bg-surface/40 p-1 rounded-xl border border-glassBorder self-start sm:self-auto">
+                  <button
+                    onClick={() => setUserTab('meus')}
+                    className={`px-4 py-2 rounded-lg font-sans text-xs font-medium transition-all duration-200 cursor-pointer ${
+                      userTab === 'meus'
+                        ? 'bg-primary text-textDark font-semibold'
+                        : 'text-textMuted hover:text-textLight'
+                    }`}
+                  >
+                    Meus eventos ({myEvents.filter(isOwner).length})
+                  </button>
+                  <button
+                    onClick={() => setUserTab('inscricoes')}
+                    className={`px-4 py-2 rounded-lg font-sans text-xs font-medium transition-all duration-200 cursor-pointer ${
+                      userTab === 'inscricoes'
+                        ? 'bg-primary text-textDark font-semibold'
+                        : 'text-textMuted hover:text-textLight'
+                    }`}
+                  >
+                    Minhas inscrições ({myEvents.filter(e => !isOwner(e)).length})
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -697,7 +732,7 @@ export const Profile = () => {
                 </div>
 
                 <div className="flex border-t border-glassBorder bg-surface/30">
-                  {user?.role === 'admin' || event.creatorId === (user?.profileId || user?.id) ? (
+                  {user?.role === 'admin' || isOwner(event) ? (
                     <>
                       <button
                         onClick={() => handleOpenParticipants(event)}
@@ -731,6 +766,9 @@ export const Profile = () => {
                           if (reg?.paymentStatus === STATUS_AGUARDANDO) {
                             // Intenção via WhatsApp ainda sem confirmação — não há QR pra mostrar.
                             toast('Aguardando o vendedor confirmar o pagamento. Seu ingresso aparece aqui assim que ele confirmar.');
+                          } else if (reg?.paymentStatus === 'Gratuito') {
+                            // Presença é RSVP social, não ingresso — não existe QR para mostrar.
+                            toast('Presença confirmada! Este evento não emite ingresso — é só chegar. 🎉');
                           } else if (reg) {
                             setSelectedRegForTicket(reg);
                             setSelectedEventForTicket(event);
@@ -765,15 +803,17 @@ export const Profile = () => {
                 <p className="font-sans text-textMuted text-sm mb-4">
                   {userRole === 'admin'
                     ? (activeTab === 'public' ? 'Nenhum evento público cadastrado.' : 'Nenhum evento de teste cadastrado.')
-                    : 'Você ainda não criou eventos nem confirmou presença.'
+                    : (userTab === 'meus'
+                        ? 'Você ainda não criou eventos.'
+                        : 'Você ainda não garantiu ingresso nem confirmou presença em eventos.')
                   }
                 </p>
                 {userRole !== 'admin' && (
                   <button
-                    onClick={() => navigate('/')}
+                    onClick={() => navigate(userTab === 'meus' ? '/create' : '/')}
                     className="px-6 py-2.5 bg-surface hover:bg-primary text-primary hover:text-textDark border border-glassBorder rounded-full font-sans text-sm font-medium transition-all active:scale-95 cursor-pointer"
                   >
-                    Explorar eventos
+                    {userTab === 'meus' ? 'Criar evento' : 'Explorar eventos'}
                   </button>
                 )}
               </div>
