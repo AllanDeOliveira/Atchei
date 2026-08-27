@@ -1,4 +1,4 @@
-export { formatCPF, isValidCPF, onlyDigits } from './cpf';
+export { formatCPF, isValidCPF } from './cpf';
 
 export const formatPhone = (value: string): string => {
   const digits = (value || '').replace(/\D/g, '').slice(0, 11);

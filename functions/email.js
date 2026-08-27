@@ -104,4 +104,4 @@ async function enviarEmailResetSenha(email, link) {
   logger.info(`E-mail de redefinição enviado para ${email}.`);
 }
 
-module.exports = { enviarEmail, enviarEmailResetSenha, moldura, escaparHtml };
+module.exports = { enviarEmail, enviarEmailResetSenha, escaparHtml };
