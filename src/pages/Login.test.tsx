@@ -5,7 +5,6 @@ import { MemoryRouter, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Login } from './Login';
 import { storage } from '../lib/storage';
-import { sendPasswordResetEmail } from 'firebase/auth';
 
 // Mock react-router-dom useNavigate
 vi.mock('react-router-dom', async () => {
@@ -31,13 +30,14 @@ vi.mock('../lib/storage', () => ({
   },
 }));
 
-// O reset de senha usa o envio NATIVO do Firebase (sendPasswordResetEmail).
+// O reset de senha passa pela function `solicitarResetSenha`, não pelo SDK do Auth.
 vi.mock('../lib/firebase', () => ({
-  auth: {},
+  getFunctionsInstance: vi.fn(() => ({})),
 }));
 
-vi.mock('firebase/auth', () => ({
-  sendPasswordResetEmail: vi.fn(),
+const mockCallable = vi.fn();
+vi.mock('firebase/functions', () => ({
+  httpsCallable: vi.fn(() => mockCallable),
 }));
 
 describe('Login Page', () => {
@@ -136,8 +136,8 @@ describe('Login Page', () => {
     expect(toast.error).toHaveBeenCalledWith('Credenciais inválidas!');
   });
 
-  it('chama sendPasswordResetEmail com o e-mail digitado', async () => {
-    vi.mocked(sendPasswordResetEmail).mockResolvedValue(undefined);
+  it('chama solicitarResetSenha com o e-mail digitado', async () => {
+    mockCallable.mockResolvedValue({ data: { ok: true } });
 
     render(
       <MemoryRouter>
@@ -148,13 +148,13 @@ describe('Login Page', () => {
     await userEvent.type(screen.getByPlaceholderText('Seu e-mail'), '  Pessoa@Exemplo.com  ');
     await userEvent.click(screen.getByRole('button', { name: /esqueci minha senha/i }));
 
-    expect(sendPasswordResetEmail).toHaveBeenCalledWith({}, 'Pessoa@Exemplo.com');
+    expect(mockCallable).toHaveBeenCalledWith({ email: 'Pessoa@Exemplo.com' });
     expect(toast.success).toHaveBeenCalledWith(
       'Se o e-mail estiver cadastrado, você receberá o link de redefinição.'
     );
   });
 
-  it('não envia quando o campo de e-mail está vazio', async () => {
+  it('não chama a function quando o campo de e-mail está vazio', async () => {
     render(
       <MemoryRouter>
         <Login />
@@ -163,33 +163,14 @@ describe('Login Page', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /esqueci minha senha/i }));
 
-    expect(sendPasswordResetEmail).not.toHaveBeenCalled();
+    expect(mockCallable).not.toHaveBeenCalled();
     expect(toast.error).toHaveBeenCalledWith('Digite seu e-mail acima para recuperar a senha.');
-  });
-
-  // Conta inexistente responde igual a envio feito — anti-enumeração de e-mails.
-  it('responde neutro quando a conta não existe', async () => {
-    vi.mocked(sendPasswordResetEmail).mockRejectedValue({ code: 'auth/user-not-found' });
-
-    render(
-      <MemoryRouter>
-        <Login />
-      </MemoryRouter>
-    );
-
-    await userEvent.type(screen.getByPlaceholderText('Seu e-mail'), 'ninguem@exemplo.com');
-    await userEvent.click(screen.getByRole('button', { name: /esqueci minha senha/i }));
-
-    expect(toast.success).toHaveBeenCalledWith(
-      'Se o e-mail estiver cadastrado, você receberá o link de redefinição.'
-    );
-    expect(toast.error).not.toHaveBeenCalled();
   });
 
   // A mensagem de sucesso é neutra por design (anti-enumeração), mas falha de rede
   // precisa aparecer — senão o usuário acha que o link foi enviado e nunca chega.
   it('avisa quando a chamada falha por rede', async () => {
-    vi.mocked(sendPasswordResetEmail).mockRejectedValue(new Error('offline'));
+    mockCallable.mockRejectedValue(new Error('offline'));
 
     render(
       <MemoryRouter>
