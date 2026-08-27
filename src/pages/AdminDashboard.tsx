@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storage } from '../lib/storage';
-import { caceresMockEvents } from '../lib/mockCaceresEvents';
 import { formatDateBR } from '../lib/formatters';
 import type { EventItem, Registration } from '../lib/storage';
 import { Button } from '../components/ui/Button';
@@ -122,40 +121,6 @@ export const AdminDashboard = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-
-  const handleGenerateMockEvents = async () => {
-    const toastId = toast.loading('Gerando 10 eventos de Cáceres...');
-    const creatorId = currentUser?.profileId || currentUser?.id || 'admin'; // usuário logado
-    
-    const eventsToCreate = caceresMockEvents(creatorId);
-
-    try {
-      for (const ev of eventsToCreate) {
-        const tktId = `tkt-${crypto.randomUUID()}`;
-        const eventItem = {
-          ...ev,
-          id: '',
-          tickets: [
-            {
-              id: tktId,
-              name: "Lote Único - Pix",
-              price: 30,
-              capacity: 150,
-              sold: 0,
-              status: "active" as const
-            }
-          ]
-        };
-        await storage.saveEvent(eventItem);
-      }
-      toast.success('10 Eventos Cáceres gerados com sucesso!', { id: toastId });
-      loadData();
-    } catch (e) {
-      console.error(e);
-      toast.error('Erro ao gerar eventos Cáceres.', { id: toastId });
-    }
-  };
 
   const handleDelete = async (id: string) => {
     setConfirmModal({
@@ -350,9 +315,6 @@ export const AdminDashboard = () => {
             <div className="flex justify-between items-center mb-4 admin-anim relative z-10 flex-wrap gap-2">
               <h2 className="font-display text-lg font-semibold text-textLight">Gerenciar eventos</h2>
               <div className="flex gap-2">
-                <Button onClick={handleGenerateMockEvents} type="button" variant="outline" size="sm" className="rounded-xl">
-                  ⚡ Gerar Eventos Cáceres
-                </Button>
                 <Button onClick={() => navigate('/create')} variant="primary" size="sm" className="rounded-xl">
                   + Novo evento
                 </Button>
