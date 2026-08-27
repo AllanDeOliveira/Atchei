@@ -53,7 +53,6 @@ export const EventDetails = () => {
   // Geração de ingresso de teste (somente admin)
   const [loadingTestTicket, setLoadingTestTicket] = useState(false);
 
-  // Fechar modais com Escape (acessibilidade de diálogo)
   // Mantém a referência da inscrição para o fechamento agendado do modal de sucesso
   const registrationForTicketRef = useRef<Registration | null>(null);
 

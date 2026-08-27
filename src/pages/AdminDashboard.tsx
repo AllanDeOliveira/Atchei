@@ -87,8 +87,6 @@ export const AdminDashboard = () => {
     type: 'warning'
   });
 
-  // Fechar modais com Escape (acessibilidade de diálogo)
-
   // Basic auth check for MVP
   const currentUser = storage.getCurrentUser();
   const userId = currentUser?.id;
@@ -185,9 +183,9 @@ export const AdminDashboard = () => {
       setLastGenerated({ email, pass: password }); // A senha fica só na tela, nunca no banco
 
       setNewPartner({ name: '', type: 'profissional', description: '', imageUrl: '' });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao adicionar parceiro:", error);
-      if (error?.code === 'auth/email-already-in-use') {
+      if ((error as { code?: string })?.code === 'auth/email-already-in-use') {
         toast.error("Este parceiro já existe! Tente adicionar um número ou sobrenome ao nome.");
       } else {
         toast.error("Erro ao criar parceiro. Verifique o console.");

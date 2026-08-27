@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
+import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
 import { storage, soldCount, STATUS_AGUARDANDO, STATUS_PAGO_WHATSAPP } from '../lib/storage';
 import type { EventItem, Registration } from '../lib/storage';
@@ -108,11 +109,9 @@ export const Profile = () => {
   const [selectedEventForParticipants, setSelectedEventForParticipants] = useState<EventItem | null>(null);
   const [participantsList, setParticipantsList] = useState<Registration[]>([]);
   const [isLoadingParticipants, setIsLoadingParticipants] = useState<boolean>(false);
-  const [participantsLastDoc, setParticipantsLastDoc] = useState<any>(null);
+  const [participantsLastDoc, setParticipantsLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMoreParticipants, setHasMoreParticipants] = useState<boolean>(true);
   const [isLoadingMoreParticipants, setIsLoadingMoreParticipants] = useState<boolean>(false);
-
-  // Fechar modais com Escape (acessibilidade de diálogo)
 
   const loadEvents = useCallback(async () => {
     try {

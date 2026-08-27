@@ -36,9 +36,9 @@ export const Login = () => {
       } else {
         toast.error('Credenciais inválidas!');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro no login:", error);
-      if (error?.code === 'auth/too-many-requests') {
+      if ((error as { code?: string })?.code === 'auth/too-many-requests') {
         toast.error('Tente novamente mais tarde.');
       } else {
         toast.error('Ocorreu um erro ao tentar fazer login.');

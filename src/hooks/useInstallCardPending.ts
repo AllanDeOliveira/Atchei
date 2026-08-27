@@ -6,7 +6,7 @@ import { INSTALL_DISMISS_KEY } from '../lib/storageKeys';
 export const INSTALL_RESOLVED_EVENT = 'atchei:install-resolved';
 
 /** O convite de instalação ainda vai ocupar a tela? */
-export const isInstallCardPending = (): boolean => {
+const isInstallCardPending = (): boolean => {
   if (typeof window === 'undefined') return false;
 
   const isStandalone =

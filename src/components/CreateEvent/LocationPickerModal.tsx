@@ -7,7 +7,7 @@ import { Modal } from '../ui/Modal';
 const GOOGLE_MAP_ID = 'bf51a910020fa25a';
 const CENTRO_PADRAO: [number, number] = [-16.0669, -57.6868]; // Cuiabá
 
-export interface LocalEscolhido {
+interface LocalEscolhido {
   /** Nome curto (vai para o campo "Local"). */
   nome: string;
   /** Endereço completo. */
