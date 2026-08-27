@@ -1,6 +1,7 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Search, PlusSquare, User, Settings, LogOut, Wallet } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { PIX_ENABLED } from '../lib/flags';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -27,7 +28,7 @@ export const Sidebar = () => {
     { icon: Home, path: '/', label: 'Início' },
     { icon: Search, path: '/search', label: 'Pesquisar' },
     ...(isLogged ? [{ icon: PlusSquare, path: '/create', label: 'Criar Evento' }] : []),
-    ...(isLogged ? [{ icon: Wallet, path: '/financeiro', label: 'Financeiro' }] : []),
+    ...(isLogged && PIX_ENABLED ? [{ icon: Wallet, path: '/financeiro', label: 'Financeiro' }] : []),
     ...(isAdmin ? [{ icon: Settings, path: '/admin', label: 'Painel Admin' }] : []),
     { icon: User, path: '/profile', label: 'Meu Perfil' },
   ];
