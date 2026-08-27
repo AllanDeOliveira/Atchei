@@ -10,6 +10,7 @@ import { TicketModal } from '../components/TicketModal';
 import { Modal } from '../components/ui/Modal';
 import { NotificationToggle } from '../components/NotificationToggle';
 import { AsaasRecebedor } from '../components/AsaasRecebedor';
+import { PIX_ENABLED } from '../lib/flags';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useAuth } from '../contexts/AuthContext';
 import { compressImage, dataURLtoBlob } from '../lib/imageUtils';
@@ -576,8 +577,8 @@ export const Profile = () => {
         )}
       </div>
 
-      {/* Acesso ao painel financeiro — também disponível na sidebar do desktop */}
-      {user && (
+      {/* Acesso ao painel financeiro — só com PIX ativo (stand-by por ora) */}
+      {PIX_ENABLED && user && (
         <div className="profile-el mx-5 mb-6 relative z-10">
           <button
             onClick={() => navigate('/financeiro')}
@@ -595,8 +596,8 @@ export const Profile = () => {
         </div>
       )}
 
-      {/* Conta de recebimento (split): só perfil profissional vende ingressos e recebe repasse */}
-      {user && userRole !== 'user' && (
+      {/* Conta de recebimento (split): só perfil profissional vende ingressos e recebe repasse. Só com PIX ativo (stand-by por ora) */}
+      {PIX_ENABLED && user && userRole !== 'user' && (
         <div className="profile-el mx-5 mb-6 relative z-10">
           <AsaasRecebedor />
         </div>
