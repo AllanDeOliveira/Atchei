@@ -57,7 +57,7 @@ export const Profile = () => {
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'public' | 'test'>('public');
+  const [activeTab, setActiveTab] = useState<'public' | 'test' | 'participados'>('public');
   // Abas do usuário comum: eventos criados por ele vs. eventos em que se inscreveu.
   const [userTab, setUserTab] = useState<'meus' | 'inscricoes'>('meus');
 
@@ -125,6 +125,11 @@ export const Profile = () => {
 
       if (currentUserRole === 'admin') {
         setMyEvents(visibleEvents);
+        // Admin também cria e participa: carrega as próprias inscrições para a aba "Participados".
+        if (currentUserId) {
+          const myRegs = await storage.getRegistrationsForUser(currentUserId);
+          setMyRegistrations(myRegs);
+        }
       } else if (currentUserId) {
         // Qualquer usuário pode criar eventos: a lista junta os criados por ele
         // e os com presença confirmada (o card decide as ações por dono).
@@ -421,6 +426,8 @@ export const Profile = () => {
 
   const filteredEvents = myEvents.filter(event => {
     if (userRole === 'admin') {
+      // Participados: eventos em que o admin se inscreveu e NÃO é o criador.
+      if (activeTab === 'participados') return !isOwner(event) && myRegistrations.some(r => r.eventId === event.id);
       if (activeTab === 'public') return !event.isTestEvent;
       return !!event.isTestEvent;
     }
@@ -629,6 +636,16 @@ export const Profile = () => {
                   >
                     Testes ({myEvents.filter(e => !!e.isTestEvent).length})
                   </button>
+                  <button
+                    onClick={() => setActiveTab('participados')}
+                    className={`px-4 py-2 rounded-lg font-sans text-xs font-medium transition-all duration-200 cursor-pointer ${
+                      activeTab === 'participados'
+                        ? 'bg-primary text-textDark font-semibold'
+                        : 'text-textMuted hover:text-textLight'
+                    }`}
+                  >
+                    Participados ({myEvents.filter(e => !isOwner(e) && myRegistrations.some(r => r.eventId === e.id)).length})
+                  </button>
                 </div>
               </div>
             </div>
@@ -719,7 +736,8 @@ export const Profile = () => {
                 </div>
 
                 <div className="flex border-t border-glassBorder bg-surface/30">
-                  {user?.role === 'admin' || isOwner(event) ? (
+                  {/* Na aba "Participados" o admin é participante, não dono: mostra ações de participante. */}
+                  {(user?.role === 'admin' && activeTab !== 'participados') || isOwner(event) ? (
                     <>
                       <button
                         onClick={() => handleOpenParticipants(event)}
@@ -789,7 +807,9 @@ export const Profile = () => {
                 </div>
                 <p className="font-sans text-textMuted text-sm mb-4">
                   {userRole === 'admin'
-                    ? (activeTab === 'public' ? 'Nenhum evento público cadastrado.' : 'Nenhum evento de teste cadastrado.')
+                    ? (activeTab === 'public' ? 'Nenhum evento público cadastrado.'
+                        : activeTab === 'test' ? 'Nenhum evento de teste cadastrado.'
+                        : 'Você ainda não participou de eventos.')
                     : (userTab === 'meus'
                         ? 'Você ainda não criou eventos.'
                         : 'Você ainda não garantiu ingresso nem confirmou presença em eventos.')
