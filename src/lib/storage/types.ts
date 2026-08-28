@@ -68,6 +68,8 @@ export type EventItem = {
   whatsappContacts?: { name: string; phone: string }[];
   isTestEvent?: boolean;
   registrationCount?: number;
+  /** Teto TOTAL de participantes (gratuitos + pagos). null/ausente = sem limite. */
+  maxParticipants?: number | null;
   tickets?: TicketType[]; // Múltiplos tipos de ingressos e lotes
   /** Vendidos por lote, gerido SÓ pelo backend (rules bloqueiam escrita do cliente). */
   soldByTicket?: { [ticketId: string]: number };

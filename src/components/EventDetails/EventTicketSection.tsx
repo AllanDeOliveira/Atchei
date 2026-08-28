@@ -36,6 +36,8 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
   // Intenção de compra via WhatsApp ainda não confirmada pelo vendedor.
   const aguardandoVendedor = myRegistration?.paymentStatus === STATUS_AGUARDANDO;
   const provaSocial = confirmadosLabel(event.registrationCount || 0);
+  // Teto total atingido: some o CTA de confirmar/comprar (as rules bloqueiam no servidor).
+  const lotado = event.maxParticipants != null && (event.registrationCount || 0) >= event.maxParticipants;
   const formatPriceDisplay = () => {
     if (!event.hasTickets) return 'Gratuito';
     if (!event.ticketPrice) return 'Consulte';
@@ -109,6 +111,11 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
                 </button>
               )}
             </>
+          ) : lotado ? (
+            <div className="w-full rounded-xl py-4 bg-danger/10 border border-danger/20 text-danger flex items-center justify-center gap-2 font-sans font-semibold text-sm select-none">
+              <Ticket size={16} />
+              <span>Evento esgotado</span>
+            </div>
           ) : (
             <>
               {event.hasPresence !== false && (

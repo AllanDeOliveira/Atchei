@@ -493,6 +493,17 @@ exports.webhookAsaas = onRequest({ cors: true, secrets: [ASAAS_API_KEY, ASAAS_WE
                                 updates[`soldByTicket.${ticketId}`] = novoSold;
                             }
 
+                            // Teto TOTAL do evento (maxParticipants): além do estoque por lote,
+                            // a venda não pode estourar o limite geral (presenças + ingressos).
+                            // Estouro cai no mesmo tratamento de overbooking (estorno automático).
+                            if (eventData.maxParticipants != null) {
+                                const qtdPedido = Object.values(vendasMap).reduce((a, b) => a + b, 0);
+                                const jaConfirmados = eventData.registrationCount || 0;
+                                if (jaConfirmados + qtdPedido > eventData.maxParticipants) {
+                                    isOverbooked = true;
+                                }
+                            }
+
                             if (Object.keys(updates).length > 0) {
                                 transaction.update(eventRef, updates);
                                 logger.info(`Estoque atualizado no evento ${currentPedidoData.eventId} para os tickets:`, Object.keys(vendasMap));

@@ -460,7 +460,9 @@ export const EventDetails = () => {
       toast.success('Presença confirmada! 🎉');
     } catch (error) {
       console.error("Erro ao confirmar presença:", error);
-      toast.error('Não foi possível confirmar. Tente novamente.');
+      // permission-denied com teto definido = evento lotou entre o load e o clique.
+      const lotou = (error as { code?: string })?.code === 'permission-denied' && event.maxParticipants != null;
+      toast.error(lotou ? 'Evento esgotado! O limite de participantes foi atingido.' : 'Não foi possível confirmar. Tente novamente.');
     }
   };
 
