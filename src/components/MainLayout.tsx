@@ -1,4 +1,5 @@
 import { Outlet, Link } from 'react-router-dom';
+import { Lightbulb } from 'lucide-react';
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
 import { InstagramIcon } from './InstagramIcon';
@@ -42,6 +43,14 @@ export const MainLayout = () => (
                 E-mail:{' '}
                 <a href="mailto:contato.atchei@gmail.com" className="hover:text-primary transition-colors">
                   contato.atchei@gmail.com
+                </a>
+              </li>
+              <li>
+                <a
+                  href={`mailto:contato.atchei@gmail.com?subject=${encodeURIComponent('Sugestão de melhoria — Atchei')}&body=${encodeURIComponent('Olá! Tenho uma sugestão para o Atchei:\n\n')}`}
+                  className="inline-flex items-center gap-1.5 hover:text-primary transition-colors"
+                >
+                  <Lightbulb size={14} /> Sugerir melhoria
                 </a>
               </li>
             </ul>
