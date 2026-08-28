@@ -40,6 +40,11 @@ const eventSchema = z.object({
   pixTicketPrice: z.string().optional(),
   isTestEvent: z.boolean().optional(),
   hasPresence: z.boolean().optional(),
+  // Teto total de participantes; string no form, convertido no submit. Vazio = sem limite.
+  maxParticipants: z.string().optional().refine(
+    v => !v || (/^\d+$/.test(v) && Number(v) > 0),
+    'O limite de participantes deve ser um número maior que zero'
+  ),
   whatsappContacts: z.array(z.object({ name: z.string(), phone: z.string() })).optional(),
   mediaUrls: z.array(z.string())
 }).refine(data => {
@@ -90,6 +95,7 @@ const CreateEventContent = () => {
       pixTicketPrice: '',
       isTestEvent: false,
       hasPresence: false,
+      maxParticipants: '',
       whatsappContacts: [{ name: '', phone: '' }]
     }
   });
@@ -158,6 +164,7 @@ const CreateEventContent = () => {
               // Eventos antigos sem hasPresence (undefined) tratam como habilitado —
               // difere de propósito do default de evento NOVO (desligado, defaultValues acima).
               hasPresence: ev.hasPresence ?? true,
+              maxParticipants: ev.maxParticipants != null ? String(ev.maxParticipants) : '',
               whatsappContacts: ev.whatsappContacts?.length ? ev.whatsappContacts : [{ name: '', phone: '' }]
             });
             setTickets(ev.tickets || []);
@@ -186,8 +193,11 @@ const CreateEventContent = () => {
       return;
     }
     const targetCreatorId = selectedCreatorId || user?.profileId || userId!;
+    // Teto total: string do form vira número; vazio vira null (sem limite; Firestore não aceita undefined).
+    const { maxParticipants: maxPartStr, ...restData } = data;
     const eventData: EventItem = {
-      ...data,
+      ...restData,
+      maxParticipants: maxPartStr && Number(maxPartStr) > 0 ? Number(maxPartStr) : null,
       id: id || Date.now().toString(),
       publicType: (data.publicType || 'Aberto') as EventItem['publicType'],
       category: (data.category || 'Festa') as EventCategory,
@@ -501,6 +511,25 @@ const CreateEventContent = () => {
                   />
                 </button>
               </div>
+            </div>
+
+            {/* Limite total de participantes (opcional) */}
+            <div className="create-anim space-y-2 surface rounded-2xl p-3.5 md:p-5 text-left">
+              <label htmlFor="max-participants" className="text-xs md:text-sm font-display font-semibold text-textLight block">
+                Limite de participantes <span className="font-sans font-normal text-textMuted">(opcional)</span>
+              </label>
+              <input
+                id="max-participants"
+                type="number"
+                min={1}
+                inputMode="numeric"
+                placeholder="Sem limite"
+                {...register('maxParticipants')}
+                className="w-full h-11 bg-surfaceHover/50 border border-glassBorder rounded-xl px-4 text-sm font-sans text-textLight focus:outline-none focus:border-primary/40 focus:shadow-glow-primary placeholder:text-textMuted/50 transition-all duration-300"
+              />
+              <p className="text-[11px] text-textMuted leading-relaxed">
+                Teto total do evento (presenças + ingressos). Ao atingir, novas confirmações são bloqueadas.
+              </p>
             </div>
 
             {/* Tickets Toggle */}

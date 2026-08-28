@@ -57,6 +57,17 @@ service cloud.firestore {
         get(/databases/$(database)/documents/events/$(eventId)).data.hasPresence != false;
     }
 
+    // Teto TOTAL de participantes (maxParticipants). Sem o campo (ou null) não há
+    // limite. Compara com registrationCount, mantido pelas triggers do backend —
+    // em rajada simultânea pode passar 1-2 além do teto (contador é eventual),
+    // ceiling aceito para a V1. O organizador/admin não passa por aqui (pode furar
+    // o próprio teto conscientemente via inscrição manual).
+    function eventHasCapacity(eventId) {
+      let ev = get(/databases/$(database)/documents/events/$(eventId)).data;
+      return !('maxParticipants' in ev) || ev.maxParticipants == null ||
+        (('registrationCount' in ev) ? ev.registrationCount : 0) < ev.maxParticipants;
+    }
+
     // Evento que vende ingresso (WhatsApp ou Pix) — alvo válido para uma
     // intenção de compra "Aguardando pagamento".
     function eventSellsTickets(eventId) {
@@ -170,6 +181,7 @@ service cloud.firestore {
         isEventOwner(request.resource.data.eventId) ||
         (
           eventAllowsPresence(request.resource.data.eventId) &&
+          eventHasCapacity(request.resource.data.eventId) &&
           (
             !('paymentStatus' in request.resource.data) ||
             request.resource.data.paymentStatus == 'Gratuito' ||
@@ -184,6 +196,7 @@ service cloud.firestore {
         ) ||
         (
           eventSellsTickets(request.resource.data.eventId) &&
+          eventHasCapacity(request.resource.data.eventId) &&
           request.resource.data.paymentStatus == 'Aguardando pagamento' &&
           !('ticketTypeId' in request.resource.data) &&
           (

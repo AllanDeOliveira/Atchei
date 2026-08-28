@@ -311,6 +311,13 @@ export const Profile = () => {
       ticketTypeName: ticketTypeName
     };
 
+    // O teto (maxParticipants) não bloqueia o organizador — furar o próprio limite
+    // (cortesia, convidado extra) é decisão dele; só avisa.
+    const ev = selectedEventForParticipants;
+    if (ev.maxParticipants != null && (ev.registrationCount || 0) >= ev.maxParticipants) {
+      toast(`Atenção: o evento já atingiu o limite de ${ev.maxParticipants} participantes.`, { icon: '⚠️' });
+    }
+
     try {
       // Salvar no banco
       const realDocId = await storage.saveRegistration(newRegistration);
