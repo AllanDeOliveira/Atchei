@@ -67,7 +67,7 @@ async function enviarNotificacaoPush(userId, title, body, link) {
     }
 }
 
-exports.adminResetPassword = onCall({ cors: true }, async (request) => {
+exports.adminResetPassword = onCall({ cors: true, enforceAppCheck: true }, async (request) => {
     const data = request.data;
     const { uid, newPassword } = data;
     
@@ -114,7 +114,7 @@ exports.adminResetPassword = onCall({ cors: true }, async (request) => {
 // Gera um ingresso de teste real e validável (para exercitar a portaria/validação),
 // sem cobrar nada nem alterar estoque/faturamento do evento. Exclusivo para administradores.
 // Idempotente por (evento, admin): regerar substitui o ingresso de teste anterior em vez de acumular.
-exports.criarIngressoTeste = onCall({ cors: true }, async (request) => {
+exports.criarIngressoTeste = onCall({ cors: true, enforceAppCheck: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Apenas usuários autenticados podem gerar ingressos de teste.');
     }
@@ -228,7 +228,7 @@ exports.criarIngressoTeste = onCall({ cors: true }, async (request) => {
 
 // Upgrade pessoal → profissional. Fica no backend porque as rules proíbem o dono de
 // alterar o próprio `type` (evita auto-promoção a admin); aqui a transição é controlada.
-exports.tornarProfissional = onCall({ cors: true }, async (request) => {
+exports.tornarProfissional = onCall({ cors: true, enforceAppCheck: true }, async (request) => {
     const uid = request.auth?.uid;
     if (!uid) throw new HttpsError('unauthenticated', 'É preciso estar logado.');
 
@@ -365,7 +365,7 @@ exports.lembreteEventosD1 = onSchedule({
 // Responde SEMPRE neutro ({ ok: true }) — conta inexistente, e-mail inválido ou rate
 // limit não se distinguem de um envio feito, para não permitir enumeração de contas.
 // Requer RESEND_API_KEY + EMAIL_FROM (Secret Manager) e domínio verificado no Resend.
-exports.solicitarResetSenha = onCall({ cors: true, secrets: [RESEND_API_KEY, EMAIL_FROM] }, async (request) => {
+exports.solicitarResetSenha = onCall({ cors: true, enforceAppCheck: true, secrets: [RESEND_API_KEY, EMAIL_FROM] }, async (request) => {
     const emailBruto = request.data?.email;
     const email = String(emailBruto || '').trim().toLowerCase();
 
