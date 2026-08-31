@@ -1,7 +1,6 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Search, PlusSquare, User, Settings, LogOut, Wallet } from 'lucide-react';
+import { Home, Search, PlusSquare, User, Settings, LogOut } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { PIX_ENABLED } from '../lib/flags';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -9,7 +8,7 @@ export const Sidebar = () => {
   useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  // Criação de evento e financeiro abertos a qualquer usuário logado.
+  // Criação de evento aberta a qualquer usuário logado.
   const isLogged = !!user;
   const isAdmin = user?.role === 'admin';
 
@@ -28,7 +27,6 @@ export const Sidebar = () => {
     { icon: Home, path: '/', label: 'Início' },
     { icon: Search, path: '/search', label: 'Pesquisar' },
     ...(isLogged ? [{ icon: PlusSquare, path: '/create', label: 'Criar Evento' }] : []),
-    ...(isLogged && PIX_ENABLED ? [{ icon: Wallet, path: '/financeiro', label: 'Financeiro' }] : []),
     ...(isAdmin ? [{ icon: Settings, path: '/admin', label: 'Painel Admin' }] : []),
     { icon: User, path: '/profile', label: 'Meu Perfil' },
   ];

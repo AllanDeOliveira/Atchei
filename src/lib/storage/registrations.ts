@@ -14,7 +14,7 @@ import {
   startAfter
 } from 'firebase/firestore';
 import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
-import type { Registration, Pedido } from './types';
+import type { Registration } from './types';
 import { STATUS_PAGO_WHATSAPP } from './types';
 
 export const registrationStore = {
@@ -53,14 +53,6 @@ export const registrationStore = {
     const q = query(collection(db, 'registrations'), where('eventId', '==', eventId));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Registration));
-  },
-
-  // Pedidos de pagamento de um evento (usado no painel financeiro do parceiro).
-  // Filtra o status em memória para não exigir índice composto no Firestore.
-  getPedidosForEvent: async (eventId: string): Promise<Pedido[]> => {
-    const q = query(collection(db, 'pedidos'), where('eventId', '==', eventId));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Pedido));
   },
 
   // Busca um ingresso/inscrição pelo ID do documento (usado na leitura do QR Code)

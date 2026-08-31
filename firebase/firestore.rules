@@ -72,10 +72,7 @@ service cloud.firestore {
     // intenção de compra "Aguardando pagamento".
     function eventSellsTickets(eventId) {
       return exists(/databases/$(database)/documents/events/$(eventId)) &&
-        (
-          get(/databases/$(database)/documents/events/$(eventId)).data.hasTickets == true ||
-          get(/databases/$(database)/documents/events/$(eventId)).data.hasPixTickets == true
-        );
+        get(/databases/$(database)/documents/events/$(eventId)).data.hasTickets == true;
     }
 
     match /profiles/{profileId} {
@@ -246,22 +243,6 @@ service cloud.firestore {
       );
     }
 
-    match /pedidos/{pedidoId} {
-      // Um pedido pode ser lido pelo dono do pedido, pelo admin, ou pelo criador do evento
-      // associado (necessário para o painel financeiro do parceiro). CPF/e-mail continuam
-      // protegidos de qualquer outro usuário.
-      allow read: if isAuthed() && (
-        resource.data.userId == request.auth.uid ||
-        isAdmin() ||
-        (
-          exists(/databases/$(database)/documents/events/$(resource.data.eventId)) &&
-          get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.creatorId == request.auth.uid
-        )
-      );
-      // Escrita direta pelo cliente é proibida (apenas Cloud Functions do backend criam/alteram)
-      allow write: if false;
-    }
-
     // Tokens de push (FCM): cada dispositivo registra seu próprio token vinculado ao seu UID.
     // A leitura é feita exclusivamente pelo backend (Admin SDK) ao enviar notificações.
     match /fcmTokens/{token} {
@@ -278,12 +259,5 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Recebedores do Asaas (split de pagamento): walletId de destino do repasse.
-    // Escrita pelo cliente permitiria apontar o split para a carteira de um terceiro
-    // e desviar as vendas — só o Admin SDK escreve aqui, via a callable de cadastro.
-    // O status chega ao frontend pela callable `asaasStatusRecebedor`.
-    match /asaasAccounts/{creatorId} {
-      allow read, write: if false;
-    }
   }
 }

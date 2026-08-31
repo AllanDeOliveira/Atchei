@@ -3,12 +3,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { EventTicketSection } from './EventTicketSection';
 import type { EventItem, User, Registration } from '../../lib/storage';
 
-// PIX_ENABLED é constante de build: sem mock, estes testes passariam a depender do
-// valor real da flag e quebrariam a cada stand-by das vendas. Cada caso declara o
-// estado que está exercitando.
-const mockFlags = vi.hoisted(() => ({ PIX_ENABLED: true }));
-vi.mock('../../lib/flags', () => mockFlags);
-
 describe('EventTicketSection Component', () => {
   const mockEvent: EventItem = {
     id: 'event-1',
@@ -21,8 +15,7 @@ describe('EventTicketSection Component', () => {
     publicType: 'Geral',
     creatorId: 'user-1',
     hasPresence: true,
-    hasPixTickets: true,
-    pixTicketPrice: '50',
+    hasTickets: true,
   };
 
   const mockUser: User = {
@@ -34,9 +27,7 @@ describe('EventTicketSection Component', () => {
 
   // Os handlers de mockProps são compartilhados entre os testes; sem o reset,
   // um clique de um teste conta como chamada no seguinte.
-  // A flag é objeto simples: clearAllMocks não a restaura, e sem este reset o
-  // resultado passaria a depender da ordem de execução dos testes.
-  beforeEach(() => { vi.clearAllMocks(); mockFlags.PIX_ENABLED = true; });
+  beforeEach(() => { vi.clearAllMocks(); });
 
   const mockProps = {
     event: mockEvent,
@@ -45,7 +36,6 @@ describe('EventTicketSection Component', () => {
     loadingTestTicket: false,
     onConfirmPresence: vi.fn(),
     onCancelPresence: vi.fn(),
-    onOpenPixModal: vi.fn(),
     onWhatsAppBuy: vi.fn(),
     onGerarIngressoTeste: vi.fn(),
   };
@@ -90,29 +80,16 @@ describe('EventTicketSection Component', () => {
     expect(screen.getByText(/Mais de 20 pessoas confirmadas/)).toBeInTheDocument();
   });
 
-  it('abre o checkout Pix quando o evento tem ingressos via Pix', () => {
-    mockFlags.PIX_ENABLED = true;
+  it('compra via WhatsApp quando o evento vende ingressos', () => {
     render(<EventTicketSection {...mockProps} />);
-    fireEvent.click(screen.getByText('Comprar via Pix'));
-    expect(mockProps.onOpenPixModal).toHaveBeenCalled();
-  });
-
-  // Stand-by das vendas: some o botão mesmo em evento configurado com Pix.
-  it('esconde a compra via Pix quando a flag esta desligada', () => {
-    mockFlags.PIX_ENABLED = false;
-    render(<EventTicketSection {...mockProps} />);
-    expect(screen.queryByText('Comprar via Pix')).toBeNull();
-    expect(mockProps.onOpenPixModal).not.toHaveBeenCalled();
-  });
-
-  // Evento sem Pix continua caindo no WhatsApp — a flag liga o Pix, não o remove.
-  it('cai para WhatsApp quando o evento nao tem ingressos via Pix', () => {
-    const semPix = { ...mockProps.event, hasPixTickets: false, hasTickets: true };
-    render(<EventTicketSection {...mockProps} event={semPix} />);
-    expect(screen.queryByText('Comprar via Pix')).toBeNull();
     fireEvent.click(screen.getByText('Comprar ingresso'));
     expect(mockProps.onWhatsAppBuy).toHaveBeenCalled();
-    expect(mockProps.onOpenPixModal).not.toHaveBeenCalled();
+  });
+
+  it('sem venda de ingressos, não mostra o botão de compra', () => {
+    const semVenda = { ...mockProps.event, hasTickets: false };
+    render(<EventTicketSection {...mockProps} event={semVenda} />);
+    expect(screen.queryByText('Comprar ingresso')).toBeNull();
   });
 
   // Intenção via WhatsApp ainda não confirmada: sem ingresso garantido, com

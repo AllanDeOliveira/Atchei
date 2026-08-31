@@ -3,12 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { storage, EVENT_CATEGORIES } from '../lib/storage';
-import type { AppProfile, EventItem, EventCategory, TicketType } from '../lib/storage';
+import type { AppProfile, EventItem, EventCategory } from '../lib/storage';
 import { cn } from '../lib/utils';
-import { PIX_ENABLED } from '../lib/flags';
 import {
   ArrowLeft, Image as ImageIcon, MapPin, X, Plus, Clock, Loader2,
-  CalendarPlus, CheckCircle, Upload, Trash2, AlertTriangle, FileText, Sparkles
+  CalendarPlus, Upload, Trash2, AlertTriangle, FileText, Sparkles
 } from 'lucide-react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,7 +22,6 @@ import { formatDateBR } from '../lib/formatters';
 import { DateTimePickerModal } from '../components/CreateEvent/DateTimePickerModal';
 import { LocationPickerModal } from '../components/CreateEvent/LocationPickerModal';
 import { ImageCropModal } from '../components/CreateEvent/ImageCropModal';
-import { TicketTypesEditor } from '../components/CreateEvent/TicketTypesEditor';
 
 const eventSchema = z.object({
   title: z.string().min(3, "Mínimo 3 caracteres"),
@@ -35,9 +33,7 @@ const eventSchema = z.object({
   category: z.string().optional(),
   description: z.string().min(10, "A descrição deve ter no mínimo 10 caracteres"),
   hasTickets: z.boolean(),
-  hasPixTickets: z.boolean().optional(),
   ticketPrice: z.string().optional(),
-  pixTicketPrice: z.string().optional(),
   isTestEvent: z.boolean().optional(),
   hasPresence: z.boolean().optional(),
   // Teto total de participantes; string no form, convertido no submit. Vazio = sem limite.
@@ -90,9 +86,7 @@ const CreateEventContent = () => {
       address: '',
       mediaUrls: [],
       hasTickets: false,
-      hasPixTickets: false,
       ticketPrice: '',
-      pixTicketPrice: '',
       isTestEvent: false,
       hasPresence: false,
       maxParticipants: '',
@@ -102,7 +96,6 @@ const CreateEventContent = () => {
 
   const mediaUrls = watch('mediaUrls');
   const hasTickets = watch('hasTickets');
-  const hasPixTickets = watch('hasPixTickets');
   const isTestEvent = watch('isTestEvent');
   const address = watch('address');
   const hasPresence = watch('hasPresence');
@@ -110,7 +103,6 @@ const CreateEventContent = () => {
   const timeValue = watch('time');
   const selectedCategory = watch('category') || 'Festa';
 
-  const [tickets, setTickets] = useState<TicketType[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
   // Diálogos: cada um é um componente em components/CreateEvent/.
@@ -157,9 +149,7 @@ const CreateEventContent = () => {
               address: ev.address || '',
               mediaUrls: ev.mediaUrls || [],
               hasTickets: !!ev.hasTickets,
-              hasPixTickets: !!ev.hasPixTickets,
               ticketPrice: ev.ticketPrice || '',
-              pixTicketPrice: ev.pixTicketPrice || '',
               isTestEvent: !!ev.isTestEvent,
               // Eventos antigos sem hasPresence (undefined) tratam como habilitado —
               // difere de propósito do default de evento NOVO (desligado, defaultValues acima).
@@ -167,7 +157,6 @@ const CreateEventContent = () => {
               maxParticipants: ev.maxParticipants != null ? String(ev.maxParticipants) : '',
               whatsappContacts: ev.whatsappContacts?.length ? ev.whatsappContacts : [{ name: '', phone: '' }]
             });
-            setTickets(ev.tickets || []);
             setOriginalCreatorId(ev.creatorId);
             setSelectedCreatorId(ev.creatorId);
           }
@@ -187,11 +176,6 @@ const CreateEventContent = () => {
   }, [userId, navigate]);
 
   const onSubmit = async (data: EventFormValues) => {
-    // Regra da instituição de pagamento: cobrança Pix mínima de R$ 5,00.
-    if (data.hasPixTickets && tickets.some(t => t.price < 5)) {
-      toast.error('O valor mínimo por ingresso Pix é R$ 5,00.');
-      return;
-    }
     const targetCreatorId = selectedCreatorId || user?.profileId || userId!;
     // Teto total: string do form vira número; vazio vira null (sem limite; Firestore não aceita undefined).
     const { maxParticipants: maxPartStr, ...restData } = data;
@@ -201,7 +185,6 @@ const CreateEventContent = () => {
       id: id || Date.now().toString(),
       publicType: (data.publicType || 'Aberto') as EventItem['publicType'],
       category: (data.category || 'Festa') as EventCategory,
-      tickets: data.hasPixTickets ? tickets : [],
       whatsappContacts: data.whatsappContacts?.filter(c => c.phone.trim() !== '') || [],
       creatorId: id ? (selectedCreatorId || originalCreatorId || targetCreatorId) : targetCreatorId,
     };
@@ -615,63 +598,6 @@ const CreateEventContent = () => {
                 </div>
               )}
             </div>
-
-            {/* PIX Section — perfis profissionais e admin. Sem conta de recebimento
-                cadastrada a venda ainda funciona, mas o repasse não sai automático. */}
-            {PIX_ENABLED && userRole !== 'user' && (
-              <div className="create-anim space-y-2.5 md:space-y-3.5 surface rounded-2xl p-3.5 md:p-5 text-left">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs md:text-sm font-display font-semibold text-textLight flex items-center gap-1.5 md:gap-2">
-                    <CheckCircle size={16} className="text-success" />
-                    Venda via PIX
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setValue('hasPixTickets', !hasPixTickets, { shouldValidate: true })}
-                    title="Venda via PIX"
-                    aria-label="Venda via PIX"
-                    role="switch"
-                    aria-checked={hasPixTickets}
-                    className={cn(
-                      "w-12 h-7 rounded-full transition-all relative border border-glassBorder cursor-pointer",
-                      hasPixTickets ? 'bg-success/20 border-success/40' : 'bg-surfaceHover/50'
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "w-5 h-5 rounded-full absolute top-[3px] transition-all",
-                        hasPixTickets ? 'right-[3px] bg-success' : 'left-[3px] bg-textMuted'
-                      )}
-                    />
-                  </button>
-                </div>
-
-                {hasPixTickets && (
-                  <div className="space-y-4 pt-4 border-t border-glassBorder">
-                    <div className="space-y-1.5 mb-3">
-                      <label className="text-xs font-medium text-textMuted ml-1 block">Valor PIX padrão (R$)</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="30.00"
-                        className="bg-surface border-glassBorder text-textLight"
-                        {...register('pixTicketPrice')}
-                      />
-                      <p className="text-[11px] text-textMuted mt-1">Usado como valor fallback caso não existam lotes específicos cadastrados abaixo.</p>
-                    </div>
-
-                    <TicketTypesEditor tickets={tickets} onChange={setTickets} />
-
-                    {userRole !== 'admin' && (
-                      <p className="text-[11px] text-textMuted leading-relaxed">
-                        Para receber o repasse das vendas, cadastre sua conta de recebimento em{' '}
-                        <span className="font-semibold">Meu Perfil → Conta de recebimento</span>.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Test Event — Admin Only */}
             {userRole === 'admin' && (

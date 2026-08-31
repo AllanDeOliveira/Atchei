@@ -1,5 +1,3 @@
-import type { Timestamp } from 'firebase/firestore';
-
 export interface AppProfile {
   id: string;
   name: string;
@@ -62,9 +60,7 @@ export type EventItem = {
   description: string;
   creatorId: string;
   hasTickets?: boolean;
-  hasPixTickets?: boolean;
   ticketPrice?: string;
-  pixTicketPrice?: string;
   whatsappContacts?: { name: string; phone: string }[];
   isTestEvent?: boolean;
   registrationCount?: number;
@@ -109,31 +105,4 @@ export type Registration = {
   checkedInAt?: string;    // Quando foi validado (ISO)
   checkedInBy?: string;    // Quem validou (nome do operador)
   isTeste?: boolean;       // Ingresso de teste (gerado por admin, fora do faturamento real)
-};
-
-// Pedido de pagamento (Pix via Asaas). Criado e alterado exclusivamente pelas
-// Cloud Functions; o cliente apenas lê (dono do pedido, admin ou criador do evento).
-export type Pedido = {
-  id: string;
-  valor: number;
-  eventId: string;
-  eventTitle?: string;
-  userId: string;
-  clienteNome?: string;
-  clienteEmail?: string;
-  // pendente | pago | estornado | chargeback | cancelado | rejeitado
-  status: string;
-  itensComprados?: { id: string; name?: string; quantity: number }[];
-  // Split: `split: false` = cobrança sem recebedor cadastrado (tudo na plataforma).
-  // Os valores em reais são ESTIMATIVAS sobre o bruto — o Asaas reparte sobre o
-  // netValue (bruto − tarifa dele), então o repasse exato só é conhecido na liquidação.
-  split?: boolean;
-  splitPercentualOrganizador?: number;
-  applicationFee?: number;
-  valorLiquidoOrganizador?: number;
-  overbooked?: boolean;
-  isTeste?: boolean; // Pedido de teste (gerado por admin) — não entra no faturamento real
-  dataCriacao?: Timestamp | null;
-  dataPagamento?: Timestamp | null;
-  dataEstorno?: Timestamp | null;
 };

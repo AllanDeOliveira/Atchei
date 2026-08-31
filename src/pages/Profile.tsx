@@ -5,13 +5,11 @@ import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
 import { storage, soldCount, STATUS_AGUARDANDO, STATUS_PAGO_WHATSAPP } from '../lib/storage';
 import type { EventItem, Registration } from '../lib/storage';
-import { User, LogOut, Calendar, MapPin, Clock, Trash2, Navigation, Ticket, Camera, Users, Edit2, Mail, Wallet, ChevronRight } from 'lucide-react';
+import { User, LogOut, Calendar, MapPin, Clock, Trash2, Navigation, Ticket, Camera, Users, Edit2, Mail } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
 import { TicketModal } from '../components/TicketModal';
 import { Modal } from '../components/ui/Modal';
 import { NotificationToggle } from '../components/NotificationToggle';
-import { AsaasRecebedor } from '../components/AsaasRecebedor';
-import { PIX_ENABLED } from '../lib/flags';
 import { Skeleton } from '../components/ui/Skeleton';
 import { EditProfileModal } from '../components/Profile/EditProfileModal';
 import { ParticipantsModal } from '../components/Profile/ParticipantsModal';
@@ -577,31 +575,6 @@ export const Profile = () => {
         )}
       </div>
 
-      {/* Acesso ao painel financeiro — só com PIX ativo (stand-by por ora) */}
-      {PIX_ENABLED && user && (
-        <div className="profile-el mx-5 mb-6 relative z-10">
-          <button
-            onClick={() => navigate('/financeiro')}
-            className="w-full surface surface-hover rounded-2xl p-4 flex items-center gap-4 text-left cursor-pointer group"
-          >
-            <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
-              <Wallet size={20} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-sans font-semibold text-sm text-textLight">Painel financeiro</p>
-              <p className="text-xs text-textMuted mt-0.5 leading-relaxed">Vendas e faturamento dos seus eventos</p>
-            </div>
-            <ChevronRight size={18} className="text-textMuted group-hover:text-primary transition-colors shrink-0" />
-          </button>
-        </div>
-      )}
-
-      {/* Conta de recebimento (split): só perfil profissional vende ingressos e recebe repasse. Só com PIX ativo (stand-by por ora) */}
-      {PIX_ENABLED && user && userRole !== 'user' && (
-        <div className="profile-el mx-5 mb-6 relative z-10">
-          <AsaasRecebedor />
-        </div>
-      )}
       {/* Toggle de notificações push (só aparece se houver suporte e chave VAPID) */}
       {user && (
         <div className="profile-el mx-5 mb-6 relative z-10">

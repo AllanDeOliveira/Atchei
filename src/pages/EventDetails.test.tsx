@@ -73,7 +73,6 @@ describe('EventDetails Page', () => {
     description: 'Um ótimo festival de música.',
     creatorId: 'creator-1',
     registrationCount: 5,
-    pixTicketPrice: '100',
   };
 
   beforeEach(() => {

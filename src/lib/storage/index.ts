@@ -5,7 +5,7 @@ import { registrationStore } from './registrations';
 import { fileStore } from './files';
 
 // Tipos, constantes e helpers de domínio (AppProfile, EventItem, Registration,
-// Pedido, soldCount, STATUS_*, EVENT_CATEGORIES, eventoVigente...).
+// soldCount, STATUS_*, EVENT_CATEGORIES, eventoVigente...).
 export * from './types';
 
 /**

@@ -1,8 +1,7 @@
 import React from 'react';
-import { CheckCircle2, QrCode, Ticket, FlaskConical, Loader2, Flame, Clock } from 'lucide-react';
+import { CheckCircle2, Ticket, FlaskConical, Loader2, Flame, Clock } from 'lucide-react';
 import type { EventItem, User, Registration } from '../../lib/storage';
 import { STATUS_AGUARDANDO } from '../../lib/storage';
-import { PIX_ENABLED } from '../../lib/flags';
 import { confirmadosLabel } from '../../lib/formatters';
 
 interface EventTicketSectionProps {
@@ -13,7 +12,6 @@ interface EventTicketSectionProps {
   loadingTestTicket: boolean;
   onConfirmPresence: () => void;
   onCancelPresence: () => void;
-  onOpenPixModal: () => void;
   /** Compra via WhatsApp: registra a intenção (lista do vendedor) e abre o chat. */
   onWhatsAppBuy: () => void;
   onGerarIngressoTeste: () => void;
@@ -26,7 +24,6 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
   loadingTestTicket,
   onConfirmPresence,
   onCancelPresence,
-  onOpenPixModal,
   onWhatsAppBuy,
   onGerarIngressoTeste,
 }) => {
@@ -128,15 +125,7 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
                 </button>
               )}
 
-              {PIX_ENABLED && event.hasPixTickets ? (
-                <button
-                  onClick={onOpenPixModal}
-                  className="rounded-xl px-5 py-4 shadow-sm flex items-center justify-center gap-2 transition-all duration-200 font-sans font-semibold text-sm border-0 cursor-pointer neo-click bg-success text-textDark hover:brightness-95"
-                >
-                  <QrCode size={16} />
-                  <span>Comprar via Pix</span>
-                </button>
-              ) : (event.hasTickets || event.hasPixTickets) ? (
+              {event.hasTickets ? (
                 <button
                   onClick={onWhatsAppBuy}
                   className="w-full rounded-xl py-3.5 flex items-center justify-center gap-2 transition-all duration-200 font-sans font-semibold text-sm border-0 bg-success text-textDark hover:brightness-95 cursor-pointer neo-click"

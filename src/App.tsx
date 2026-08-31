@@ -21,7 +21,6 @@ const Profile = React.lazy(() => import('./pages/Profile').then(m => ({ default:
 const Agenda = React.lazy(() => import('./pages/Agenda').then(m => ({ default: m.Agenda })));
 const ChangePassword = React.lazy(() => import('./pages/ChangePassword').then(m => ({ default: m.ChangePassword })));
 const ValidateTickets = React.lazy(() => import('./pages/ValidateTickets').then(m => ({ default: m.ValidateTickets })));
-const Financeiro = React.lazy(() => import('./pages/Financeiro').then(m => ({ default: m.Financeiro })));
 const AuthAction = React.lazy(() => import('./pages/AuthAction').then(m => ({ default: m.AuthAction })));
 const Privacidade = React.lazy(() => import('./pages/Legal').then(m => ({ default: m.Privacidade })));
 const Termos = React.lazy(() => import('./pages/Legal').then(m => ({ default: m.Termos })));
@@ -89,7 +88,6 @@ function App() {
                 <Route path="/create" element={<CreateEvent />} />
                 <Route path="/edit/:id" element={<CreateEvent />} />
                 <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/financeiro" element={<Financeiro />} />
                 <Route path="/profile" element={<Profile />} />
               </Route>
             </Routes>

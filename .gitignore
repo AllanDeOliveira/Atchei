@@ -41,3 +41,9 @@ AGENTS.md
 # Graphify
 graphify-out/
 .env*.bak
+
+# Auditoria de seguranca (gerada localmente, nao versionada)
+docs/security-audit/
+
+# Funcionalidade Pix/Asaas extraida do projeto (arquivo local de referencia)
+pix-asaas/
