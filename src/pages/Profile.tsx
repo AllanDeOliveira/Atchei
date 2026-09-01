@@ -420,6 +420,10 @@ export const Profile = () => {
     window.open(mapsDirUrl(event.location, event.address), '_blank');
   };
 
+  // "Aberto" até o fim do dia da data do evento; "Encerrado" a partir do dia seguinte (mesmo critério da Agenda).
+  const eventoAberto = (event: EventItem) =>
+    new Date(`${event.date}T00:00`) >= new Date(new Date().setHours(0, 0, 0, 0));
+
   const openWhatsApp = (event: EventItem) => {
     const contact = (event.whatsappContacts || [])[0];
     if (!contact) return;
@@ -682,9 +686,13 @@ export const Profile = () => {
                           <span className="bg-accent/10 border border-accent/25 text-accent text-[11px] px-2.5 py-0.5 rounded-full font-medium">
                             Evento de teste (Admin)
                           </span>
-                        ) : (
+                        ) : eventoAberto(event) ? (
                           <span className="bg-primary/10 border border-primary/20 text-primary text-[11px] px-2.5 py-0.5 rounded-full font-medium">
-                            Confirmado
+                            Aberto
+                          </span>
+                        ) : (
+                          <span className="bg-surface border border-glassBorder text-textMuted text-[11px] px-2.5 py-0.5 rounded-full font-medium">
+                            Encerrado
                           </span>
                         )}
                       </div>
