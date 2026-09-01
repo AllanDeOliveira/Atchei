@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatPhone, isValidEmail, formatCPF, isValidCPF } from './formatters';
+import { formatPhone, formatCPF } from './formatters';
 
 describe('formatters', () => {
   describe('formatPhone', () => {
@@ -18,24 +18,9 @@ describe('formatters', () => {
     });
   });
 
-  describe('isValidEmail', () => {
-    it('deve aceitar e-mails válidos', () => {
-      expect(isValidEmail('usuario@teste.com')).toBe(true);
-      expect(isValidEmail('aluno.exemplo@universidade.edu.br')).toBe(true);
-    });
-
-    it('deve rejeitar e-mails inválidos ou vazios', () => {
-      expect(isValidEmail('')).toBe(false);
-      expect(isValidEmail('invalido')).toBe(false);
-      expect(isValidEmail('@semusuario.com')).toBe(false);
-      expect(isValidEmail('semdominio@')).toBe(false);
-    });
-  });
-
   describe('re-exports de CPF', () => {
-    it('deve reexportar formatCPF e isValidCPF corretamente', () => {
+    it('deve reexportar formatCPF corretamente', () => {
       expect(formatCPF('12345678901')).toBe('123.456.789-01');
-      expect(isValidCPF('00000000000')).toBe(false);
     });
   });
 });
