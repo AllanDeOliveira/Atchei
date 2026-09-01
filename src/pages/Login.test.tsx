@@ -133,7 +133,7 @@ describe('Login Page', () => {
     await userEvent.click(submitButton);
 
     expect(storage.login).toHaveBeenCalledWith('errado@example.com', 'senhaErrada');
-    expect(toast.error).toHaveBeenCalledWith('Credenciais inválidas!');
+    expect(toast.error).toHaveBeenCalledWith('Senha ou Email incorreto!');
   });
 
   it('chama solicitarResetSenha com o e-mail digitado', async () => {

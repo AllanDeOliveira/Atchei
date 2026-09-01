@@ -34,12 +34,15 @@ export const Login = () => {
           navigate('/feed');
         }
       } else {
-        toast.error('Credenciais inválidas!');
+        toast.error('Senha ou Email incorreto!');
       }
     } catch (error) {
       console.error("Erro no login:", error);
-      if ((error as { code?: string })?.code === 'auth/too-many-requests') {
+      const code = (error as { code?: string })?.code;
+      if (code === 'auth/too-many-requests') {
         toast.error('Tente novamente mais tarde.');
+      } else if (code === 'auth/invalid-credential') {
+        toast.error('Senha ou Email incorreto!');
       } else {
         toast.error('Ocorreu um erro ao tentar fazer login.');
       }
