@@ -289,7 +289,7 @@ export const AdminDashboard = () => {
             className={cn(
               "flex-1 py-3.5 rounded-xl font-sans font-semibold text-sm transition-colors duration-200 flex items-center justify-center gap-2 border cursor-pointer",
               activeTab === 'partners'
-                ? "bg-accent/10 text-accent border-accent/30"
+                ? "bg-[#9f7222]/10 text-[#9f7222] border-[#9f7222]/30"
                 : "surface text-textMuted hover:text-textLight"
             )}
           >
