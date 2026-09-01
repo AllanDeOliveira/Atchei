@@ -323,14 +323,14 @@ export const Feed = () => {
       {/* Filter Pills (Tempo & Popularidade) */}
       <div className="flex gap-2.5 px-5 mb-3 overflow-x-auto scrollbar-hide pb-1 relative z-10">
         {[
-          { key: 'todos' as FilterType, label: 'Todos', icon: Sparkles },
           { key: 'emAlta' as FilterType, label: 'Em alta', icon: Flame },
           { key: 'hoje' as FilterType, label: 'Hoje', icon: Calendar },
           { key: 'semana' as FilterType, label: 'Esta semana', icon: null },
         ].map(f => (
           <button
             key={f.key}
-            onClick={() => setFilter(f.key)}
+            // Sem a pill "Todos": clicar no filtro ativo desliga e volta ao feed completo.
+            onClick={() => setFilter(filter === f.key ? 'todos' : f.key)}
             className={cn(
               "filter-pill flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-sans font-medium text-xs md:text-sm whitespace-nowrap transition-all duration-200 border neo-click cursor-pointer",
               filter === f.key
@@ -372,7 +372,7 @@ export const Feed = () => {
             Selecionados para você
           </span>
         </div>
-        <span className="text-xs text-primary bg-primary/10 px-3 py-1 border border-primary/20 rounded-full font-medium">
+        <span className="text-sm text-primary font-medium">
           {filteredEvents.length} {filteredEvents.length !== 1 ? 'eventos' : 'evento'}
         </span>
       </div>
