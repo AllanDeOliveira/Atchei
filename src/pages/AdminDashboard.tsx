@@ -389,7 +389,7 @@ export const AdminDashboard = () => {
                     <p className="text-xs text-accent font-medium mt-1">{profile.type}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
-                    <div className="flex items-center gap-1.5 text-[11px] text-primary font-mono bg-primary/10 px-2.5 py-0.5 rounded-lg border border-primary/20">
+                    <div className="flex items-center gap-1.5 text-[11px] text-primary font-mono">
                       <Mail size={10} />
                       {profile.email || 'N/A'}
                     </div>
