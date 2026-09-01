@@ -277,7 +277,7 @@ export const AdminDashboard = () => {
             className={cn(
               "flex-1 py-3.5 rounded-xl font-sans font-semibold text-sm transition-colors duration-200 flex items-center justify-center gap-2 border cursor-pointer",
               activeTab === 'events'
-                ? "bg-primary/10 text-primary border-primary/30"
+                ? "surface text-primary"
                 : "surface text-textMuted hover:text-textLight"
             )}
           >
@@ -289,7 +289,7 @@ export const AdminDashboard = () => {
             className={cn(
               "flex-1 py-3.5 rounded-xl font-sans font-semibold text-sm transition-colors duration-200 flex items-center justify-center gap-2 border cursor-pointer",
               activeTab === 'partners'
-                ? "bg-accent/10 text-accent border-accent/30"
+                ? "surface text-accent"
                 : "surface text-textMuted hover:text-textLight"
             )}
           >
