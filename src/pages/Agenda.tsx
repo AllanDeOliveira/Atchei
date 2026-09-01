@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { goBack } from '../lib/utils';
 import { storage } from '../lib/storage';
 import type { EventItem, AppProfile } from '../lib/storage';
 import { EventCard } from '../components/EventCard';
@@ -78,7 +79,7 @@ export const Agenda = () => {
   return (
     <div ref={containerRef} className="min-h-screen bg-background pb-28 pt-6 px-4 relative">
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => goBack(navigate)}
         title="Voltar"
         aria-label="Voltar"
         className="w-10 h-10 mb-6 rounded-xl bg-surface border border-glassBorder text-textLight flex items-center justify-center shadow-sm hover:border-primary/40 hover:-translate-y-0.5 transition-all duration-300 neo-click cursor-pointer relative z-10"

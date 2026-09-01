@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { ReactNode, FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { goBack } from '../lib/utils';
 import { BrowserQRCodeReader } from '@zxing/browser';
 import type { IScannerControls } from '@zxing/browser';
 import { storage, STATUS_AGUARDANDO } from '../lib/storage';
@@ -424,7 +425,7 @@ export const ValidateTickets = () => {
       {/* Top bar */}
       <header className="relative z-20 flex items-center gap-3 px-4 pt-5 pb-4">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => goBack(navigate)}
           aria-label="Voltar"
           className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-colors cursor-pointer shrink-0"
         >

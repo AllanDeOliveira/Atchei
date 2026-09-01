@@ -4,7 +4,7 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { storage, EVENT_CATEGORIES } from '../lib/storage';
 import type { AppProfile, EventItem, EventCategory } from '../lib/storage';
-import { cn } from '../lib/utils';
+import { cn, goBack } from '../lib/utils';
 import {
   ArrowLeft, Image as ImageIcon, MapPin, X, Plus, Clock, Loader2,
   CalendarPlus, Upload, Trash2, AlertTriangle, FileText, Sparkles
@@ -262,7 +262,7 @@ const CreateEventContent = () => {
     <div ref={containerRef} className="min-h-screen bg-background pb-28 pt-4 md:pt-6 px-3 md:px-4 relative">
       <button
         type="button"
-        onClick={() => navigate(-1)}
+        onClick={() => goBack(navigate)}
         title="Voltar"
         aria-label="Voltar"
         className="w-9 h-9 md:w-10 md:h-10 mb-4 md:mb-6 rounded-xl bg-surface border border-glassBorder text-textLight flex items-center justify-center shadow-sm hover:border-primary/40 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer relative z-10"

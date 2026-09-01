@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { goBack } from '../lib/utils';
 import { ArrowLeft } from 'lucide-react';
 
 // Documentos legais estáticos.
@@ -10,7 +11,7 @@ const LegalLayout = ({ titulo, children }: { titulo: string; children: React.Rea
     <div className="min-h-screen bg-background pb-16">
       <div className="max-w-2xl mx-auto px-6 pt-8">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => goBack(navigate)}
           className="p-2.5 rounded-xl bg-surface border border-glassBorder text-accent hover:border-accent/40 hover:bg-surfaceHover transition-all duration-300 neo-click mb-6"
           title="Voltar"
           aria-label="Voltar"

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { goBack } from '../lib/utils';
 import { httpsCallable } from 'firebase/functions';
 import { getFunctionsInstance } from '../lib/firebase';
 import { storage } from '../lib/storage';
@@ -77,8 +78,8 @@ export const Login = () => {
   return (
     <div ref={containerRef} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden">
       <button
-        onClick={() => navigate(-1)}
-        className="absolute top-8 left-6 p-2.5 rounded-xl bg-surface border border-glassBorder text-accent hover:border-accent/40 hover:bg-surfaceHover transition-all duration-300 neo-click z-10"
+        onClick={() => goBack(navigate)}
+        className="absolute top-8 left-6 p-2.5 rounded-xl bg-surface border border-glassBorder text-accent hover:border-accent/40 hover:bg-surfaceHover transition-all duration-300 neo-click z-20"
         title="Voltar"
         aria-label="Voltar"
       >
