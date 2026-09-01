@@ -333,7 +333,7 @@ export const AdminDashboard = () => {
                         <h3 className="font-display font-semibold text-base text-textLight truncate">{event.title}</h3>
                         <p className="text-xs text-textMuted mt-1.5">{formatDateBR(event.date)}</p>
                       </div>
-                      <div className="bg-primary/10 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shrink-0 border border-primary/20">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <Users size={12} className="text-primary" />
                         <span className="font-mono text-xs font-bold text-primary">{eventRegs}</span>
                       </div>
