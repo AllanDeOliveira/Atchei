@@ -687,11 +687,11 @@ export const Profile = () => {
                             Evento de teste (Admin)
                           </span>
                         ) : eventoAberto(event) ? (
-                          <span className="bg-primary/10 border border-primary/20 text-primary text-[11px] px-2.5 py-0.5 rounded-full font-medium">
+                          <span className="text-[#2E8B57] text-[11px] font-medium">
                             Aberto
                           </span>
                         ) : (
-                          <span className="bg-surface border border-glassBorder text-textMuted text-[11px] px-2.5 py-0.5 rounded-full font-medium">
+                          <span className="text-textMuted text-[11px] font-medium">
                             Encerrado
                           </span>
                         )}
