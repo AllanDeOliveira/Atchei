@@ -530,13 +530,18 @@ export const Profile = () => {
                   <p className="text-xs font-sans text-textLight font-medium mt-2 max-w-[200px] line-clamp-2 leading-relaxed">{editData.description}</p>
                 )}
                 
-                {/* Social icons in profile card */}
+                {/* Instagram: ícone + @handle, no mesmo padrão da linha do e-mail */}
                 {editData.instagram && (
-                  <div className="flex items-center gap-2.5 mt-2.5">
-                    <a href={`https://instagram.com/${editData.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primaryHover hover:scale-110 transition-all" title="Instagram">
-                      <InstagramIcon size={14} />
-                    </a>
-                  </div>
+                  <a
+                    href={`https://instagram.com/${editData.instagram.replace('@', '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 font-mono text-xs text-textMuted mt-2.5 truncate hover:text-textLight transition-colors"
+                    title="Instagram"
+                  >
+                    <InstagramIcon size={12} className="text-primary shrink-0" />
+                    @{editData.instagram.replace('@', '')}
+                  </a>
                 )}
 
                 <div className="flex items-center gap-2 mt-2.5">
