@@ -321,7 +321,7 @@ export const Feed = () => {
       </div>
 
       {/* Filter Pills (Tempo & Popularidade) */}
-      <div className="flex gap-2.5 px-5 mb-3 overflow-x-auto scrollbar-hide pb-1 relative z-10">
+      <div className="flex justify-center gap-2.5 px-5 mb-3 overflow-x-auto scrollbar-hide pb-1 relative z-10">
         {[
           { key: 'emAlta' as FilterType, label: 'Em alta', icon: Flame },
           { key: 'hoje' as FilterType, label: 'Hoje', icon: Calendar },
