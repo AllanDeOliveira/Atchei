@@ -255,7 +255,7 @@ export const AdminDashboard = () => {
         {/* Metrics Cards */}
         <div className="grid grid-cols-2 gap-3.5 mb-6 admin-anim relative z-10 text-left">
           <div className="surface p-4 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-2 text-primary mb-2">
+            <div className="flex items-center gap-2 text-accent mb-2">
               <Calendar size={15} />
               <span className="text-xs font-medium text-textMuted">Total de eventos</span>
             </div>
@@ -277,7 +277,7 @@ export const AdminDashboard = () => {
             className={cn(
               "flex-1 py-3.5 rounded-xl font-sans font-semibold text-sm transition-colors duration-200 flex items-center justify-center gap-2 border cursor-pointer",
               activeTab === 'events'
-                ? "bg-primary/10 text-primary border-primary/30"
+                ? "bg-accent/10 text-accent border-accent/30"
                 : "surface text-textMuted hover:text-textLight"
             )}
           >
@@ -333,7 +333,7 @@ export const AdminDashboard = () => {
                         <h3 className="font-display font-semibold text-base text-textLight truncate">{event.title}</h3>
                         <p className="text-xs text-textMuted mt-1.5">{formatDateBR(event.date)}</p>
                       </div>
-                      <div className="bg-primary/10 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shrink-0 border border-primary/20">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <Users size={12} className="text-primary" />
                         <span className="font-mono text-xs font-bold text-primary">{eventRegs}</span>
                       </div>
@@ -389,7 +389,7 @@ export const AdminDashboard = () => {
                     <p className="text-xs text-accent font-medium mt-1">{profile.type}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
-                    <div className="flex items-center gap-1.5 text-[11px] text-primary font-mono bg-primary/10 px-2.5 py-0.5 rounded-lg border border-primary/20">
+                    <div className="flex items-center gap-1.5 text-[11px] text-primary font-mono">
                       <Mail size={10} />
                       {profile.email || 'N/A'}
                     </div>

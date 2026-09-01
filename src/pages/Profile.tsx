@@ -420,6 +420,10 @@ export const Profile = () => {
     window.open(mapsDirUrl(event.location, event.address), '_blank');
   };
 
+  // "Aberto" até o fim do dia da data do evento; "Encerrado" a partir do dia seguinte (mesmo critério da Agenda).
+  const eventoAberto = (event: EventItem) =>
+    new Date(`${event.date}T00:00`) >= new Date(new Date().setHours(0, 0, 0, 0));
+
   const openWhatsApp = (event: EventItem) => {
     const contact = (event.whatsappContacts || [])[0];
     if (!contact) return;
@@ -604,7 +608,7 @@ export const Profile = () => {
                         : 'text-textMuted hover:text-textLight'
                     }`}
                   >
-                    Públicos ({myEvents.filter(e => !e.isTestEvent).length})
+                    Meus eventos ({myEvents.filter(e => !e.isTestEvent).length})
                   </button>
                   <button
                     onClick={() => setActiveTab('test')}
@@ -624,7 +628,7 @@ export const Profile = () => {
                         : 'text-textMuted hover:text-textLight'
                     }`}
                   >
-                    Participados ({myEvents.filter(e => !isOwner(e) && myRegistrations.some(r => r.eventId === e.id)).length})
+                    Inscrições ({myEvents.filter(e => !isOwner(e) && myRegistrations.some(r => r.eventId === e.id)).length})
                   </button>
                 </div>
               </div>
@@ -682,9 +686,13 @@ export const Profile = () => {
                           <span className="bg-accent/10 border border-accent/25 text-accent text-[11px] px-2.5 py-0.5 rounded-full font-medium">
                             Evento de teste (Admin)
                           </span>
+                        ) : eventoAberto(event) ? (
+                          <span className="text-[#2E8B57] text-[11px] font-medium">
+                            Aberto
+                          </span>
                         ) : (
-                          <span className="bg-primary/10 border border-primary/20 text-primary text-[11px] px-2.5 py-0.5 rounded-full font-medium">
-                            Confirmado
+                          <span className="text-textMuted text-[11px] font-medium">
+                            Encerrado
                           </span>
                         )}
                       </div>
