@@ -604,7 +604,7 @@ export const Profile = () => {
                         : 'text-textMuted hover:text-textLight'
                     }`}
                   >
-                    Públicos ({myEvents.filter(e => !e.isTestEvent).length})
+                    Meus eventos ({myEvents.filter(e => !e.isTestEvent).length})
                   </button>
                   <button
                     onClick={() => setActiveTab('test')}
@@ -624,7 +624,7 @@ export const Profile = () => {
                         : 'text-textMuted hover:text-textLight'
                     }`}
                   >
-                    Participados ({myEvents.filter(e => !isOwner(e) && myRegistrations.some(r => r.eventId === e.id)).length})
+                    Inscrições ({myEvents.filter(e => !isOwner(e) && myRegistrations.some(r => r.eventId === e.id)).length})
                   </button>
                 </div>
               </div>
