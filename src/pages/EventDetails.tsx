@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useParams, useNavigate } from 'react-router-dom';
+import { goBack } from '../lib/utils';
 import { storage, soldCount, STATUS_AGUARDANDO } from '../lib/storage';
 import type { EventItem, AppProfile, Registration } from '../lib/storage';
 import { Button } from '../components/ui/Button';
@@ -291,7 +292,7 @@ export const EventDetails = () => {
               mediaUrls={event.mediaUrls}
               currentMediaIndex={currentMediaIndex}
               onCurrentMediaIndexChange={setCurrentMediaIndex}
-              onBack={() => navigate(-1)}
+              onBack={() => goBack(navigate)}
               onShare={handleShare}
             />
 

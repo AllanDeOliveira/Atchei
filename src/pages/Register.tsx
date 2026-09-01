@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { useRateLimit } from '../hooks/useRateLimit';
 import { ArrowLeft } from 'lucide-react';
+import { goBack } from '../lib/utils';
 
 // Idade em anos completos a partir de uma data YYYY-MM-DD (sem fuso: parse manual).
 const calcularIdade = (iso: string): number => {
@@ -64,7 +65,7 @@ export const Register = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden">
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => goBack(navigate, '/login')}
         className="absolute top-8 left-6 p-2.5 rounded-xl bg-surface border border-glassBorder text-accent hover:border-accent/40 hover:bg-surfaceHover transition-all duration-300 neo-click z-10"
         title="Voltar"
         aria-label="Voltar"
