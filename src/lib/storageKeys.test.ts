@@ -3,7 +3,6 @@ import {
   migrateLegacyStorageKeys,
   USER_KEY,
   INSTALL_DISMISS_KEY,
-  RECOVERY_EMAIL_KEY,
 } from './storageKeys';
 
 describe('migrateLegacyStorageKeys', () => {
@@ -15,16 +14,13 @@ describe('migrateLegacyStorageKeys', () => {
     const user = JSON.stringify({ id: 'u1', name: 'Teste' });
     localStorage.setItem('@chain:user', user);
     localStorage.setItem('@chain:install-dismissed', '1');
-    localStorage.setItem('@chain:recoveryEmail', 'a@b.com');
 
     migrateLegacyStorageKeys();
 
     expect(localStorage.getItem(USER_KEY)).toBe(user);
     expect(localStorage.getItem(INSTALL_DISMISS_KEY)).toBe('1');
-    expect(localStorage.getItem(RECOVERY_EMAIL_KEY)).toBe('a@b.com');
     expect(localStorage.getItem('@chain:user')).toBeNull();
     expect(localStorage.getItem('@chain:install-dismissed')).toBeNull();
-    expect(localStorage.getItem('@chain:recoveryEmail')).toBeNull();
   });
 
   // Sem isso, uma segunda execução sobrescreveria a sessão atual com um valor velho.

@@ -1,4 +1,4 @@
-export { formatCPF, isValidCPF } from './cpf';
+export { formatCPF } from './cpf';
 
 export const formatPhone = (value: string): string => {
   const digits = (value || '').replace(/\D/g, '').slice(0, 11);
@@ -86,8 +86,3 @@ export const mapsQuery = (location?: string, address?: string): string => {
 /** URL de rota no Google Maps — único builder; usado por card, perfil e página do evento. */
 export const mapsDirUrl = (location?: string, address?: string): string =>
   `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(mapsQuery(location, address))}`;
-
-export const isValidEmail = (email: string): boolean => {
-  if (!email || !email.trim()) return false;
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-};

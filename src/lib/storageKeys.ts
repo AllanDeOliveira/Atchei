@@ -10,9 +10,8 @@ const PREFIX = '@atchei:';
 
 export const USER_KEY = `${PREFIX}user`;
 export const INSTALL_DISMISS_KEY = `${PREFIX}install-dismissed`;
-export const RECOVERY_EMAIL_KEY = `${PREFIX}recoveryEmail`;
 
-const MIGRATED_KEYS = [USER_KEY, INSTALL_DISMISS_KEY, RECOVERY_EMAIL_KEY];
+const MIGRATED_KEYS = [USER_KEY, INSTALL_DISMISS_KEY];
 
 /**
  * Move os valores de "@chain:*" para "@atchei:*". Idempotente: rodar de novo não
