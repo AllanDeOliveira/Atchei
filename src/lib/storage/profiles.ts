@@ -5,7 +5,6 @@ import {
   getDoc,
   setDoc,
   doc,
-  deleteDoc,
   query,
   where,
   updateDoc,
@@ -49,10 +48,6 @@ export const profileStore = {
       email: profile.email || '',
       mustChangePassword: profile.mustChangePassword ?? false
     });
-  },
-
-  deleteProfile: async (id: string) => {
-    await deleteDoc(doc(db, 'profiles', id));
   },
 
   updateProfile: async (id: string, data: Partial<AppProfile>) => {

@@ -139,12 +139,21 @@ export const AdminDashboard = () => {
     setConfirmModal({
       show: true,
       title: 'Excluir parceiro?',
-      message: 'Todos os acessos e dados deste parceiro serão removidos do sistema.',
+      message: 'O perfil e a conta de login deste parceiro serão removidos permanentemente.',
       type: 'danger',
       onConfirm: async () => {
-        await storage.deleteProfile(id);
-        setProfiles(prev => prev.filter(p => p.id !== id));
-        setConfirmModal(prev => ({ ...prev, show: false }));
+        try {
+          // Exclui perfil + login no Auth de uma vez (Cloud Function admin-only).
+          const adminDeleteAccount = httpsCallable(getFunctionsInstance(), 'adminDeleteAccount');
+          await adminDeleteAccount({ profileId: id });
+          setProfiles(prev => prev.filter(p => p.id !== id));
+          toast.success('Conta excluída (perfil e login).');
+        } catch (error) {
+          console.error('Erro ao excluir conta:', error);
+          toast.error('Não foi possível excluir a conta.');
+        } finally {
+          setConfirmModal(prev => ({ ...prev, show: false }));
+        }
       }
     });
   };

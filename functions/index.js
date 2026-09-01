@@ -111,6 +111,53 @@ exports.adminResetPassword = onCall({ cors: true, enforceAppCheck: true }, async
     }
 });
 
+// Exclui a CONTA COMPLETA de um parceiro: login no Firebase Auth + perfil no Firestore.
+// Contas legadas têm perfil com id != uid — o vínculo é o e-mail do perfil.
+// Eventos e inscrições NÃO são apagados aqui (exclusão de evento é ação separada no painel).
+exports.adminDeleteAccount = onCall({ cors: true, enforceAppCheck: true }, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Apenas usuários autenticados podem excluir contas.');
+    }
+    if (!isCallerAdmin(request.auth.token)) {
+        throw new HttpsError('permission-denied', 'Apenas administradores podem excluir contas.');
+    }
+    const { profileId } = request.data || {};
+    if (!profileId || typeof profileId !== 'string') {
+        throw new HttpsError('invalid-argument', 'profileId é obrigatório.');
+    }
+
+    try {
+        const snap = await db.collection('profiles').doc(profileId).get();
+        const email = snap.exists ? (snap.data().email || null) : null;
+
+        // Resolve o usuário do Auth: pelo uid (padrão) ou pelo e-mail (conta legada).
+        let uid = null;
+        try {
+            uid = (await admin.auth().getUser(profileId)).uid;
+        } catch (e) {
+            if (email) {
+                try { uid = (await admin.auth().getUserByEmail(email)).uid; } catch (e2) { /* sem login no Auth */ }
+            }
+        }
+
+        if (profileId === request.auth.uid || uid === request.auth.uid) {
+            throw new HttpsError('failed-precondition', 'Um administrador não pode excluir a própria conta por aqui.');
+        }
+
+        if (uid) {
+            await admin.auth().deleteUser(uid);
+        }
+        await db.collection('profiles').doc(profileId).delete();
+
+        logger.info(`Conta ${profileId} (auth uid: ${uid || 'inexistente'}) excluída pelo admin ${request.auth.token.email || request.auth.uid}.`);
+        return { success: true, authDeleted: !!uid };
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        logger.error(`Erro ao excluir conta ${profileId}:`, error);
+        throw new HttpsError('internal', 'Erro interno ao excluir conta.');
+    }
+});
+
 // Gera um ingresso de teste real e validável (para exercitar a portaria/validação),
 // sem cobrar nada nem alterar estoque/faturamento do evento. Exclusivo para administradores.
 // Idempotente por (evento, admin): regerar substitui o ingresso de teste anterior em vez de acumular.
