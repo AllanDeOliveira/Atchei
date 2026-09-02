@@ -1,30 +1,31 @@
 # Atchei — Plataforma de Eventos 🎟️
 
-**Atchei** é uma plataforma para criar e descobrir eventos de qualquer tipo — de festas, shows e festivais a um racha de vôlei, um encontro cultural ou um evento gastronômico. Qualquer pessoa logada cria um evento em minutos e escolhe como ele funciona: **presença gratuita** (só juntar gente) e/ou **venda por WhatsApp** (contato direto com promoters) — os modos são combináveis. A presença confirmada é um RSVP social: conta no evento e entra na lista de inscritos, mas **não emite ingresso**. Para quem vende, o ciclo se fecha na portaria: o ingresso é validado por QR Code.
+**Atchei** é uma plataforma para criar e descobrir eventos de qualquer tipo — de festas, shows e festivais a um racha de vôlei, um encontro cultural ou um evento gastronômico. Qualquer pessoa logada cria um evento em minutos e escolhe como ele funciona: **presença gratuita** (só juntar gente) e/ou **venda por WhatsApp** (contato direto com os promoters) — os modos são combináveis. A presença confirmada é um RSVP social: conta no evento e entra na lista de inscritos, mas **não emite ingresso**. Para quem vende, o ciclo se fecha na portaria: o ingresso é validado por QR Code.
+
+Produção: **https://atchei.app.br** · PWA instalável · Documentação completa em [docs/DOCUMENTACAO.md](docs/DOCUMENTACAO.md)
 
 ---
 
 ## ✨ Funcionalidades
 
 **Para o público**
-- Feed paginado de eventos futuros, com busca e filtro por categoria (Festa, Universitário, Show, Esporte, Gastronomia, Cultural, Outros)
+- Feed paginado de eventos vigentes, com filtros de tempo (Em alta, Hoje, Esta semana), busca e categorias (Festa, Universitário, Show, Esporte, Gastronomia, Cultural, Outros)
 - Confirmação de **presença gratuita** em eventos que permitem — RSVP em 1 toque, sem emitir ingresso
-- Ingresso exportável como imagem
-- Recuperação de ingressos via login com Google, sem precisar de cadastro prévio
-- **PWA instalável** com notificações push
+- **Intenção de compra via WhatsApp**: o comprador entra na lista do vendedor como "Aguardando pagamento" e o vendedor confirma
+- Ingresso com QR Code, exportável como imagem
+- Página do evento com mapa, rota no Google Maps e "adicionar ao Google Agenda"; link compartilhável com preview Open Graph
+- **PWA instalável** com notificações push (lembrete D-1 automático)
 
 **Para organizadores** (qualquer conta logada)
-- Criação e edição dos próprios eventos, escolhendo os modos combináveis: presença gratuita e venda por WhatsApp (promoters)
-- Upload de imagens com recorte
-- Painel financeiro dos próprios eventos
-- Inscrições manuais (cortesia, dinheiro, PIX manual)
-- Scanner de portaria em tela cheia, com troca de câmera e feedback por vibração
+- Criação e edição dos próprios eventos: data/hora, local com Google Places, capa com recorte, capacidade máxima, modos de participação
+- Lista de inscritos com confirmação de pagamento WhatsApp, inscrições manuais (cortesia, dinheiro, PIX manual) e exportação
+- Scanner de portaria em tela cheia, com troca de câmera, código curto digitável e feedback por vibração
 
 **Para admin**
-- Gestão irrestrita de eventos, perfis e inscrições
-- Criação de perfis com senha temporária e troca obrigatória no primeiro acesso
-- Concessão de privilégio de admin via *custom claim*
-- Geração de ingressos de teste sem afetar estoque
+- Painel de controle: gestão irrestrita de eventos e perfis
+- Criação de parceiros com senha temporária e troca obrigatória no primeiro acesso
+- **Exclusão completa de conta** (login + perfil + eventos + inscrições + tokens) em uma ação
+- Geração de ingressos de teste sem afetar contagens reais
 
 ---
 
@@ -32,35 +33,34 @@
 
 | Papel | O que pode fazer |
 |---|---|
-| **Visitante** | Ver feed, busca e detalhes; confirmar presença gratuita; recuperar ingressos via Google |
-| **Pessoal** (`user`) | Tudo acima + perfil, meus ingressos, notificações push; criar, editar e excluir **os próprios** eventos; validar ingressos dos próprios eventos; inscrições manuais; painel financeiro |
+| **Visitante** | Ver feed, busca e detalhes de eventos |
+| **Pessoal** (`user`) | Tudo acima + perfil, presença gratuita, intenção de compra, meus ingressos, push; criar/editar/excluir **os próprios** eventos; validar ingressos dos próprios eventos; inscrições manuais |
 | **Profissional** (`profissional`) | Tudo acima + aparece no diretório público de organizadores da busca |
-| **Admin** | Acesso irrestrito, incluindo CRUD de perfis e concessão de claims |
+| **Admin** | Acesso irrestrito, incluindo CRUD de perfis, exclusão completa de contas e ingressos de teste |
 
-Os tipos legados `atletica` e `estabelecimento` foram fundidos em `profissional` (documentos antigos continuam valendo como profissionais). O **registro público de contas está aberto** (tipos `user` e `profissional`), com exigência de **18+** validada também nas security rules — o admin ainda pode criar perfis manualmente com senha temporária. Autorização de admin é **100% via custom claim** do Firebase Auth — não existe fallback por e-mail.
+Os tipos legados `atletica` e `estabelecimento` foram fundidos em `profissional` (documentos antigos continuam valendo). O **registro público está aberto** (tipos `user` e `profissional`) com exigência de **18+** validada também nas security rules. Autorização de admin é **100% via custom claim** do Firebase Auth (`admin: true`) — o papel de admin *na interface* vem do perfil com `type: 'admin'`; os dois são independentes e uma conta admin precisa dos dois.
 
 ---
 
 ## 🛠️ Stack
 
 **Frontend** — React 19 · Vite 8 · TypeScript · Tailwind 3 · React Router 7 · Lucide
-`react-hook-form` + `zod` (formulários) · `@vis.gl/react-google-maps` · `@zxing/browser` (leitura de QR) · `react-easy-crop` · `html-to-image` · `vite-plugin-pwa`
-Animações de entrada são CSS puro (`@keyframes anim-enter` em `index.css`), sem biblioteca.
+`react-hook-form` + `zod` (formulário de evento) · `@vis.gl/react-google-maps` (Places) · `@zxing/browser` (leitura de QR) · `react-easy-crop` · `html-to-image` · `react-hot-toast` · `vite-plugin-pwa`
 
-**Backend** — Cloud Functions gen2 (Node 22) · `firebase-admin` · API v3 do Asaas (via `fetch`, sem SDK)
-Serviços Firebase usados pelo app: Authentication · Firestore · Cloud Functions · Storage · Cloud Messaging
+**Backend** — Firebase: Authentication · Firestore · Cloud Storage · Cloud Functions gen2 (Node 22) · Cloud Messaging · App Check (reCAPTCHA v3) · Hosting · Analytics
+E-mail transacional via **Resend** (API HTTP, sem SDK). Google Maps Platform (Embed, JavaScript e Places).
 
-**Testes** — Vitest + Testing Library + jsdom, no frontend e nas functions.
+**Testes** — Vitest + Testing Library + jsdom no frontend; Vitest nas functions.
 
-**Identidade visual** — tema claro, âmbar `#FFB34D` e preto `#000000` sobre off-white `#FFFCF8`, tipografia Plus Jakarta Sans.
+**Identidade visual** — tema claro, âmbar `#FFB34D` e preto sobre off-white `#FFFCF8`, tipografia Plus Jakarta Sans (ver `tailwind.config.js`).
 
 ---
 
 ## 💳 Pagamento
 
-Não há pagamento dentro da plataforma no momento. A venda de ingressos acontece por **WhatsApp**, em contato direto com os promoters cadastrados no evento; o registro do pagamento (dinheiro, PIX manual, cortesia) é feito pelo organizador via inscrição manual.
+Não há pagamento dentro da plataforma. A venda de ingressos acontece por **WhatsApp**, em contato direto com os promoters cadastrados no evento: o comprador registra a intenção pelo app, o vendedor confirma o pagamento no painel de inscritos e só então o registro vira ingresso. Pagamentos em dinheiro/PIX manual/cortesia entram por inscrição manual do organizador.
 
-> Existe um fluxo completo de venda integrada por PIX (Asaas v3, com split) implementado no código, mas ele está **pausado** por kill switch duplo: `PIX_ENABLED = false` em `src/lib/flags.ts` (esconde a interface) e `PIX_ENABLED=false` no ambiente das functions (bloqueia `criarCobrancaPix` no servidor). Os dois precisam ser religados juntos para reativar.
+> A integração Pix (Asaas) que existiu no projeto foi **removida do código em 2026-08-31**. Se pagamento in-app voltar, será uma implementação nova — ver [docs/DOCUMENTACAO.md](docs/DOCUMENTACAO.md#13-decisões-e-histórico).
 
 ---
 
@@ -69,26 +69,26 @@ Não há pagamento dentro da plataforma no momento. A venda de ingressos acontec
 O scanner aceita duas entradas:
 
 - **QR Code** — o id completo do documento de inscrição
-- **Código curto** — formato `ATX-XXXX-XXXX`, para digitar quando a câmera falha (o prefixo legado `CHN-` continua aceito)
+- **Código curto** — formato `ATX-XXXX-XXXX`, para digitar quando a câmera falha (prefixo legado `CHN-` continua aceito)
 
-O código curto é derivado do id por FNV-1a → base32 Crockford, sem campo extra no banco. Se mais de uma inscrição casar com o mesmo código, o sistema **recusa a validação** em vez de arriscar liberar a pessoa errada. Check-ins não podem ser revertidos.
-
-Só ingresso de verdade passa: intenção de compra ainda não confirmada pelo vendedor e **confirmação de presença gratuita** (que não é ingresso) são recusadas pelo scanner.
+O código curto é derivado do id por FNV-1a → base32 Crockford, sem campo extra no banco. Se mais de uma inscrição casar com o mesmo código, o sistema **recusa a validação**. Check-ins não podem ser revertidos. Só ingresso de verdade passa: intenção de compra ainda não confirmada e confirmação de presença gratuita são recusadas pelo scanner.
 
 ---
 
 ## 🔧 Rodando localmente
 
-**Pré-requisitos:** Node 22+, projeto Firebase próprio. Conta Asaas só é necessária para mexer no fluxo de PIX, que está pausado (use a chave de **sandbox**).
+**Pré-requisitos:** Node 22+ e acesso ao projeto Firebase.
 
 ```bash
 npm install
+cd functions && npm install && cd ..
 ```
 
-Crie um `.env` na raiz (veja `.env.example`):
+Crie um `.env` na raiz (veja `.env.example`) — todas as chaves são **públicas** (config do Firebase, site key do reCAPTCHA, chave de browser do Maps restrita por referrer):
 
 ```env
 VITE_GOOGLE_MAPS_API_KEY=
+VITE_RECAPTCHA_SITE_KEY=     # App Check; sem ela o App Check fica desativado no cliente
 VITE_FIREBASE_API_KEY=
 VITE_FIREBASE_AUTH_DOMAIN=
 VITE_FIREBASE_PROJECT_ID=
@@ -100,48 +100,36 @@ VITE_FIREBASE_VAPID_KEY=     # opcional — sem ela, push fica desativado
 VITE_USE_EMULATORS=          # 'true' para falar com os emuladores
 ```
 
-E um `functions/.env` para o runtime das Cloud Functions:
+E um `.env.local` (gitignorado) com o token de depuração do App Check da sua máquina, registrado uma vez no console (Firebase → App Check → Apps → tokens de depuração):
 
 ```env
-APP_BASE_URL=http://localhost:5173
-RESEND_API_KEY=              # e-mail transacional (redefinição de senha)
-EMAIL_FROM=                  # remetente verificado no Resend
-PIX_ENABLED=false            # kill switch do fluxo de PIX (pausado)
-
-# Só para mexer no fluxo de PIX (pausado):
-ASAAS_API_KEY=               # chave de sandbox para desenvolvimento
-ASAAS_BASE_URL=https://api-sandbox.asaas.com/v3
-ASAAS_WEBHOOK_TOKEN=         # o mesmo valor cadastrado no webhook do Asaas
-PLATFORM_FEE_PERCENT=10      # comissão retida pela plataforma, em %
+VITE_APPCHECK_DEBUG_TOKEN=
 ```
 
-> Em produção, a chave e o token do webhook vão pelo Secret Manager, não pelo `.env`
-> (que é empacotado no deploy): `firebase functions:secrets:set ASAAS_API_KEY`.
+Para as functions, um `functions/.env` (veja `functions/.env.example`): `APP_BASE_URL`, `RESEND_API_KEY`, `EMAIL_FROM`. Em produção esses dois últimos vêm do **Secret Manager**, não do `.env`.
 
-> ⚠️ Sem `VITE_USE_EMULATORS=true`, o `npm run dev` fala com **produção**.
+> ⚠️ **Não existe backend de desenvolvimento.** Sem `VITE_USE_EMULATORS=true`, o `npm run dev` fala com o **mesmo projeto Firebase da produção** — qualquer dado que você mexer no localhost é mexida real.
 
 ```bash
-npm run dev          # Vite
+npm run dev          # Vite em http://localhost:5173
 npm run build        # tsc -b && vite build
 npm run lint
 npm run test:run     # suíte usada no CI
+cd functions && npm test
 ```
-
-O frontend só conecta nos emuladores do Firebase se o host for `localhost`/`127.0.0.1` **e** `VITE_USE_EMULATORS` for `true`.
-
 
 ---
 
 ## 🚢 CI e deploy
 
-Convenção do projeto: todo trabalho entra na `main` por Pull Request com o CI verde — nada de push direto.
+Convenção do projeto: todo trabalho entra na `main` por Pull Request — nada de push direto.
 
-1. **CI** (`.github/workflows/ci.yml`) — roda em todo PR para `main`: build + testes do frontend e das functions. Só mescle com o check "Build e Testes" verde.
-2. **Deploy** (`.github/workflows/deploy.yml`) — roda no push para `main` (ou seja, a cada merge): repete os testes, builda e publica no Firebase (hosting + rules + functions) com `firebase-tools`.
+1. **CI** (`.github/workflows/ci.yml`) — em todo PR para `main`: build + testes do frontend e das functions.
+2. **Deploy** (`.github/workflows/deploy.yml`) — no push para `main` (a cada merge): repete os testes, builda e publica no Firebase (hosting + rules + functions). Um deploy por vez, sem cancelar o anterior.
 
-Fluxo do dia a dia: `git checkout -b minha-mudanca` → commits → push → abrir PR → CI verde → merge → deploy automático.
+Secrets do repositório: `VITE_ENV` (conteúdo completo do `.env` do frontend) e `FIREBASE_SERVICE_ACCOUNT` (JSON da service account do deploy). O `.env` **nunca** vai para o git.
 
-Secrets necessários no repositório: `VITE_ENV` (conteúdo completo do `.env` do frontend) e `FIREBASE_SERVICE_ACCOUNT` (JSON da service account usada no deploy).
+> Function **nova** não sobe pelo CI na primeira vez (a service account não consegue criá-la). Receita em [docs/DOCUMENTACAO.md](docs/DOCUMENTACAO.md#11-operações-runbooks).
 
 ---
 
@@ -149,16 +137,24 @@ Secrets necessários no repositório: `VITE_ENV` (conteúdo completo do `.env` d
 
 ```
 src/
-  pages/         telas (Feed, EventDetails, ValidateTickets, Admin, ...)
-  components/    componentes compartilhados
-  lib/           firebase, storage, ticketCode, tipos
+  pages/         telas (Feed, EventDetails, Profile, AdminDashboard, ValidateTickets, ...)
+  components/    componentes por domínio (Admin, CreateEvent, EventDetails, Profile, ui)
+  contexts/      AuthContext (sessão + role)
+  hooks/         useRateLimit, useEscapeToClose, useInstallCardPending
+  lib/           firebase (init, App Check, Analytics), notifications (FCM), formatters,
+                 ticketCode, imageUtils, storageKeys, utils
+  lib/storage/   fachada de dados: auth, profiles, events, registrations, files, types
+  test/          setup do Vitest e mocks do Firebase
 functions/
-  index.js       Cloud Functions (PIX, webhook, admin, triggers)
-  asaas.js       cliente da API v3 do Asaas + cofre de recebedores
-  rateLimiter.js rate limiting transacional
-  scripts/       utilitários administrativos
+  index.js       callables, triggers do Firestore, cron e OG preview
+  email.js       e-mail transacional (Resend)
+  reminders.js   lembretes D-1 por push
+  ogPreview.js   página Open Graph para links compartilhados (/e/:id)
+  rateLimiter.js rate limiting transacional no Firestore
+  adminEmails.js lista de e-mails que recebem o claim de admin
+  scripts/       set-admins.js, set-user-password.js
 firebase/        firestore.rules e storage.rules
-docs/            documentação (identidade visual)
+docs/            DOCUMENTACAO.md (arquitetura completa) e identidade-visual.md
 ```
 
 ---
