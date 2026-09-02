@@ -1,0 +1,397 @@
+# Atchei — Documentação Técnica
+
+Documento de referência do projeto: o que ele é, como está construído, como os dados se organizam, como a segurança funciona, como se roda, testa, faz deploy e opera. Complementa o [README](../README.md) (visão de produto e início rápido) e a [identidade visual](identidade-visual.md).
+
+Última revisão: 2026-09-02.
+
+## Sumário
+
+1. [Visão geral e domínio](#1-visão-geral-e-domínio)
+2. [Linguagens, frameworks e ferramentas](#2-linguagens-frameworks-e-ferramentas)
+3. [Arquitetura geral](#3-arquitetura-geral)
+4. [Frontend](#4-frontend)
+5. [Backend (Cloud Functions)](#5-backend-cloud-functions)
+6. [Modelo de dados (Firestore)](#6-modelo-de-dados-firestore)
+7. [Segurança](#7-segurança)
+8. [Ambientes e configuração](#8-ambientes-e-configuração)
+9. [Testes](#9-testes)
+10. [CI/CD](#10-cicd)
+11. [Operações (runbooks)](#11-operações-runbooks)
+12. [Convenções de trabalho](#12-convenções-de-trabalho)
+13. [Decisões e histórico](#13-decisões-e-histórico)
+
+---
+
+## 1. Visão geral e domínio
+
+O Atchei é um **PWA** (Progressive Web App) de descoberta e organização de eventos, servido em **https://atchei.app.br**. O núcleo do domínio tem três entidades: **perfil** (a conta), **evento** e **inscrição** (o vínculo de uma pessoa com um evento).
+
+### Papéis
+
+| Papel | Como é determinado | O que faz |
+|---|---|---|
+| Visitante | não logado | feed, busca, página de evento, diretório de profissionais |
+| Pessoal (`user`) | perfil com `type: 'user'` | tudo acima + presença gratuita, intenção de compra, ingressos, push, criar/gerir os próprios eventos |
+| Profissional (`profissional`) | perfil com `type: 'profissional'` (legados `atletica`/`estabelecimento` valem como profissional) | tudo acima + aparece no diretório público |
+| Admin | **custom claim** `admin: true` no token (backend) **e** perfil com `type: 'admin'` (interface) | acesso irrestrito, painel de controle, gestão de parceiros |
+
+### Modos de participação em um evento
+
+- **Presença gratuita** (`hasPresence`): RSVP social em 1 toque. Cria uma inscrição com `paymentStatus` `'Gratuito'`/nulo, conta em `registrationCount`, **não é ingresso** (a portaria recusa).
+- **Venda por WhatsApp** (`hasTickets`): o comprador clica em "Comprar via WhatsApp", entra na lista do vendedor como `'Aguardando pagamento'` e a conversa acontece fora do app. O organizador confirma (`'Pago (WhatsApp)'`) e só então a inscrição vira ingresso válido. Os dois modos são combináveis.
+- **Inscrição manual** pelo organizador (cortesia, dinheiro, PIX manual): qualquer `paymentStatus`, criada direto pelo dono do evento ou admin.
+- **Ingresso de teste** (admin): inscrição com `isTeste: true`, fora de qualquer contagem, para exercitar a portaria.
+
+### Portaria
+
+O scanner (`/validar/:eventId`) lê o QR Code (id do documento de inscrição) ou o **código curto** `ATX-XXXX-XXXX`, derivado do id por FNV-1a → base32 Crockford (`src/lib/ticketCode.ts`), sem campo extra no banco. Colisão de código curto recusa a validação. O check-in grava `checkedIn`, `checkedInAt` e `checkedInBy` e **não pode ser revertido** (regra do Firestore).
+
+---
+
+## 2. Linguagens, frameworks e ferramentas
+
+| Camada | Tecnologia | Versão | Uso |
+|---|---|---|---|
+| Linguagem (front) | TypeScript | ~6.0 | todo o `src/` |
+| Linguagem (back) | JavaScript (CommonJS) | Node 22 | `functions/` |
+| UI | React | 19 | componentes funcionais + hooks |
+| Build/dev server | Vite | 8 | `npm run dev` / `npm run build` (`tsc -b && vite build`) |
+| Roteamento | React Router | 7 | `BrowserRouter`, rotas em `src/App.tsx` |
+| Estilo | Tailwind CSS 3 + PostCSS/Autoprefixer | 3.4 | tema em `tailwind.config.js`; animações em CSS puro (`src/index.css`) |
+| Ícones | lucide-react | 1.x | |
+| Formulários | react-hook-form + zod + @hookform/resolvers | 7 / 4 | **só** no formulário de evento (`CreateEvent`); as demais telas validam na mão |
+| Mapas | @vis.gl/react-google-maps + Maps Embed API | 1.x | Places no cadastro de evento; iframe de embed na página do evento |
+| QR Code | @zxing/browser (+ @zxing/library como peer) | 0.2 | leitura na portaria |
+| Imagens | react-easy-crop, html-to-image, `src/lib/imageUtils.ts` | | recorte da capa, exportar ingresso, compressão client-side |
+| Toasts | react-hot-toast | 2 | |
+| PWA | vite-plugin-pwa (Workbox) | 1.3 | service worker `autoUpdate`, manifest |
+| Backend | Firebase Cloud Functions gen2 (`firebase-functions` v5, `firebase-admin` v12) | | callables, triggers, cron, HTTP |
+| Banco | Cloud Firestore | | ver §6 |
+| Auth | Firebase Authentication (e-mail/senha) | | sem provedores federados |
+| Arquivos | Cloud Storage for Firebase | | fotos de perfil e de evento |
+| Push | Firebase Cloud Messaging (Web Push / VAPID) | | tokens em `fcmTokens` |
+| Anti-abuso | Firebase App Check (reCAPTCHA v3) | | ver §7 |
+| Analytics | Google Analytics 4 via Firebase, com Consent Mode v2 | | |
+| E-mail | Resend (API HTTP) | | redefinição de senha (`functions/email.js`) |
+| Hospedagem | Firebase Hosting | | domínio custom `atchei.app.br` |
+| Testes | Vitest 4 + @testing-library/react + jsdom | | front e functions |
+| Lint | ESLint 10 (flat config) + typescript-eslint + react-hooks + react-refresh | | `npm run lint` |
+| CI/CD | GitHub Actions | | `ci.yml` (PR) e `deploy.yml` (push em `main`) |
+| CLIs usadas em operação | `firebase-tools`, `gcloud` | | deploy manual, IAM, logs, Secret Manager |
+| Assistente de dev | Claude Code (`.mcp.json` aponta o MCP de docs do Asaas, hoje sem uso) | | |
+
+Dependências foram auditadas em 2026-09-01 (`npm audit` zerado).
+
+---
+
+## 3. Arquitetura geral
+
+```
+┌────────────────────────── navegador / PWA ──────────────────────────┐
+│  React 19 + Vite  ·  React Router  ·  Tailwind  ·  service worker    │
+│  src/lib/storage (fachada)  →  SDK Firebase (Auth, Firestore,        │
+│  Storage, Functions, Messaging, App Check, Analytics)                 │
+└───────┬──────────────┬──────────────┬─────────────────┬─────────────┘
+        │              │              │                 │
+   Firebase Auth   Firestore     Cloud Storage    Cloud Functions gen2
+   (e-mail/senha,  (rules +      (rules: só       ├─ callables (App Check + Auth)
+    custom claim    App Check     imagem ≤15MB)    ├─ triggers em registrations
+    admin)          aplicado)                      ├─ cron 09:00 lembrete D-1
+        │                                          ├─ HTTP /e/:id (Open Graph)
+        └──── FCM (push) ◄─────────────────────────┘        │
+                                                             ▼
+                                              Resend (e-mail)  ·  Secret Manager
+
+  Firebase Hosting (atchei.app.br) ── rewrite /e/** → renderEventOpenGraph
+                                   ── demais rotas → index.html (SPA)
+  Google Maps Platform (Embed / JS / Places) — chave de browser restrita por referrer
+```
+
+Princípios:
+
+- **Sem servidor próprio.** O cliente fala direto com Firestore/Storage; as **security rules** são a camada de autorização de dados. Cloud Functions existem só para o que exige privilégio (Admin SDK) ou segredo (e-mail), para reagir a escritas (contadores) e para o cron.
+- **Contadores são do backend.** `registrationCount` e `soldByTicket` são escritos exclusivamente por triggers (Admin SDK); as rules bloqueiam escrita do cliente.
+- **Um único projeto Firebase** (`atchei`). Não há ambiente de dev separado — ver §8.
+- **Sessão local + verdade no token.** O usuário é cacheado em `localStorage` para a UI abrir rápido; `onAuthStateChanged` e o custom claim do token são a fonte da verdade.
+
+---
+
+## 4. Frontend
+
+### 4.1 Estrutura de pastas
+
+```
+src/
+  App.tsx                 rotas, providers, layout
+  main.tsx                bootstrap (migração de chaves do localStorage, render)
+  index.css               tema base, animações (@keyframes), utilitários
+  pages/                  uma tela por arquivo
+  components/
+    ui/                   Button, Input, Modal, Skeleton, EmptyState
+    Admin/                NewPartnerModal, EditPartnerModal, ConfirmModal
+    CreateEvent/          DateTimePickerModal, LocationPickerModal, ImageCropModal
+    EventDetails/         EventHeader, EventLocationMap, EventTicketSection
+    Profile/              EditProfileModal, ParticipantsModal, ManualTicketModal
+    (raiz)                MainLayout, BottomNav, Sidebar, PrivateRoute, EventCard,
+                          ProfileCard, TicketModal, CookieBanner, InstallAppCard,
+                          NotificationToggle, ErrorBoundary, InstagramIcon
+  contexts/AuthContext.tsx
+  hooks/                  useRateLimit, useEscapeToClose, useInstallCardPending
+  lib/
+    firebase.ts           init do app, App Check, Analytics/consent, Functions (lazy)
+    storage/              fachada de dados (ver 4.4)
+    notifications.ts      FCM: suporte, permissão, token, foreground
+    formatters.ts         datas, telefone, CPF, links (wa.me, Maps, Google Agenda), máscaras
+    ticketCode.ts         código curto ATX-XXXX-XXXX
+    imageUtils.ts         compressão, recorte, detecção de vídeo, dataURL→Blob
+    storageKeys.ts        chaves do localStorage (prefixo @atchei:) + migração do legado @chain:
+    utils.ts              cn() (clsx + tailwind-merge) e goBack()
+  test/                   setup.ts (jest-dom, matchMedia) e firebase.mock.ts
+```
+
+### 4.2 Rotas (`src/App.tsx`)
+
+| Rota | Tela | Acesso | Observação |
+|---|---|---|---|
+| `/` | Feed | público | `/feed` redireciona para `/` |
+| `/search` | Search | público | busca de eventos + diretório de profissionais |
+| `/agenda/:id` | Agenda | público | eventos futuros de um perfil |
+| `/event/:id` | EventDetails | público | mapa, inscrição, compra via WhatsApp |
+| `/login`, `/register`, `/change-password` | autônomas (sem barra) | público | |
+| `/auth/action` | AuthAction | público | handler das ações de e-mail do Auth |
+| `/privacidade`, `/termos`, `/quem-somos` | Legal | público | |
+| `/validar/:eventId` | ValidateTickets | dono do evento / admin (checado na tela) | scanner em tela cheia |
+| `/create`, `/edit/:id` | CreateEvent | `PrivateRoute` | |
+| `/profile` | Profile | `PrivateRoute` | meus eventos / inscrições, edição de perfil |
+| `/admin` | AdminDashboard | `PrivateRoute` + `role === 'admin'` | |
+
+`MainLayout` envolve as rotas com barra inferior (`BottomNav`) e `Sidebar`. Todas as rotas são `lazy` dentro de um `Suspense`. Links compartilhados usam `/e/:id`, que o Hosting reescreve para a function de Open Graph (§5.3) — ela redireciona o navegador para `/event/:id`.
+
+### 4.3 Estado e sessão
+
+- `AuthContext` expõe `user`, `isLoading`, `logout`, `updateUser`. Na montagem lê o usuário do `localStorage` (`@atchei:user`) para não travar a UI, depois `onAuthStateChanged` confirma o token e lê o **custom claim** `admin` (`getIdTokenResult`), corrigindo `role` se necessário. Também sincroniza o token de push.
+- O objeto `User` (`id`, `name`, `username` = e-mail, `role`: `user | partner | admin`, `profileId`, `imageUrl`) é o que as telas usam; dados completos do perfil vêm do Firestore quando a tela precisa.
+- Contas **legadas** podem ter documento de perfil com id ≠ uid; o vínculo é o e-mail (`profileId` carrega o id real do doc). Regras e código tratam os dois casos.
+
+### 4.4 Camada de dados (`src/lib/storage`)
+
+Fachada única `storage` que funde cinco módulos, para as telas não conhecerem o Firestore diretamente:
+
+| Módulo | Principais funções |
+|---|---|
+| `auth.ts` | `getCurrentUser`, `register` (18+, tipo user/profissional, envia verificação de e-mail), `login`, `logout`, `updatePartnerPassword`, `updatePartnerProfile`, `getProfileByEmail` |
+| `profiles.ts` | `getProfiles`, `getPublicProfiles` (só tipos profissionais — restrição espelhada nas rules), `getProfileById`, `saveProfile`, `updateProfile` |
+| `events.ts` | `getEvents`, `getPaginatedEvents` (10 por página, cursor), `getUpcomingEvents`, `saveEvent`, `deleteEvent`, `getEventById`, `getAgendaByProfileId` |
+| `registrations.ts` | `saveSelfRegistration` (id determinístico `eventId_uid`), `saveRegistration` (manual), `getRegistrationsForUser/ForEvent` (+ paginada), `getUserRegistration`, `checkInRegistration`, `confirmRegistrationPayment`, `deleteRegistration` |
+| `files.ts` | `uploadFile` (Storage) |
+| `types.ts` | tipos de domínio, `EVENT_CATEGORIES`, `eventoVigente`, `soldCount`, `STATUS_AGUARDANDO`, `STATUS_PAGO_WHATSAPP` |
+
+### 4.5 PWA, push e analytics
+
+- **PWA**: `vite-plugin-pwa` com `registerType: 'autoUpdate'` e manifest (nome, cores `#FFB34D`/`#FFFCF8`, ícones, `display: standalone`). `InstallAppCard` convida à instalação; `useInstallCardPending` coordena com o `CookieBanner` (os dois ocupam a mesma posição — o convite aparece primeiro).
+- **Push**: `notifications.ts` registra o token FCM (chave VAPID em `VITE_FIREBASE_VAPID_KEY`; sem ela o recurso se desliga sozinho) em `fcmTokens/{token}` com o `userId`; o backend envia via `sendEachForMulticast` e limpa tokens inválidos. `NotificationToggle` no perfil.
+- **Analytics + LGPD**: GA4 sobe sempre, mas em **Consent Mode v2** — sem consentimento mede sem cookie (interesse legítimo); com "aceitar" no `CookieBanner` grava `_ga`. Publicidade sempre negada. `cookie_domain: 'none'` evita o bug do domínio `.web.app` na Public Suffix List.
+- **App Check** no cliente: `initializeAppCheck` com `ReCaptchaV3Provider` quando `VITE_RECAPTCHA_SITE_KEY` existe; em dev usa o token de depuração fixo de `VITE_APPCHECK_DEBUG_TOKEN` (`.env.local`).
+
+### 4.6 UI e design
+
+Tema em `tailwind.config.js`: `background #FFFCF8`, `surface #FFFFFF`, `primary #FFB34D` (âmbar), `accent #A66300`, texto preto, `textMuted #78716C`, `danger`, `success`, `warning`; fonte única **Plus Jakarta Sans** (aliases `display`/`mono` apontam para ela — hierarquia por peso). Animações de entrada são `@keyframes` em CSS, sem biblioteca. `docs/identidade-visual.md` registra a paleta/tipografia do sistema "Organic" usado em peças de marketing — **não** é o tema implementado no app.
+
+Convenções de UI adotadas em 2026-09: status de evento no perfil como texto solto ("Aberto" em `#2E8B57`, "Encerrado" em cinza), contadores e e-mails sem pill/contorno, abas ativas do painel admin em `accent`.
+
+---
+
+## 5. Backend (Cloud Functions)
+
+Todas em `functions/index.js`, região `us-central1`, Node 22, gen2. Callables usam `onCall({ cors: true, enforceAppCheck: true })` e checam `request.auth` e, quando for o caso, `isCallerAdmin(token)` (claim).
+
+### 5.1 Callables
+
+| Function | Quem chama | O que faz | Proteções |
+|---|---|---|---|
+| `adminResetPassword` | admin (painel, editar parceiro) | redefine a senha de um uid e marca `mustChangePassword` | auth + claim admin + rate limit 3/5min por admin |
+| `adminDeleteAccount` | admin (painel, excluir parceiro) | apaga **tudo** da conta: eventos criados (uid ou id de perfil legado) e as inscrições deles, inscrições próprias, `fcmTokens`, usuário do Auth e docs de perfil. Recusa apagar a conta do próprio chamador | auth + claim admin |
+| `criarIngressoTeste` | admin (página do evento) | gera ingresso de teste validável (`isTeste: true`, `pedidoId` determinístico `TESTE-<evento>-<admin>`), sem mexer em contagens | auth + claim admin |
+| `tornarProfissional` | usuário logado | promove o próprio perfil de `user` para `profissional` (o cliente não pode alterar `type` pelas rules) | auth |
+| `solicitarResetSenha` | tela de login | gera o link de redefinição via Admin SDK e envia por **Resend** com template próprio (o Google recusa personalizar os templates deste projeto) | rate limit 3/15min por e-mail; segredos `RESEND_API_KEY`, `EMAIL_FROM` |
+
+### 5.2 Triggers do Firestore (`registrations/{id}`)
+
+| Trigger | Efeito |
+|---|---|
+| `onRegistrationCreated` | `registrationCount +1` (e `soldByTicket.<lote> +1` em venda manual). Ignora ingressos de teste e intenções `'Aguardando pagamento'`. Envia push de confirmação de presença gratuita |
+| `onRegistrationDeleted` | simétrico: `-1`. Se o evento já foi apagado, o erro é engolido e logado |
+| `onRegistrationConfirmed` | transição `'Aguardando pagamento'` → `'Pago (WhatsApp)'`: entra na contagem e avisa o comprador por push (e o inverso, se um admin reverter) |
+
+### 5.3 HTTP e cron
+
+- `renderEventOpenGraph` (`onRequest`, público): servido no rewrite `/e/**` do Hosting. Lê o evento, monta HTML com meta tags Open Graph (título, descrição, imagem) e redireciona navegadores para `/event/:id`. Base URL em `APP_BASE_URL`.
+- `lembreteEventosD1` (`onSchedule`, `0 9 * * *` America/Sao_Paulo): `reminders.js` busca eventos de amanhã (exceto testes) e envia push para os inscritos.
+
+### 5.4 Módulos auxiliares
+
+- `rateLimiter.js`: contadores transacionais na coleção `_rateLimits` (bloqueada para clientes). Limites em `LIMITS`.
+- `email.js`: `enviarEmailResetSenha` via `fetch` na API do Resend.
+- `ogPreview.js`: `handleOgPreview`, com `escapeHtml`.
+- `adminEmails.js`: `ADMIN_EMAILS` (fonte do script de claims) e `isCallerAdmin`.
+- `scripts/set-admins.js`: concede `admin: true` aos e-mails da lista (precisa de credencial de service account/ADC). `scripts/set-user-password.js`: repõe senha e marca e-mail verificado.
+
+---
+
+## 6. Modelo de dados (Firestore)
+
+| Coleção | Id | Campos principais | Quem escreve |
+|---|---|---|---|
+| `profiles` | uid (contas novas) ou id legado | `name`, `email`, `type` (`user` / `profissional` / `admin` / legados), `description`, `imageUrl`, `instagram`, `birthDate` (YYYY-MM-DD), `mustChangePassword` | o dono (sem mudar `type`/`email`), admin, functions |
+| `events` | auto | `title`, `date` (YYYY-MM-DD), `time`, `location`, `address`, `mediaUrls[]`, `category`, `publicType`, `description`, `creatorId`, `hasPresence`, `hasTickets`, `ticketPrice`, `whatsappContacts[{name, phone}]`, `maxParticipants`, `tickets[]`, `isTestEvent`, `registrationCount`*, `soldByTicket`* | criador (uid ou perfil legado), admin; * só backend |
+| `registrations` | **`eventId_uid`** para inscrição própria; auto para manual/teste | `eventId`, `userId`, `userName`, `userEmail`, `userPhone`, `userCpf`, `paymentStatus`, `timestamp`, `ticketTypeId/Name`, `pedidoId`, `checkedIn`, `checkedInAt`, `checkedInBy`, `isTeste` | o próprio usuário (regras estritas), dono do evento, admin, functions |
+| `fcmTokens` | o token | `userId`, `token`, `updatedAt` | o dono; leitura só pelo backend |
+| `_rateLimits` | `<escopo>_<chave>` | contadores/janelas | só functions |
+
+Invariantes importantes:
+
+- O id determinístico `eventId_uid` garante **no máximo uma inscrição própria por pessoa por evento** (criar sobre doc existente é update, negado).
+- `paymentStatus` é o estado da inscrição: ausente/`'Gratuito'` = presença; `'Aguardando pagamento'` = intenção (não é ingresso, não conta); `'Pago (WhatsApp)'` e demais valores manuais = ingresso.
+- Evento é **vigente** até o fim do dia da sua data (`eventoVigente`); o feed e a agenda filtram por isso, e o perfil mostra "Encerrado" a partir do dia seguinte.
+- `maxParticipants` é um teto **eventual**: em rajada simultânea pode passar 1–2 além (contador atualizado por trigger) — aceito para a V1.
+
+---
+
+## 7. Segurança
+
+### 7.1 Autenticação e autorização
+
+- Firebase Auth com **e-mail/senha** apenas (sem Google/OAuth). Verificação de e-mail é enviada no cadastro e o perfil avisa enquanto não verificar.
+- **Admin** = custom claim `admin: true` (concedido pelo `set-admins.js` ou direto pela API do Identity Toolkit). É a única fonte de autorização nas **rules** e nas **functions**. Na interface, o papel vem de `profiles/{id}.type === 'admin'`. Os dois precisam existir.
+- O cliente **não pode** mudar `type` nem `email` do próprio perfil (sem auto-promoção); promoção a profissional passa pela callable `tornarProfissional`.
+
+### 7.2 Firestore rules (`firebase/firestore.rules`)
+
+- `profiles`: `get` público (página do organizador; uid não é enumerável), **`list` restrito** (diretório de profissionais, o próprio perfil ou admin — impede dump de nomes+e-mails), `create` só do próprio uid com tipo `user`/`profissional` e **18+ validado na regra**, `update` só do dono por e-mail, `delete` só admin.
+- `events`: leitura pública; `create` só com `creatorId` do próprio usuário (uid ou perfil legado); `update`/`delete` só criador ou admin; o criador **não** pode alterar `creatorId`, `registrationCount` nem `soldByTicket`.
+- `registrations`: leitura só do dono, do organizador do evento ou admin. Criação própria exige evento com presença habilitada (ou venda, para intenção), capacidade disponível, `userId == uid`, id `eventId_uid`, sem `checkedIn` e sem `paymentStatus` pago. Update do organizador restrito ao check-in (irreversível) e à confirmação `'Aguardando pagamento'` → `'Pago (WhatsApp)'`. Delete: admin, o próprio usuário (só presença/intenção não validadas) ou o organizador (só intenções).
+- `fcmTokens`: escrita só do próprio uid, leitura negada. `_rateLimits`: tudo negado.
+
+### 7.3 Storage rules
+
+`profiles/{uid}/*` e `events/{uid}/*`: leitura pública; escrita só do dono ou admin, **apenas imagens** (`jpeg|png|webp|gif|avif`) **até 15 MB**.
+
+### 7.4 App Check
+
+- Cliente: reCAPTCHA v3 (`VITE_RECAPTCHA_SITE_KEY`, chave do projeto `atchei`).
+- **Firestore: enforcement APLICADO** (2026-08-31) — requisições sem token válido são recusadas.
+- **Callables: `enforceAppCheck: true`** em todas.
+- **Storage e Authentication: não aplicados, de propósito.** As fotos carregam por URL direta em `<img>` (sem token) e as rules já restringem a escrita; Auth é pré-lançamento. Não aplicar.
+- Dev: token de depuração fixo por máquina (`VITE_APPCHECK_DEBUG_TOKEN` em `.env.local`), registrado no console. Sem isso cada `npm run dev` conta como "sem verificação" na métrica.
+
+### 7.5 Outras camadas
+
+- **Rate limiting** transacional nas callables sensíveis (reset de senha por e-mail e por admin). Spam de inscrições é contido pelo id determinístico + App Check.
+- **Headers do Hosting**: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(self), microphone=(), geolocation=()`.
+- **Segredos**: `RESEND_API_KEY` e `EMAIL_FROM` no **Secret Manager** (bind via `defineSecret`); nenhum `.env` é versionado (regra do projeto). As chaves `VITE_*` são públicas por design; a do Maps é restrita por referrer e por API.
+- **Entrada do usuário**: React escapa por padrão (zero `dangerouslySetInnerHTML`); o OG preview escapa HTML no servidor; upload limitado por tipo/tamanho.
+- **Senhas temporárias** de parceiros são geradas com `crypto.getRandomValues` e mostradas uma única vez.
+
+---
+
+## 8. Ambientes e configuração
+
+| Item | Valor |
+|---|---|
+| Projeto Firebase/GCP | `atchei` (número 872742778582) |
+| Hosting | site `atchei` → `atchei.web.app`, domínio custom **`atchei.app.br`** |
+| Região das functions | `us-central1` |
+| Chave do Maps | `atchei-maps-web`, projeto `atchei`, restrita a Maps Embed + Maps JavaScript + Places e aos referrers `atchei.app.br`, `www.atchei.app.br`, `atchei.web.app`, `atchei.firebaseapp.com`, `localhost:5173/5174/4173`, `127.0.0.1:5173` |
+| reCAPTCHA (App Check) | site key registrada no projeto `atchei` |
+| Segredos | `RESEND_API_KEY`, `EMAIL_FROM` (Secret Manager) |
+
+**Não há ambiente de desenvolvimento.** `npm run dev` usa o mesmo backend da produção; a única separação possível são os emuladores (`VITE_USE_EMULATORS=true` + host `localhost`), usados só para Functions no código atual. Trate qualquer ação no localhost como ação em produção.
+
+Variáveis do frontend (`.env`, todas públicas): ver README. `.env.local`: `VITE_APPCHECK_DEBUG_TOKEN`. Variáveis das functions (`functions/.env`, só local): `APP_BASE_URL`, `RESEND_API_KEY`, `EMAIL_FROM` — o CI deploya as functions **sem** `.env` de propósito; produção usa Secret Manager.
+
+`localStorage` usa o prefixo `@atchei:` (`user`, `install-dismissed`); `main.tsx` migra as chaves do prefixo legado `@chain:` uma única vez. Consentimento de cookies em `atchei:cookie-consent`.
+
+---
+
+## 9. Testes
+
+- **Frontend**: Vitest 4, ambiente jsdom, `globals: true`, setup em `src/test/setup.ts` (jest-dom, `cleanup`, mock de `matchMedia`) e `src/test/firebase.mock.ts` (mocks de `firebase/app`, `auth`, `firestore`, etc. — os testes nunca tocam o Firebase real). Testes ficam ao lado do código (`*.test.ts(x)`): páginas (Feed, Login, Register, EventDetails, AuthAction, ValidateTickets), componentes (EventCard, CookieBanner, InstallAppCard, EventHeader, EventLocationMap, EventTicketSection, DateTimePickerModal, Button) e libs (formatters, cpf, imageUtils, storageKeys, storage, useRateLimit). **93 testes** em 20 arquivos em 2026-09-01.
+- **Functions**: Vitest com `firebase-functions-test`; cobre `rateLimiter`, `reminders` e `ogPreview`.
+- Comandos: `npm run test:run` (CI), `npm test` (watch), `npm run test:coverage`; `cd functions && npm test`.
+- Filosofia: uma verificação executável por lógica não trivial; nada de suítes por função.
+
+---
+
+## 10. CI/CD
+
+### `ci.yml` — Pull Requests para `main`
+
+`npm ci` → recria `.env` a partir do secret `VITE_ENV` → `npm run build` (tsc + vite) → `npm run test:run` → `npm ci` e `npm test` em `functions/`. Check "Build e Testes".
+
+### `deploy.yml` — push em `main` (a cada merge)
+
+Mesmos testes e build, depois `firebase-tools deploy --only hosting,firestore:rules,storage,functions --force --project atchei` autenticado pelo secret `FIREBASE_SERVICE_ACCOUNT` (JSON gravado em `GOOGLE_APPLICATION_CREDENTIALS`). `concurrency: deploy-producao` com `cancel-in-progress: false`: um deploy por vez, nunca cancelado no meio (merges seguidos podem marcar o run intermediário como *cancelled* — o último é o que vale). `--force` confirma sozinho a exclusão de functions removidas do código.
+
+### Limitações conhecidas
+
+- A service account do CI **não consegue criar function nova** (falha em "Could not get operation details" / IAM). Primeiro deploy de uma function nova é manual — ver §11.
+- Não há branch protection na `main` (plano gratuito com repositório privado); o fluxo por PR é convenção.
+- Se o run de deploy falha na etapa de functions, o **hosting não sobe** naquele run — refaça o run depois de corrigir.
+
+---
+
+## 11. Operações (runbooks)
+
+**Function nova não sobe pelo CI** → com a conta owner logada no `firebase-tools`:
+```
+npx firebase deploy --only functions:<nome> --project atchei --force
+```
+O *create* feito pelo owner configura sozinho o invoker público (`allUsers` → `roles/run.invoker`, necessário para callables — a segurança fica dentro da function). Depois, `Re-run` do workflow que falhou para subir o hosting. Se a function tiver ficado meio-criada (registro sem serviço Cloud Run), `firebase functions:delete` e deploy de novo.
+
+**Criar uma conta admin** (quatro peças):
+1. Usuário no Auth (console, ou API `accounts` do Identity Toolkit com token gcloud + header `X-Goog-User-Project: atchei`).
+2. Custom claim `{ "admin": true }` (`scripts/set-admins.js` com ADC, ou `accounts:update` com `customAttributes`).
+3. Documento `profiles/{uid}` com `type: 'admin'`, `name`, `email`.
+4. E-mail em `functions/adminEmails.js` (fonte do script) via PR.
+
+**Excluir uma conta por completo** → painel admin → Parceiros → lixeira (usa `adminDeleteAccount`). O admin logado não consegue apagar a si mesmo.
+
+**Registrar máquina de dev no App Check** → rodar o app uma vez, copiar o token de depuração do console do navegador, registrar em Firebase → App Check → Apps → tokens de depuração, e fixá-lo em `.env.local` (`VITE_APPCHECK_DEBUG_TOKEN`). Reiniciar o `npm run dev`.
+
+**Mapa do evento com 403** → o referrer da página não está na lista da chave do Maps (ou o navegador não envia Referer). Diagnóstico: `curl -H "Referer: https://<origem>/" "https://www.google.com/maps/embed/v1/place?key=<chave>&q=teste"`. Ajuste: `gcloud services api-keys update <key> --allowed-referrers=... --api-target=service=maps-embed-backend.googleapis.com --api-target=service=maps-backend.googleapis.com --api-target=service=places.googleapis.com --project=atchei`.
+
+**Ver logs das functions** → `gcloud logging read 'resource.type="cloud_run_revision" severity>=WARNING' --project=atchei --limit=30` ou `npx firebase functions:log`.
+
+**Rotacionar segredo** → `npx firebase functions:secrets:set RESEND_API_KEY --project atchei` e redeploy das functions que o usam.
+
+**Atualizar o `.env` de produção** → editar o secret `VITE_ENV` do repositório (é o conteúdo integral do `.env`); vale a partir do próximo deploy.
+
+**Ruído no console do navegador que não é bug do app**: `Uncaught TypeError ... reading 'startTime'` em `VM<n>` (web-vitals injetado pelo DevTools 152), `net::ERR_QUIC_PROTOCOL_ERROR` no canal Listen do Firestore (rede; o SDK reconecta), aviso de domínio não autorizado para OAuth (o app não usa OAuth), 400 do `identitytoolkit` em senha errada (tratado com toast).
+
+---
+
+## 12. Convenções de trabalho
+
+- **Fluxo**: branch → commits → PR → CI verde → merge (squash) → deploy automático. Nunca push direto na `main`.
+- **Commits e PRs em português**, no formato `tipo(escopo): descrição` (`feat`, `fix`, `chore`, `refactor`, `docs`).
+- **Minimalismo deliberado** ("ponytail"): reutilizar o que já existe, preferir plataforma/stdlib a dependência, sem abstração de uma implementação só. Simplificações conscientes levam comentário `ponytail:` com o teto e o caminho de evolução.
+- **Comentários explicam o porquê**, não o quê — especialmente em rules e triggers, onde a intenção de segurança precisa sobreviver a quem ler depois.
+- **Nenhum `.env` no git**, mesmo com valores públicos.
+- Código de UI: Tailwind utilitário, componentes pequenos por domínio, tokens de cor do tema (nada de hex solto, salvo decisão pontual documentada).
+
+---
+
+## 13. Decisões e histórico
+
+| Quando | Decisão |
+|---|---|
+| 2026-08-13 | App Check (reCAPTCHA v3) integrado em modo monitoramento |
+| 2026-08-24 | Venda in-app por Pix (Asaas) colocada em stand-by; venda passa a ser via WhatsApp com intenção de compra na lista do vendedor |
+| 2026-08-31 | **Integração Asaas removida do código** (`functions/asaas.js`, componentes de lote/financeiro, `flags.ts`); segredos `ASAAS_*` e webhook sandbox apagados em 2026-09-01. Pagamento futuro será implementação nova |
+| 2026-08-31 | **App Check aplicado** no Firestore e nas callables; Auth e Storage ficam de fora de propósito |
+| 2026-09-01 | Chave do Google Maps migrada para o projeto `atchei` (antes vivia em outro projeto GCP); domínio `atchei.app.br` incluído nos referrers |
+| 2026-09-01 | `adminDeleteAccount`: exclusão de parceiro passa a apagar login, perfil, eventos, inscrições e tokens |
+| 2026-09-01 | Botão voltar com fallback (`goBack`) em todas as telas; limpeza de código morto pós-Pix; dependências sem vulnerabilidades |
+| 2026-09-02 | Conta admin oficial `contato.atchei@gmail.com`; contas de teste antigas em processo de exclusão |
+
+Legados que o código ainda honra: perfis com id ≠ uid (vínculo por e-mail), tipos `atletica`/`estabelecimento`, prefixo `CHN-` no código curto, chaves `@chain:` do localStorage, campo `sold` em `TicketType` (substituído por `soldByTicket`).
