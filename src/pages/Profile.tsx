@@ -551,13 +551,17 @@ export const Profile = () => {
                   </span>
                 </div>
                 
-                <button
-                  onClick={() => setShowEditModal(true)}
-                  className="flex items-center gap-1.5 mt-3.5 px-3 py-1.5 bg-surface border border-glassBorder hover:border-accent/40 rounded-lg font-sans text-xs font-medium text-textLight hover:text-accent transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:translate-y-0 neo-click"
-                >
-                  <Edit2 size={12} />
-                  Editar perfil
-                </button>
+                <div className="flex items-center gap-2 mt-3.5">
+                  <button
+                    onClick={() => setShowEditModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-glassBorder hover:border-accent/40 rounded-lg font-sans text-xs font-medium text-textLight hover:text-accent transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:translate-y-0 neo-click"
+                  >
+                    <Edit2 size={12} />
+                    Editar perfil
+                  </button>
+                  {/* Sininho de notificações push (só aparece com suporte e chave VAPID) */}
+                  <NotificationToggle />
+                </div>
               </div>
             </div>
           </div>
@@ -580,12 +584,6 @@ export const Profile = () => {
         )}
       </div>
 
-      {/* Toggle de notificações push (só aparece se houver suporte e chave VAPID) */}
-      {user && (
-        <div className="profile-el mx-5 mb-6 relative z-10">
-          <NotificationToggle />
-        </div>
-      )}
 
       {/* Events Section - only for logged in users */}
       {user && (
