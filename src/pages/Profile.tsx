@@ -147,7 +147,7 @@ export const Profile = () => {
   // Sincronizar dados em tempo real do Firestore
   useEffect(() => {
     const syncProfile = async () => {
-      if (user && userRole !== 'admin' && user.username) {
+      if (user && user.username) {
         try {
           const remoteProfile = await storage.getProfileByEmail(user.username);
           if (remoteProfile) {
