@@ -94,20 +94,14 @@ export const EventHeader: React.FC<EventHeaderProps> = ({
           </div>
         ) : (
           <div className={`w-full h-full relative flex items-center justify-center overflow-hidden ${isPlaceholder ? 'bg-gradient-to-br from-surface via-surfaceHover to-surface p-12' : 'bg-black/5'}`}>
-            {!isPlaceholder && (
-              <img
-                src={mediaList[currentMediaIndex]}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-105 pointer-events-none"
-              />
-            )}
+            {/* Foto preenche a caixa inteira (corta as bordas se a proporção for outra). */}
             <img
               src={mediaList[currentMediaIndex]}
               alt={isPlaceholder ? title : `${title} - Foto ${currentMediaIndex + 1}`}
               className={`relative z-10 select-none transition-all duration-300 ${
-                isPlaceholder 
-                  ? 'w-auto h-24 md:h-32 object-contain opacity-50' 
-                  : 'w-full h-full object-contain'
+                isPlaceholder
+                  ? 'w-auto h-24 md:h-32 object-contain opacity-50'
+                  : 'w-full h-full object-cover'
               }`}
               draggable="false"
             />
