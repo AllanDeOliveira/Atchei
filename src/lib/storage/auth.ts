@@ -13,13 +13,20 @@ import {
   signInWithEmailAndPassword,
   signOut,
   createUserWithEmailAndPassword,
-  updatePassword,
-  sendEmailVerification
+  updatePassword
 } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
+import { getFunctionsInstance } from '../firebase';
 import type { AppProfile, User } from './types';
 import { profileStore } from './profiles';
 
 export const authStore = {
+  // E-mail de verificação com template e página nossos (o Google bloqueia personalizar
+  // os do Firebase neste projeto — o nativo cairia numa página em inglês).
+  solicitarVerificacaoEmail: async (): Promise<void> => {
+    await httpsCallable(getFunctionsInstance(), 'solicitarVerificacaoEmail')({});
+  },
+
   // Auth (Sessão mantida localmente para rapidez, sincronizada com Firebase)
   getCurrentUser: (): User | null => {
     const data = localStorage.getItem(USER_KEY);
@@ -38,7 +45,7 @@ export const authStore = {
 
       // E-mail de verificação: typo no cadastro inviabiliza recuperar ingresso depois.
       // Não bloqueia o uso — o Perfil mostra aviso enquanto não verificar.
-      sendEmailVerification(fbUser).catch((e) => console.warn('Falha ao enviar verificação de e-mail:', e));
+      authStore.solicitarVerificacaoEmail().catch((e) => console.warn('Falha ao enviar verificação de e-mail:', e));
 
       const user: User = {
         id: fbUser.uid,
