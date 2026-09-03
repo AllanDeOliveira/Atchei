@@ -99,7 +99,7 @@ export const Agenda = () => {
         </div>
         
         <h1 className="font-display font-semibold text-2xl mb-2 text-textLight z-10 leading-tight">{profile.name}</h1>
-        <span className="text-[11px] font-medium capitalize text-accent bg-accent/10 border border-accent/20 px-3 py-1 rounded-full mb-4 inline-block z-10">
+        <span className="text-[11px] font-medium capitalize text-accent mb-4 inline-block z-10">
           Profissional
         </span>
         
