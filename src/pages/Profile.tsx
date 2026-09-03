@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { onAuthStateChanged, sendEmailVerification } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
 import { storage, soldCount, STATUS_AGUARDANDO, STATUS_PAGO_WHATSAPP } from '../lib/storage';
@@ -41,7 +41,7 @@ export const Profile = () => {
   const reenviarVerificacao = async () => {
     if (!auth.currentUser) return;
     try {
-      await sendEmailVerification(auth.currentUser);
+      await storage.solicitarVerificacaoEmail();
       setVerificacaoReenviada(true);
       toast.success('E-mail de verificação enviado! Confira sua caixa de entrada.');
     } catch {

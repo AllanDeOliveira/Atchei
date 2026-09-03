@@ -9,7 +9,7 @@ const { checkRateLimit, LIMITS } = require("./rateLimiter");
 const { isCallerAdmin } = require("./adminEmails");
 const { handleOgPreview } = require("./ogPreview");
 const { getTomorrowDateString, processarLembretesD1 } = require("./reminders");
-const { enviarEmailResetSenha } = require("./email");
+const { enviarEmailResetSenha, enviarEmailVerificacao } = require("./email");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -483,4 +483,42 @@ exports.solicitarResetSenha = onCall({ cors: true, enforceAppCheck: true, secret
     }
 
     return { ok: true };
+});
+
+// E-mail de verificação com template nosso. O Google bloqueia personalizar os
+// templates E a URL de ação deste projeto (EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED), então
+// o link nativo do sendEmailVerification cai na página padrão do Firebase, em inglês.
+// Mesmo truque do reset: gera o link no servidor, troca o destino para a /auth/action
+// do app (que aplica o código pelo SDK) e envia pelo Resend.
+exports.solicitarVerificacaoEmail = onCall({ cors: true, enforceAppCheck: true, secrets: [RESEND_API_KEY, EMAIL_FROM] }, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'Faça login para verificar seu e-mail.');
+    }
+    const email = String(request.auth.token.email || '').trim().toLowerCase();
+    if (!email) {
+        throw new HttpsError('failed-precondition', 'Esta conta não tem e-mail.');
+    }
+    if (request.auth.token.email_verified === true) {
+        return { ok: true, jaVerificado: true };
+    }
+
+    // Por uid: um usuário não inunda a própria caixa (nem a cota do Resend).
+    const rl = await checkRateLimit(request.auth.uid, 'solicitarVerificacaoEmail', LIMITS.VERIFICACAO_EMAIL.max, LIMITS.VERIFICACAO_EMAIL.windowSec);
+    if (!rl.allowed) {
+        throw new HttpsError('resource-exhausted', `Muitos pedidos. Tente novamente em ${Math.ceil(rl.retryAfterMs / 1000)} segundos.`);
+    }
+
+    try {
+        const linkFirebase = await admin.auth().generateEmailVerificationLink(email);
+        const oobCode = new URL(linkFirebase).searchParams.get('oobCode');
+        if (!oobCode) throw new Error('generateEmailVerificationLink devolveu link sem oobCode.');
+
+        const baseUrl = (process.env.APP_BASE_URL || 'https://atchei.app.br').replace(/\/$/, '');
+        const link = `${baseUrl}/auth/action?mode=verifyEmail&oobCode=${encodeURIComponent(oobCode)}`;
+        await enviarEmailVerificacao(email, link);
+        return { ok: true };
+    } catch (error) {
+        logger.error(`Falha ao enviar verificação de e-mail para ${email}:`, error);
+        throw new HttpsError('internal', 'Não foi possível enviar o e-mail de verificação.');
+    }
 });

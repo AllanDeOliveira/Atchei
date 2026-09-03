@@ -104,4 +104,34 @@ async function enviarEmailResetSenha(email, link) {
   logger.info(`E-mail de redefinição enviado para ${email}.`);
 }
 
-module.exports = { enviarEmail, enviarEmailResetSenha, escaparHtml };
+/** E-mail de verificação de endereço, com link para a tela do próprio app. */
+async function enviarEmailVerificacao(email, link) {
+  const html = moldura({
+    titulo: 'Confirme seu e-mail',
+    corpo: `<p style="margin:0 0 12px;">Falta só confirmar que <strong>${escaparHtml(email)}</strong> é seu — é por ele que você recupera seus ingressos.</p>
+            <p style="margin:0;">Se você não criou uma conta no Atchei, ignore este e-mail.</p>`,
+    textoBotao: 'Confirmar e-mail',
+    link,
+  });
+
+  const texto = [
+    'Confirme seu e-mail',
+    '',
+    `Falta só confirmar que ${email} é seu — é por ele que você recupera seus ingressos.`,
+    '',
+    link,
+    '',
+    'Se você não criou uma conta no Atchei, ignore este e-mail.',
+  ].join('\n');
+
+  await enviarEmail({
+    para: email,
+    assunto: 'Confirme seu e-mail — Atchei',
+    html,
+    texto,
+  });
+
+  logger.info(`E-mail de verificação enviado para ${email}.`);
+}
+
+module.exports = { enviarEmail, enviarEmailResetSenha, enviarEmailVerificacao, escaparHtml };
