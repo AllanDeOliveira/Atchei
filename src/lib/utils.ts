@@ -15,3 +15,9 @@ export function goBack(navigate: NavigateFunction, fallback: string = "/") {
   if ((window.history.state?.idx ?? 0) > 0) navigate(-1);
   else navigate(fallback);
 }
+
+/** Destino pós-login vindo de `?next=` — só caminhos internos (evita open redirect). */
+export function nextSeguro(search: string, fallback: string = "/feed"): string {
+  const next = new URLSearchParams(search).get("next");
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : fallback;
+}

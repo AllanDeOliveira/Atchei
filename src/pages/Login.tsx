@@ -3,16 +3,19 @@ import { Link, useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { getFunctionsInstance } from '../lib/firebase';
 import { storage } from '../lib/storage';
+import { nextSeguro } from '../lib/utils';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { GoogleButton } from '../components/GoogleButton';
 import { useRateLimit } from '../hooks/useRateLimit';
 import { ArrowLeft } from 'lucide-react';
 
 export const Login = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-
+  // ?next= leva de volta para onde a pessoa estava (evento, desafio) depois de entrar.
+  const next = nextSeguro(window.location.search);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,7 +34,7 @@ export const Login = () => {
           navigate('/change-password');
         } else {
           toast.success('Bem-vindo de volta!');
-          navigate('/feed');
+          navigate(next);
         }
       } else {
         toast.error('Senha ou Email incorreto!');
@@ -94,17 +97,26 @@ export const Login = () => {
         </div>
 
         <form onSubmit={handleLogin} className="w-full surface rounded-2xl p-6 space-y-5">
+          <div className="stagger-el">
+            <GoogleButton next={next} />
+            <div className="flex items-center gap-3 mt-5">
+              <span className="h-px flex-1 bg-glassBorder" />
+              <span className="text-[11px] text-textMuted">ou com e-mail</span>
+              <span className="h-px flex-1 bg-glassBorder" />
+            </div>
+          </div>
+
           <div className="stagger-el space-y-1.5">
             <label className="text-xs font-medium text-textMuted block ml-1">E-mail</label>
-            <Input 
+            <Input
               type="email"
-              placeholder="Seu e-mail" 
-              required 
+              placeholder="Seu e-mail"
+              required
               value={email}
               onChange={e => setEmail(e.target.value)}
             />
           </div>
-          
+
           <div className="stagger-el space-y-1.5">
             <label className="text-xs font-medium text-textMuted block ml-1">Senha</label>
             <Input
@@ -124,8 +136,8 @@ export const Login = () => {
           </div>
 
           <div className="stagger-el pt-4">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               variant="primary"
               fullWidth
               loading={isLoading}
@@ -138,7 +150,7 @@ export const Login = () => {
 
           <p className="stagger-el text-center text-xs text-textMuted">
             Ainda não tem conta?{' '}
-            <Link to="/register" className="text-primary font-medium hover:underline">
+            <Link to={`/register${window.location.search}`} className="text-primary font-medium hover:underline">
               Criar conta
             </Link>
           </p>
