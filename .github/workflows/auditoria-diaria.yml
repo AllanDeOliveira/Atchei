@@ -1,0 +1,90 @@
+# Auditoria diária do Atchei
+#
+# Roda todo dia às 06:00 (America/Sao_Paulo) e a qualquer hora pelo botão "Run workflow".
+# Não deploya nada: só verifica que o projeto continua saudável e que a produção responde.
+# Se qualquer passo falhar, o GitHub manda e-mail de falha para quem mantém o workflow.
+#
+# O que checa:
+#   1. Build + testes (front e functions) — nada quebrou com o tempo (deps, Node, etc.)
+#   2. npm audit — nenhuma vulnerabilidade alta/crítica nova nas dependências de produção
+#   3. Higiene de segurança — nenhum .env versionado; nenhum dangerouslySetInnerHTML no front
+#   4. Smoke de produção — site, páginas legais e a function de Open Graph respondendo
+
+name: Auditoria diária
+
+on:
+  schedule:
+    - cron: "0 9 * * *"   # 09:00 UTC = 06:00 em São Paulo
+  workflow_dispatch:
+
+jobs:
+  auditoria:
+    name: Saúde do projeto e da produção
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Recriar .env do front (secret VITE_ENV)
+        env:
+          VITE_ENV: ${{ secrets.VITE_ENV }}
+        run: printf '%s' "$VITE_ENV" > .env
+
+      - name: Build (tsc + vite)
+        run: npm run build
+
+      - name: Testes (front)
+        run: npm run test:run
+
+      - name: Testes (functions)
+        working-directory: functions
+        run: |
+          npm ci
+          npm test
+
+      - name: Vulnerabilidades nas dependências de produção (front)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Vulnerabilidades nas dependências de produção (functions)
+        working-directory: functions
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Higiene de segurança
+        run: |
+          set -e
+          if git ls-files | grep -E '(^|/)\.env(\..+)?$' | grep -v '\.example$'; then
+            echo "::error::Arquivo .env versionado no repositório"; exit 1
+          fi
+          if grep -rn "dangerouslySetInnerHTML" src --include='*.tsx' --include='*.ts'; then
+            echo "::error::dangerouslySetInnerHTML encontrado no front"; exit 1
+          fi
+          echo "OK: nenhum .env versionado, nenhum HTML cru no front"
+
+      - name: Smoke de produção
+        run: |
+          set -e
+          check() {
+            code=$(curl -s -o /dev/null -w "%{http_code}" -m 20 "$1")
+            echo "$1 -> $code"
+            case "$code" in $2) ;; *) echo "::error::$1 respondeu $code (esperado $2)"; exit 1;; esac
+          }
+          check "https://atchei.app.br/"          "200"
+          check "https://atchei.app.br/termos"    "200"
+          check "https://atchei.app.br/privacidade" "200"
+          # Rewrite /e/** -> function renderEventOpenGraph (id inexistente redireciona)
+          check "https://atchei.app.br/e/auditoria-diaria" "200|301|302|404"
+          # O bundle publicado precisa carregar a chave do App Check e a VAPID do push
+          html=$(curl -s -m 20 https://atchei.app.br/)
+          js=$(echo "$html" | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1)
+          [ -n "$js" ] || { echo "::error::bundle principal não encontrado no index.html"; exit 1; }
+          bundle=$(curl -s -m 30 "https://atchei.app.br$js")
+          echo "$bundle" | grep -q "6Lfdh4Qt" || { echo "::error::site key do App Check ausente no bundle"; exit 1; }
+          echo "$bundle" | grep -q "BGRZvzQQ" || { echo "::error::chave VAPID do push ausente no bundle"; exit 1; }
+          echo "OK: produção no ar com App Check e push configurados"
