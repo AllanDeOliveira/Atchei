@@ -1,24 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Share, X, HelpCircle, Download } from 'lucide-react';
-import { Modal } from './ui/Modal';
+import { Share, Download } from 'lucide-react';
 import { INSTALL_DISMISS_KEY as DISMISS_KEY } from '../lib/storageKeys';
 import { INSTALL_RESOLVED_EVENT } from '../hooks/useInstallCardPending';
 import { COOKIE_CONSENT_KEY } from '../lib/firebase';
-
-// O evento `beforeinstallprompt` (Chrome/Android) não faz parte dos tipos padrão do DOM
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-};
-
-let promptCapturado: BeforeInstallPromptEvent | null = null;
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    promptCapturado = e as BeforeInstallPromptEvent;
-    window.dispatchEvent(new Event('pwa-instalavel'));
-  });
-}
+import { useInstalarApp } from '../hooks/useInstalarApp';
+import { InstallGuideModal } from './InstallGuideModal';
 
 export { DISMISS_KEY };
 
@@ -26,9 +12,10 @@ export { DISMISS_KEY };
  * Pop-up flutuante para adicionar o app à tela inicial (PWA), com o mesmo design do aviso de cookies.
  * Só no mobile e em navegadores com caminho de instalação (prompt nativo ou iOS/Safari).
  * Entra em cena 2s depois da decisão de cookies, para os dois pop-ups não empilharem.
+ * A mecânica de instalação em si vive em useInstalarApp (reaproveitada em outras telas).
  */
 export const InstallAppCard = () => {
-  const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(promptCapturado);
+  const { disponivel, precisaGuia, instalar } = useInstalarApp();
   const [dismissed, setDismissed] = useState<boolean>(() => {
     try {
       return typeof localStorage !== 'undefined' ? localStorage.getItem(DISMISS_KEY) === '1' : false;
@@ -38,12 +25,6 @@ export const InstallAppCard = () => {
   });
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [liberado, setLiberado] = useState(false);
-
-  useEffect(() => {
-    const onInstalavel = () => setInstallEvent(promptCapturado);
-    window.addEventListener('pwa-instalavel', onInstalavel);
-    return () => window.removeEventListener('pwa-instalavel', onInstalavel);
-  }, []);
 
   // Espera a decisão de cookies (desta visita ou de uma anterior) + 2s antes de aparecer.
   useEffect(() => {
@@ -63,16 +44,8 @@ export const InstallAppCard = () => {
     };
   }, []);
 
-  const isStandalone =
-    typeof window !== 'undefined' &&
-    (window.matchMedia('(display-mode: standalone)').matches ||
-      (navigator as { standalone?: boolean }).standalone === true);
-
-  const isIos = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isMobile = isIos || (typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent));
-
   // Só mobile, só com caminho de instalação, nunca antes da vez dele na fila de pop-ups.
-  if (!liberado || dismissed || isStandalone || !isMobile || (!installEvent && !isIos)) return null;
+  if (!liberado || dismissed || !disponivel) return null;
 
   const dismiss = () => {
     try {
@@ -86,16 +59,10 @@ export const InstallAppCard = () => {
     window.dispatchEvent(new Event(INSTALL_RESOLVED_EVENT));
   };
 
-  const instalar = async () => {
-    if (installEvent) {
-      await installEvent.prompt();
-      const { outcome } = await installEvent.userChoice;
-      promptCapturado = null;
-      setInstallEvent(null);
-      if (outcome === 'accepted') dismiss();
-    } else {
-      setShowGuideModal(true);
-    }
+  const onInstalar = async () => {
+    const resultado = await instalar();
+    if (resultado === 'guia') setShowGuideModal(true);
+    else if (resultado === 'instalado') dismiss();
   };
 
   return (
@@ -113,7 +80,7 @@ export const InstallAppCard = () => {
         </div>
 
         <p className="text-xs md:text-sm text-textMuted leading-relaxed">
-          {isIos && !installEvent ? (
+          {precisaGuia ? (
             <>
               Abra o Atchei como um app no seu celular! Toque em{' '}
               <Share size={12} className="inline -mt-0.5 text-primary" aria-label="Compartilhar" /> e selecione{' '}
@@ -126,11 +93,11 @@ export const InstallAppCard = () => {
 
         <div className="flex gap-2.5 mt-4 pt-1">
           <button
-            onClick={instalar}
+            onClick={onInstalar}
             className="flex-1 bg-primary text-textDark font-sans font-bold text-xs md:text-sm py-2.5 px-4 rounded-xl hover:bg-primaryHover active:scale-95 transition-all cursor-pointer text-center shadow-md shadow-primary/20 flex items-center justify-center gap-1.5"
           >
             <Download size={15} />
-            {isIos && !installEvent ? 'Como instalar' : 'Instalar app'}
+            {precisaGuia ? 'Como instalar' : 'Instalar app'}
           </button>
           <button
             onClick={dismiss}
@@ -141,48 +108,7 @@ export const InstallAppCard = () => {
         </div>
       </aside>
 
-      {/* Modal Guia de Instalação */}
-      <Modal
-        open={showGuideModal}
-        onClose={() => setShowGuideModal(false)}
-        labelledBy="install-guide-title"
-        backdropClassName="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
-        className="surface border border-glassBorder rounded-2xl shadow-2xl max-w-sm w-full p-6 text-left relative"
-      >
-            <div className="flex items-center justify-between pb-3 border-b border-glassBorder">
-              <h2 id="install-guide-title" className="text-base font-display font-bold text-textLight flex items-center gap-2">
-                <HelpCircle size={18} className="text-primary" /> Como instalar o Atchei
-              </h2>
-              <button
-                onClick={() => setShowGuideModal(false)}
-                className="text-textMuted hover:text-textLight p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
-                aria-label="Fechar guia"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-3.5 my-4 text-xs text-textMuted leading-relaxed">
-              <div className="p-3 rounded-xl bg-surface/50 border border-glassBorder">
-                <p className="font-semibold text-textLight mb-1">No Google Chrome / Android:</p>
-                <p>1. Toque nos <strong>3 pontinhos (⋮)</strong> no canto superior do navegador.</p>
-                <p>2. Selecione <strong>"Instalar aplicativo"</strong> ou <strong>"Adicionar à tela inicial"</strong>.</p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-surface/50 border border-glassBorder">
-                <p className="font-semibold text-textLight mb-1">No Safari / iPhone (iOS):</p>
-                <p>1. Toque no botão de <strong>Compartilhar <Share size={12} className="inline text-primary" /></strong>.</p>
-                <p>2. Role e toque em <strong>"Adicionar à Tela de Início"</strong>.</p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowGuideModal(false)}
-              className="w-full py-2.5 rounded-xl bg-primary text-textDark text-xs font-bold hover:bg-primaryHover transition-all cursor-pointer text-center"
-            >
-              Entendido
-            </button>
-      </Modal>
+      <InstallGuideModal open={showGuideModal} onClose={() => setShowGuideModal(false)} />
     </>
   );
 };

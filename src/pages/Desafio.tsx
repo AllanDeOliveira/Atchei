@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Share2, Users, CheckCircle2, XCircle, Flame } from 'lucide-react';
+import { ArrowLeft, Share2, Users, CheckCircle2, XCircle, Flame, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/Button';
+import { InstallGuideModal } from '../components/InstallGuideModal';
+import { useInstalarApp } from '../hooks/useInstalarApp';
 import { estadoDesafio, msRestantes, TAMANHO_GRUPO } from '../lib/desafio';
 import type { DesafioMesa } from '../lib/desafio';
 import { iniciarDesafio, entrarNoDesafio, ouvirDesafio } from '../lib/storage/desafios';
@@ -26,6 +28,9 @@ export const Desafio = () => {
   const [agora, setAgora] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const tentouEntrar = useRef(false);
+  // CTA de instalar o app nas telas finais: a pessoa acabou de ganhar (ou quase) e está com o app aberto.
+  const { disponivel: podeInstalar, precisaGuia, instalar } = useInstalarApp();
+  const [showGuia, setShowGuia] = useState(false);
 
   const mesaOk = MESA_VALIDA.test(mesa);
   const nomeMesa = mesa.replace(/-/g, ' ');
@@ -85,6 +90,12 @@ export const Desafio = () => {
       return;
     }
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+  };
+
+  const instalarApp = async () => {
+    const resultado = await instalar();
+    if (resultado === 'guia') setShowGuia(true);
+    else if (resultado === 'instalado') toast.success('Atchei adicionado à tela inicial!');
   };
 
   return (
@@ -166,6 +177,23 @@ export const Desafio = () => {
           </div>
         )}
 
+        {(estado === 'liberado' || estado === 'expirado') && podeInstalar && (
+          <div className="surface rounded-2xl p-5 mt-5 text-left flex items-start gap-3">
+            <Download size={20} className="text-primary shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-textLight leading-snug">
+                Adicione o Atchei à tela inicial e não perca nenhum evento
+              </p>
+              <p className="text-[11px] text-textMuted mt-1 leading-snug">
+                Você recebe aviso dos rolês da região direto no celular.
+              </p>
+              <Button variant="primary" fullWidth onClick={instalarApp} className="py-3 text-xs mt-3">
+                {precisaGuia ? 'Como adicionar' : 'Adicionar à tela inicial'}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <button
           onClick={() => navigate('/')}
           className="mt-8 text-xs text-textMuted underline underline-offset-2 hover:text-textLight cursor-pointer"
@@ -173,6 +201,8 @@ export const Desafio = () => {
           Ver os próximos eventos
         </button>
       </div>
+
+      <InstallGuideModal open={showGuia} onClose={() => setShowGuia(false)} />
     </div>
   );
 };
