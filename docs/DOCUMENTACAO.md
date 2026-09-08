@@ -67,7 +67,7 @@ O scanner (`/validar/:eventId`) lê o QR Code (id do documento de inscrição) o
 | PWA | vite-plugin-pwa (Workbox) | 1.3 | service worker `autoUpdate`, manifest |
 | Backend | Firebase Cloud Functions gen2 (`firebase-functions` v5, `firebase-admin` v12) | | callables, triggers, cron, HTTP |
 | Banco | Cloud Firestore | | ver §6 |
-| Auth | Firebase Authentication (e-mail/senha) | | sem provedores federados |
+| Auth | Firebase Authentication (e-mail/senha + Google) | | Google via popup; perfil completado com data de nascimento |
 | Arquivos | Cloud Storage for Firebase | | fotos de perfil e de evento |
 | Push | Firebase Cloud Messaging (Web Push / VAPID) | | tokens em `fcmTokens` |
 | Anti-abuso | Firebase App Check (reCAPTCHA v3) | | ver §7 |
@@ -161,6 +161,7 @@ src/
 | `/auth/action` | AuthAction | público | handler das ações de e-mail do Auth |
 | `/privacidade`, `/termos`, `/quem-somos` | Legal | público | |
 | `/validar/:eventId` | ValidateTickets | dono do evento / admin (checado na tela) | scanner em tela cheia |
+| `/desafio/:mesa` | Desafio | público (jogar exige login) | "Desafio da Kombi": QR da mesa; grupo de 5 em 5 min ganha o prêmio |
 | `/create`, `/edit/:id` | CreateEvent | `PrivateRoute` | |
 | `/profile` | Profile | `PrivateRoute` | meus eventos / inscrições, edição de perfil |
 | `/admin` | AdminDashboard | `PrivateRoute` + `role === 'admin'` | |
@@ -247,6 +248,7 @@ Todas em `functions/index.js`, região `us-central1`, Node 22, gen2. Callables u
 | `registrations` | **`eventId_uid`** para inscrição própria; auto para manual/teste | `eventId`, `userId`, `userName`, `userEmail`, `userPhone`, `userCpf`, `paymentStatus`, `timestamp`, `ticketTypeId/Name`, `pedidoId`, `checkedIn`, `checkedInAt`, `checkedInBy`, `isTeste` | o próprio usuário (regras estritas), dono do evento, admin, functions |
 | `fcmTokens` | o token | `userId`, `token`, `updatedAt` | o dono; leitura só pelo backend |
 | `_rateLimits` | `<escopo>_<chave>` | contadores/janelas | só functions |
+| `desafios` | a mesa (`mesa-3`) | `mesa`, `liderId`, `membros[]` (uids), `iniciadoEm` (servidor), `liberadoEm` (servidor, ao 5º) | líder inicia/reinicia; cada membro só adiciona a si mesmo (rules fazem prazo de 5 min + carência de 5 min pelo relógio do servidor) |
 
 Invariantes importantes:
 
@@ -261,7 +263,7 @@ Invariantes importantes:
 
 ### 7.1 Autenticação e autorização
 
-- Firebase Auth com **e-mail/senha** apenas (sem Google/OAuth). Verificação de e-mail é enviada no cadastro e o perfil avisa enquanto não verificar.
+- Firebase Auth com **e-mail/senha** e **Google** (popup). Quem entra com Google sem perfil conclui o cadastro informando só a data de nascimento (as rules exigem 18+ para criar o perfil). Verificação de e-mail é enviada no cadastro por senha e o perfil avisa enquanto não verificar. `?next=` em `/login` e `/register` devolve a pessoa à tela de origem (evento, desafio) — só caminhos internos são aceitos.
 - **Admin** = custom claim `admin: true` (concedido pelo `set-admins.js` ou direto pela API do Identity Toolkit). É a única fonte de autorização nas **rules** e nas **functions**. Na interface, o papel vem de `profiles/{id}.type === 'admin'`. Os dois precisam existir.
 - O cliente **não pode** mudar `type` nem `email` do próprio perfil (sem auto-promoção); promoção a profissional passa pela callable `tornarProfissional`.
 

@@ -13,7 +13,9 @@ import {
   signInWithEmailAndPassword,
   signOut,
   createUserWithEmailAndPassword,
-  updatePassword
+  updatePassword,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { getFunctionsInstance } from '../firebase';
@@ -25,6 +27,50 @@ export const authStore = {
   // os do Firebase neste projeto — o nativo cairia numa página em inglês).
   solicitarVerificacaoEmail: async (): Promise<void> => {
     await httpsCallable(getFunctionsInstance(), 'solicitarVerificacaoEmail')({});
+  },
+
+  /**
+   * Login com Google (popup). Conta que ainda não tem perfil devolve `precisaCompletar`:
+   * o cadastro pede só a data de nascimento (as rules exigem 18+) e cria o perfil.
+   */
+  loginComGoogle: async (): Promise<{ user: User } | { precisaCompletar: true; name: string; email: string }> => {
+    const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+    const fbUser = cred.user;
+    const email = (fbUser.email || '').toLowerCase();
+
+    let profile = await profileStore.getProfileById(fbUser.uid);
+    if (!profile && email) profile = await authStore.getProfileByEmail(email);
+    if (!profile) return { precisaCompletar: true, name: fbUser.displayName || '', email };
+
+    const user: User = {
+      id: fbUser.uid,
+      name: profile.name || fbUser.displayName || 'Usuário',
+      username: email,
+      role: profile.type === 'admin' ? 'admin' : ((profile.type as string) !== 'user' ? 'partner' : 'user'),
+      mustChangePassword: profile.mustChangePassword ?? false,
+      imageUrl: profile.imageUrl || '',
+      profileId: profile.id,
+    };
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    return { user };
+  },
+
+  /** Conclui o cadastro de quem entrou com Google: cria o perfil pessoal (18+ validado nas rules). */
+  completarCadastroGoogle: async (name: string, birthDate: string): Promise<User> => {
+    const fbUser = auth.currentUser;
+    if (!fbUser) throw new Error('Sessão do Google não encontrada.');
+    const email = (fbUser.email || '').toLowerCase();
+    await setDoc(doc(db, 'profiles', fbUser.uid), {
+      name,
+      email,
+      type: 'user',
+      mustChangePassword: false,
+      birthDate,
+      imageUrl: fbUser.photoURL || '',
+    });
+    const user: User = { id: fbUser.uid, name, username: email, role: 'user', mustChangePassword: false, imageUrl: fbUser.photoURL || '' };
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    return user;
   },
 
   // Auth (Sessão mantida localmente para rapidez, sincronizada com Firebase)

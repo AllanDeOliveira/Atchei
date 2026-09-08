@@ -50,7 +50,8 @@ export const EventDetails = () => {
   const exigirLogin = (): boolean => {
     if (currentUser) return true;
     toast.error('Entre na sua conta para continuar.');
-    navigate('/login');
+    // ?next= traz a pessoa de volta a este evento depois de entrar/cadastrar.
+    navigate(`/login?next=${encodeURIComponent(window.location.pathname)}`);
     return false;
   };
 

@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { storage } from '../lib/storage';
+import { auth } from '../lib/firebase';
+import { nextSeguro } from '../lib/utils';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { GoogleButton } from '../components/GoogleButton';
 import { useRateLimit } from '../hooks/useRateLimit';
 import { ArrowLeft } from 'lucide-react';
 import { goBack } from '../lib/utils';
@@ -19,14 +22,26 @@ const calcularIdade = (iso: string): number => {
 
 export const Register = () => {
   const navigate = useNavigate();
+  const next = nextSeguro(window.location.search);
+  // ?completar=1: entrou com Google e ainda não tem perfil — só falta a data de nascimento.
+  const completar = new URLSearchParams(window.location.search).get('completar') === '1';
+  const googleUser = completar ? auth.currentUser : null;
 
-  const [name, setName] = useState('');
+  const [name, setName] = useState(googleUser?.displayName || '');
   const [birthDate, setBirthDate] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [tipo, setTipo] = useState<'user' | 'profissional'>('user');
   const [isLoading, setIsLoading] = useState(false);
   const { isLimited, remainingMs, trigger: triggerCooldown } = useRateLimit(3000);
+
+  // Modo "completar" sem sessão do Google (F5, link antigo): volta pro login.
+  useEffect(() => {
+    if (completar && !googleUser) {
+      toast.error('Entre com o Google de novo para concluir o cadastro.');
+      navigate(`/login?next=${encodeURIComponent(next)}`, { replace: true });
+    }
+  }, [completar, googleUser, navigate, next]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,9 +57,13 @@ export const Register = () => {
     triggerCooldown();
     setIsLoading(true);
     try {
-      await storage.register(email, password, name.trim(), tipo, birthDate);
+      if (completar) {
+        await storage.completarCadastroGoogle(name.trim(), birthDate);
+      } else {
+        await storage.register(email, password, name.trim(), tipo, birthDate);
+      }
       toast.success('Conta criada! Bem-vindo.');
-      navigate('/feed');
+      navigate(next);
     } catch (error) {
       const code = (error as { code?: string })?.code;
       console.error('Erro no cadastro:', error);
@@ -76,37 +95,56 @@ export const Register = () => {
 
         <div className="flex flex-col items-center gap-3 stagger-el mb-8">
           <img src={`${import.meta.env.BASE_URL}placeholder-logo.png`} alt="Atchei" className="w-24 h-24 object-contain brightness-110 drop-shadow-[0_4px_20px_rgba(255,179,77,0.35)]" />
-          <h2 className="font-display font-semibold text-2xl text-accent mt-2">Criar conta</h2>
+          <h2 className="font-display font-semibold text-2xl text-accent mt-2">{completar ? 'Concluir cadastro' : 'Criar conta'}</h2>
         </div>
 
         <form onSubmit={handleRegister} className="w-full surface rounded-2xl p-6 space-y-5">
-          <div className="stagger-el space-y-1.5">
-            <label className="text-xs font-medium text-textMuted block ml-1">Tipo de perfil</label>
-            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tipo de perfil">
-              {([
-                { valor: 'user', titulo: 'Pessoal', descricao: 'Participar de eventos e garantir ingressos' },
-                { valor: 'profissional', titulo: 'Profissional', descricao: 'Criar eventos e vender ingressos' },
-              ] as const).map((opcao) => (
-                <button
-                  key={opcao.valor}
-                  type="button"
-                  role="radio"
-                  aria-checked={tipo === opcao.valor}
-                  onClick={() => setTipo(opcao.valor)}
-                  className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer ${
-                    tipo === opcao.valor
-                      ? 'border-primary/50 bg-primary/10'
-                      : 'border-glassBorder bg-surfaceHover/40 hover:border-primary/25'
-                  }`}
-                >
-                  <span className={`block text-sm font-semibold ${tipo === opcao.valor ? 'text-primary' : 'text-textLight'}`}>
-                    {opcao.titulo}
-                  </span>
-                  <span className="block text-[11px] text-textMuted mt-0.5 leading-snug">{opcao.descricao}</span>
-                </button>
-              ))}
+          {!completar && (
+            <div className="stagger-el">
+              <GoogleButton next={next} />
+              <div className="flex items-center gap-3 mt-5">
+                <span className="h-px flex-1 bg-glassBorder" />
+                <span className="text-[11px] text-textMuted">ou com e-mail</span>
+                <span className="h-px flex-1 bg-glassBorder" />
+              </div>
             </div>
-          </div>
+          )}
+
+          {!completar && (
+            <div className="stagger-el space-y-1.5">
+              <label className="text-xs font-medium text-textMuted block ml-1">Tipo de perfil</label>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tipo de perfil">
+                {([
+                  { valor: 'user', titulo: 'Pessoal', descricao: 'Participar de eventos e garantir ingressos' },
+                  { valor: 'profissional', titulo: 'Profissional', descricao: 'Criar eventos e vender ingressos' },
+                ] as const).map((opcao) => (
+                  <button
+                    key={opcao.valor}
+                    type="button"
+                    role="radio"
+                    aria-checked={tipo === opcao.valor}
+                    onClick={() => setTipo(opcao.valor)}
+                    className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer ${
+                      tipo === opcao.valor
+                        ? 'border-primary/50 bg-primary/10'
+                        : 'border-glassBorder bg-surfaceHover/40 hover:border-primary/25'
+                    }`}
+                  >
+                    <span className={`block text-sm font-semibold ${tipo === opcao.valor ? 'text-primary' : 'text-textLight'}`}>
+                      {opcao.titulo}
+                    </span>
+                    <span className="block text-[11px] text-textMuted mt-0.5 leading-snug">{opcao.descricao}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {completar && googleUser?.email && (
+            <p className="stagger-el text-xs text-textMuted text-center">
+              Entrando como <strong className="text-textLight">{googleUser.email}</strong>
+            </p>
+          )}
 
           <div className="stagger-el space-y-1.5">
             <label className="text-xs font-medium text-textMuted block ml-1">Nome</label>
@@ -132,28 +170,32 @@ export const Register = () => {
             <p className="text-[10px] text-textMuted ml-1">É necessário ter 18 anos ou mais.</p>
           </div>
 
-          <div className="stagger-el space-y-1.5">
-            <label className="text-xs font-medium text-textMuted block ml-1">E-mail</label>
-            <Input
-              type="email"
-              placeholder="Seu e-mail"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-            />
-          </div>
+          {!completar && (
+            <>
+              <div className="stagger-el space-y-1.5">
+                <label className="text-xs font-medium text-textMuted block ml-1">E-mail</label>
+                <Input
+                  type="email"
+                  placeholder="Seu e-mail"
+                  required
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                />
+              </div>
 
-          <div className="stagger-el space-y-1.5">
-            <label className="text-xs font-medium text-textMuted block ml-1">Senha</label>
-            <Input
-              type="password"
-              placeholder="Mínimo 6 caracteres"
-              required
-              minLength={6}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-            />
-          </div>
+              <div className="stagger-el space-y-1.5">
+                <label className="text-xs font-medium text-textMuted block ml-1">Senha</label>
+                <Input
+                  type="password"
+                  placeholder="Mínimo 6 caracteres"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                />
+              </div>
+            </>
+          )}
 
           <p className="stagger-el text-[11px] text-textMuted leading-snug text-center pt-1">
             Ao criar a conta, você concorda com os{' '}
@@ -171,16 +213,18 @@ export const Register = () => {
               disabled={isLimited}
               className="py-4 text-sm"
             >
-              {isLoading ? 'Criando conta...' : isLimited ? `Aguarde ${Math.ceil(remainingMs / 1000)}s...` : 'Criar conta'}
+              {isLoading ? 'Criando conta...' : isLimited ? `Aguarde ${Math.ceil(remainingMs / 1000)}s...` : completar ? 'Concluir cadastro' : 'Criar conta'}
             </Button>
           </div>
 
-          <p className="stagger-el text-center text-xs text-textMuted">
-            Já tem conta?{' '}
-            <Link to="/login" className="text-primary font-medium hover:underline">
-              Fazer login
-            </Link>
-          </p>
+          {!completar && (
+            <p className="stagger-el text-center text-xs text-textMuted">
+              Já tem conta?{' '}
+              <Link to={`/login${window.location.search}`} className="text-primary font-medium hover:underline">
+                Fazer login
+              </Link>
+            </p>
+          )}
         </form>
       </div>
     </div>

@@ -259,5 +259,41 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Desafio da Kombi: UM documento por mesa (id = mesa). Grupo de 5 em 5 minutos.
+    // Prazo (5 min) e carência (mais 5 min até a mesa reabrir) são contados pelo
+    // relógio do SERVIDOR a partir de iniciadoEm — o cliente não estica o tempo,
+    // não reabre a mesa antes da hora e só consegue adicionar a si mesmo ao grupo.
+    match /desafios/{mesa} {
+      function inicioValido() {
+        let d = request.resource.data;
+        return isAuthed()
+          && d.mesa == mesa
+          && d.liderId == request.auth.uid
+          && d.membros == [request.auth.uid]
+          && d.iniciadoEm == request.time
+          && !('liberadoEm' in d);
+      }
+      allow read: if isAuthed();
+      allow create: if inicioValido();
+      allow update: if isAuthed() && (
+        // Reinício: só depois de prazo + carência da rodada anterior.
+        (inicioValido() && request.time >= resource.data.iniciadoEm + duration.value(10, 'm')) ||
+        // Entrar no grupo: dentro do prazo, com vaga, sem estar nele, adicionando só a si
+        // mesmo no fim da lista; quem completa o 5º carimba liberadoEm com a hora do servidor.
+        (
+          request.time < resource.data.iniciadoEm + duration.value(5, 'm')
+          && resource.data.membros.size() < 5
+          && !(request.auth.uid in resource.data.membros)
+          && request.resource.data.membros == resource.data.membros.concat([request.auth.uid])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['membros', 'liberadoEm'])
+          && (
+            (request.resource.data.membros.size() < 5 && !('liberadoEm' in request.resource.data))
+            || (request.resource.data.membros.size() == 5 && request.resource.data.liberadoEm == request.time)
+          )
+        )
+      );
+      allow delete: if isAdmin();
+    }
+
   }
 }

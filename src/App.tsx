@@ -25,6 +25,7 @@ const AuthAction = React.lazy(() => import('./pages/AuthAction').then(m => ({ de
 const Privacidade = React.lazy(() => import('./pages/Legal').then(m => ({ default: m.Privacidade })));
 const Termos = React.lazy(() => import('./pages/Legal').then(m => ({ default: m.Termos })));
 const QuemSomos = React.lazy(() => import('./pages/Legal').then(m => ({ default: m.QuemSomos })));
+const Desafio = React.lazy(() => import('./pages/Desafio').then(m => ({ default: m.Desafio })));
 
 // Spinner simples de carregamento exibido enquanto uma página lazy é baixada
 const LoadingSpinner = () => (
@@ -74,6 +75,8 @@ function App() {
               <Route path="/quem-somos" element={<QuemSomos />} />
               {/* Scanner de validação em tela cheia (autenticação tratada na própria página) */}
               <Route path="/validar/:eventId" element={<ValidateTickets />} />
+              {/* Desafio da Kombi (QR da mesa): grupo de 5 em 5 minutos */}
+              <Route path="/desafio/:mesa" element={<Desafio />} />
               
               {/* Rotas Públicas com barra de navegação */}
               <Route element={<MainLayout />}>
