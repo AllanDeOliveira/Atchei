@@ -38,7 +38,7 @@ export const authStore = {
     const fbUser = cred.user;
     const email = (fbUser.email || '').toLowerCase();
 
-    let profile = await profileStore.getProfileById(fbUser.uid);
+    let profile: AppProfile | null = (await profileStore.getProfileById(fbUser.uid)) ?? null;
     if (!profile && email) profile = await authStore.getProfileByEmail(email);
     if (!profile) return { precisaCompletar: true, name: fbUser.displayName || '', email };
 
