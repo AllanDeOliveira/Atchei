@@ -93,9 +93,12 @@ export const Desafio = () => {
   };
 
   const instalarApp = async () => {
-    const resultado = await instalar();
-    if (resultado === 'guia') setShowGuia(true);
-    else if (resultado === 'instalado') toast.success('Atchei adicionado à tela inicial!');
+    // Sem prompt nativo (iOS): abre o passo a passo na hora.
+    if (precisaGuia) {
+      setShowGuia(true);
+      return;
+    }
+    if ((await instalar()) === 'instalado') toast.success('Atchei adicionado à tela inicial!');
   };
 
   return (

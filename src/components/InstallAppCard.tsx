@@ -60,9 +60,12 @@ export const InstallAppCard = () => {
   };
 
   const onInstalar = async () => {
-    const resultado = await instalar();
-    if (resultado === 'guia') setShowGuideModal(true);
-    else if (resultado === 'instalado') dismiss();
+    // Sem prompt nativo (iOS): abre o passo a passo na hora, sem esperar promessa.
+    if (precisaGuia) {
+      setShowGuideModal(true);
+      return;
+    }
+    if ((await instalar()) === 'instalado') dismiss();
   };
 
   return (
