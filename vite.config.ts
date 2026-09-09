@@ -17,6 +17,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo.png'],
+      workbox: {
+        // O fallback de navegação (index.html) NÃO pode capturar rotas servidas pelo
+        // servidor: /__/auth/* (handler de login do Firebase — senão o popup do Google
+        // abre o app em branco) e /e/* (rewrite para a function de Open Graph).
+        navigateFallbackDenylist: [/^\/__\//, /^\/e\//],
+      },
       manifest: {
         name: 'Atchei - Eventos e ingressos',
         short_name: 'Atchei',
