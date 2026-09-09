@@ -70,10 +70,11 @@ jobs:
       - name: Smoke de produção
         run: |
           set -e
+          # $2 = códigos aceitos como regex (ex.: "200|301|302"); `case` não expande alternativas de variável.
           check() {
             code=$(curl -s -o /dev/null -w "%{http_code}" -m 20 "$1")
             echo "$1 -> $code"
-            case "$code" in $2) ;; *) echo "::error::$1 respondeu $code (esperado $2)"; exit 1;; esac
+            echo "$code" | grep -qE "^($2)$" || { echo "::error::$1 respondeu $code (esperado $2)"; exit 1; }
           }
           check "https://atchei.app.br/"          "200"
           check "https://atchei.app.br/termos"    "200"
