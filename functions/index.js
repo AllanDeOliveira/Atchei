@@ -3,16 +3,19 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const { onDocumentCreated, onDocumentDeleted, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const logger = require("firebase-functions/logger");
-const admin = require("firebase-admin");
-const { FieldValue } = require("firebase-admin/firestore");
+// firebase-admin 14 só expõe a API modular (o namespace admin.* foi removido).
+const { initializeApp } = require("firebase-admin/app");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getAuth } = require("firebase-admin/auth");
+const { getMessaging } = require("firebase-admin/messaging");
 const { checkRateLimit, LIMITS } = require("./rateLimiter");
 const { isCallerAdmin } = require("./adminEmails");
 const { handleOgPreview } = require("./ogPreview");
 const { getTomorrowDateString, processarLembretesD1 } = require("./reminders");
 const { enviarEmailResetSenha, enviarEmailVerificacao } = require("./email");
 
-admin.initializeApp();
-const db = admin.firestore();
+initializeApp();
+const db = getFirestore();
 
 // Chave do Resend e remetente, usados pelos e-mails transacionais escritos por nós.
 // Via Secret Manager (o deploy não sobe functions/.env); localmente caem no functions/.env.
@@ -43,7 +46,7 @@ async function enviarNotificacaoPush(userId, title, body, link) {
             }
         };
 
-        const resp = await admin.messaging().sendEachForMulticast(message);
+        const resp = await getMessaging().sendEachForMulticast(message);
 
         // Remove tokens que o FCM reportou como inválidos/expirados (limpeza de base).
         const removals = [];
@@ -94,7 +97,7 @@ exports.adminResetPassword = onCall({ cors: true, enforceAppCheck: true }, async
     
     try {
         // 3. Atualizar a senha no Firebase Authentication
-        await admin.auth().updateUser(uid, {
+        await getAuth().updateUser(uid, {
             password: newPassword
         });
         
@@ -148,10 +151,10 @@ exports.adminDeleteAccount = onCall({ cors: true, enforceAppCheck: true }, async
         // Resolve o usuário do Auth: pelo uid (padrão) ou pelo e-mail (conta legada).
         let uid = null;
         try {
-            uid = (await admin.auth().getUser(profileId)).uid;
+            uid = (await getAuth().getUser(profileId)).uid;
         } catch (e) {
             if (email) {
-                try { uid = (await admin.auth().getUserByEmail(email)).uid; } catch (e2) { /* sem login no Auth */ }
+                try { uid = (await getAuth().getUserByEmail(email)).uid; } catch (e2) { /* sem login no Auth */ }
             }
         }
 
@@ -175,7 +178,7 @@ exports.adminDeleteAccount = onCall({ cors: true, enforceAppCheck: true }, async
             // Inscrições da própria pessoa em eventos de terceiros e tokens de push.
             await deleteDocsWhere('registrations', 'userId', uid);
             await deleteDocsWhere('fcmTokens', 'userId', uid);
-            await admin.auth().deleteUser(uid);
+            await getAuth().deleteUser(uid);
         }
         await db.collection('profiles').doc(profileId).delete();
 
@@ -461,7 +464,7 @@ exports.solicitarResetSenha = onCall({ cors: true, enforceAppCheck: true, secret
 
     try {
         // Lança auth/user-not-found quando a conta não existe — tratado abaixo.
-        const linkFirebase = await admin.auth().generatePasswordResetLink(email);
+        const linkFirebase = await getAuth().generatePasswordResetLink(email);
 
         // O link nativo aponta para o handler do Firebase. O token é o mesmo; só
         // trocamos o destino para a nossa página, que valida o código pelo SDK
@@ -509,7 +512,7 @@ exports.solicitarVerificacaoEmail = onCall({ cors: true, enforceAppCheck: true, 
     }
 
     try {
-        const linkFirebase = await admin.auth().generateEmailVerificationLink(email);
+        const linkFirebase = await getAuth().generateEmailVerificationLink(email);
         const oobCode = new URL(linkFirebase).searchParams.get('oobCode');
         if (!oobCode) throw new Error('generateEmailVerificationLink devolveu link sem oobCode.');
 
