@@ -39,6 +39,15 @@ import Module from 'module';
 const originalRequire = Module.prototype.require;
 
 Module.prototype.require = function (id) {
+  // firebase-admin 14: o rateLimiter usa a API modular (getFirestore de 'firebase-admin/firestore').
+  if (id === 'firebase-admin/firestore') {
+    return {
+      getFirestore: () => ({
+        collection: mockCollection,
+        runTransaction: mockRunTransaction,
+      }),
+    };
+  }
   if (id === 'firebase-admin') {
     return {
       firestore: () => ({

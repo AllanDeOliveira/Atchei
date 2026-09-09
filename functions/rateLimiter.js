@@ -1,4 +1,4 @@
-const admin = require("firebase-admin");
+const { getFirestore } = require("firebase-admin/firestore");
 const logger = require("firebase-functions/logger");
 
 /**
@@ -29,7 +29,7 @@ async function checkRateLimit(identifier, functionName, maxRequests, windowSecon
     return { allowed: true, retryAfterMs: 0 };
   }
 
-  const db = admin.firestore();
+  const db = getFirestore();
   const docId = `${functionName}_${identifier}`;
   const docRef = db.collection("_rateLimits").doc(docId);
   const now = Date.now();

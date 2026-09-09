@@ -14,15 +14,16 @@
  * node functions/scripts/set-admins.js
  */
 
-const admin = require('firebase-admin');
+// firebase-admin 14: só API modular.
+const { initializeApp, applicationDefault } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore } = require('firebase-admin/firestore');
 const { ADMIN_EMAILS } = require('../adminEmails');
 
 // Inicializa o Firebase Admin SDK
 // Tenta carregar as credenciais padrão do ambiente
 try {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault()
-  });
+  initializeApp({ credential: applicationDefault() });
   console.log("Firebase Admin SDK inicializado via Application Default Credentials.");
 } catch (e) {
   console.error("Erro ao inicializar Firebase Admin com credenciais padrão.");
@@ -31,7 +32,7 @@ try {
   process.exit(1);
 }
 
-const auth = admin.auth();
+const auth = getAuth();
 
 async function grantAdminClaims() {
   console.log(`Iniciando migração de claims para ${ADMIN_EMAILS.length} administradores...\n`);
@@ -47,7 +48,7 @@ async function grantAdminClaims() {
       console.log(`  ➔ Custom Claim 'admin: true' definido com sucesso!`);
 
       // 3. Opcional: Garante que o perfil do usuário no Firestore esteja atualizado
-      const db = admin.firestore();
+      const db = getFirestore();
       const profileRef = db.collection('profiles').doc(user.uid);
       const profileDoc = await profileRef.get();
       

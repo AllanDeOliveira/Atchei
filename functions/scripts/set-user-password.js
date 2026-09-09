@@ -12,7 +12,9 @@
  *   node functions/scripts/set-user-password.js <email> <novaSenha>
  */
 
-const admin = require('firebase-admin');
+// firebase-admin 14: só API modular.
+const { initializeApp, applicationDefault } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
 
 const email = process.argv[2];
 const password = process.argv[3];
@@ -22,12 +24,12 @@ if (!email || !password) {
   process.exit(1);
 }
 
-admin.initializeApp({ credential: admin.credential.applicationDefault() });
+initializeApp({ credential: applicationDefault() });
 
 (async () => {
-  const user = await admin.auth().getUserByEmail(email);
-  await admin.auth().updateUser(user.uid, { password, emailVerified: true });
-  const after = await admin.auth().getUser(user.uid);
+  const user = await getAuth().getUserByEmail(email);
+  await getAuth().updateUser(user.uid, { password, emailVerified: true });
+  const after = await getAuth().getUser(user.uid);
   console.log('OK — acesso restaurado:');
   console.log('  e-mail:', after.email);
   console.log('  uid:', after.uid);
