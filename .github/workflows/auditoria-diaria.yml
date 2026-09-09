@@ -85,7 +85,11 @@ jobs:
           html=$(curl -s -m 20 https://atchei.app.br/)
           js=$(echo "$html" | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1)
           [ -n "$js" ] || { echo "::error::bundle principal não encontrado no index.html"; exit 1; }
-          bundle=$(curl -s -m 30 "https://atchei.app.br$js")
-          echo "$bundle" | grep -q "6Lfdh4Qt" || { echo "::error::site key do App Check ausente no bundle"; exit 1; }
-          echo "$bundle" | grep -q "BGRZvzQQ" || { echo "::error::chave VAPID do push ausente no bundle"; exit 1; }
+          curl -s -m 30 "https://atchei.app.br$js" > bundle.js
+          # O Vite separa código compartilhado em chunks (ex.: firebase-*.js); as chaves podem estar neles.
+          for c in $(grep -oE 'assets/[A-Za-z0-9_-]+\.js' bundle.js | sort -u); do
+            curl -s -m 30 "https://atchei.app.br/$c" >> bundle.js
+          done
+          grep -q "6Lfdh4Qt" bundle.js || { echo "::error::site key do App Check ausente no bundle"; exit 1; }
+          grep -q "BGRZvzQQ" bundle.js || { echo "::error::chave VAPID do push ausente no bundle"; exit 1; }
           echo "OK: produção no ar com App Check e push configurados"
