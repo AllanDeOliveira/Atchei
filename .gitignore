@@ -47,3 +47,7 @@ docs/security-audit/
 
 # Funcionalidade Pix/Asaas extraida do projeto (arquivo local de referencia)
 pix-asaas/
+
+# Copias locais das docs (as versionadas sao docs/DOCUMENTACAO.md e CLAUDE.md)
+/DOCUMENTACAO.md
+/README (1).md

@@ -2,7 +2,9 @@
 
 Documento de referência do projeto: o que ele é, como está construído, como os dados se organizam, como a segurança funciona, como se roda, testa, faz deploy e opera. Complementa o [README](../README.md) (visão de produto e início rápido) e a [identidade visual](identidade-visual.md).
 
-Última revisão: 2026-09-02.
+Última revisão: 2026-09-10.
+
+> **Chegou agora no projeto?** Ordem sugerida: [README](../README.md) (10 min) → §1, §3 e §6 daqui (o domínio, o desenho e os dados) → [CLAUDE.md](../CLAUDE.md) (checks e decisões fechadas, mesmo que você não use o Claude Code) → §11 quando precisar operar. O histórico de decisões está em §13. Peça ao Allan acesso ao projeto Firebase `atchei` e ao repositório; o `.env` não está no git (veja o README para as variáveis).
 
 ## Sumário
 
@@ -65,7 +67,7 @@ O scanner (`/validar/:eventId`) lê o QR Code (id do documento de inscrição) o
 | Imagens | react-easy-crop, html-to-image, `src/lib/imageUtils.ts` | | recorte da capa, exportar ingresso, compressão client-side |
 | Toasts | react-hot-toast | 2 | |
 | PWA | vite-plugin-pwa (Workbox) | 1.3 | service worker `autoUpdate`, manifest |
-| Backend | Firebase Cloud Functions gen2 (`firebase-functions` v5, `firebase-admin` v12) | | callables, triggers, cron, HTTP |
+| Backend | Firebase Cloud Functions gen2 (`firebase-functions` v7, `firebase-admin` v14 — só API modular) | | callables, triggers, cron, HTTP |
 | Banco | Cloud Firestore | | ver §6 |
 | Auth | Firebase Authentication (e-mail/senha + Google) | | Google via popup; perfil completado com data de nascimento |
 | Arquivos | Cloud Storage for Firebase | | fotos de perfil e de evento |
@@ -80,7 +82,7 @@ O scanner (`/validar/:eventId`) lê o QR Code (id do documento de inscrição) o
 | CLIs usadas em operação | `firebase-tools`, `gcloud` | | deploy manual, IAM, logs, Secret Manager |
 | Assistente de dev | Claude Code (`.mcp.json` aponta o MCP de docs do Asaas, hoje sem uso) | | |
 
-Dependências foram auditadas em 2026-09-01 (`npm audit` zerado).
+Dependências auditadas em 2026-09-09: 0 vulnerabilidades no front e nas functions (a auditoria diária reprova em alta/crítica).
 
 ---
 
@@ -161,7 +163,7 @@ src/
 | `/auth/action` | AuthAction | público | handler das ações de e-mail do Auth |
 | `/privacidade`, `/termos`, `/quem-somos` | Legal | público | |
 | `/validar/:eventId` | ValidateTickets | dono do evento / admin (checado na tela) | scanner em tela cheia |
-| `/desafio/:mesa` | Desafio | público (jogar exige login) | "Desafio da Kombi": QR da mesa; grupo de 5 em 5 min ganha o prêmio |
+| `/desafio/:mesa` | Desafio | público (jogar exige login) | "Desafio da Kombi": QR da mesa; grupo de 5 em 5 min ganha o prêmio. Só roda com o desafio aberto pelo admin |
 | `/create`, `/edit/:id` | CreateEvent | `PrivateRoute` | |
 | `/profile` | Profile | `PrivateRoute` | meus eventos / inscrições, edição de perfil |
 | `/admin` | AdminDashboard | `PrivateRoute` + `role === 'admin'` | |
@@ -248,7 +250,8 @@ Todas em `functions/index.js`, região `us-central1`, Node 22, gen2. Callables u
 | `registrations` | **`eventId_uid`** para inscrição própria; auto para manual/teste | `eventId`, `userId`, `userName`, `userEmail`, `userPhone`, `userCpf`, `paymentStatus`, `timestamp`, `ticketTypeId/Name`, `pedidoId`, `checkedIn`, `checkedInAt`, `checkedInBy`, `isTeste` | o próprio usuário (regras estritas), dono do evento, admin, functions |
 | `fcmTokens` | o token | `userId`, `token`, `updatedAt` | o dono; leitura só pelo backend |
 | `_rateLimits` | `<escopo>_<chave>` | contadores/janelas | só functions |
-| `desafios` | a mesa (`mesa-3`) | `mesa`, `liderId`, `membros[]` (uids), `iniciadoEm` (servidor), `liberadoEm` (servidor, ao 5º) | líder inicia/reinicia; cada membro só adiciona a si mesmo (rules fazem prazo de 5 min + carência de 5 min pelo relógio do servidor) |
+| `desafios` | a mesa (`mesa-3`) | `mesa`, `liderId`, `membros[]` (uids), `iniciadoEm` (servidor), `liberadoEm` (servidor, ao 5º), `entregueEm` (servidor, só admin) | líder inicia/reinicia; cada membro só adiciona a si mesmo (rules fazem prazo de 5 min + carência de 5 min pelo relógio do servidor). Mesa que fechou 5 fica **queimada** (não reinicia): 1 prêmio por mesa = estoque. `entregueEm` é o carimbo da entrega no painel — queima o comprovante nas 5 telas |
+| `config` | `desafio` | `aberto` (bool) | interruptor do desafio: leitura pública, escrita só do admin. Documento ausente = fechado |
 
 Invariantes importantes:
 
@@ -272,6 +275,8 @@ Invariantes importantes:
 - `profiles`: `get` público (página do organizador; uid não é enumerável), **`list` restrito** (diretório de profissionais, o próprio perfil ou admin — impede dump de nomes+e-mails), `create` só do próprio uid com tipo `user`/`profissional` e **18+ validado na regra**, `update` só do dono por e-mail, `delete` só admin.
 - `events`: leitura pública; `create` só com `creatorId` do próprio usuário (uid ou perfil legado); `update`/`delete` só criador ou admin; o criador **não** pode alterar `creatorId`, `registrationCount` nem `soldByTicket`.
 - `registrations`: leitura só do dono, do organizador do evento ou admin. Criação própria exige evento com presença habilitada (ou venda, para intenção), capacidade disponível, `userId == uid`, id `eventId_uid`, sem `checkedIn` e sem `paymentStatus` pago. Update do organizador restrito ao check-in (irreversível) e à confirmação `'Aguardando pagamento'` → `'Pago (WhatsApp)'`. Delete: admin, o próprio usuário (só presença/intenção não validadas) ou o organizador (só intenções).
+- `desafios`: leitura de quem está logado; iniciar/entrar exige o desafio **aberto** (`get()` em `config/desafio`), respeita prazo e carência pelo relógio do servidor, cada um só se adiciona ao fim da lista, e mesa que fechou os 5 **não reinicia**. `entregueEm` só admin, só em mesa vencedora, uma vez.
+- `config/desafio`: leitura pública (a tela precisa explicar que está fechado antes do login), escrita só admin.
 - `fcmTokens`: escrita só do próprio uid, leitura negada. `_rateLimits`: tudo negado.
 
 ### 7.3 Storage rules
@@ -330,6 +335,10 @@ Variáveis do frontend (`.env`, todas públicas): ver README. `.env.local`: `VIT
 
 `npm ci` → recria `.env` a partir do secret `VITE_ENV` → `npm run build` (tsc + vite) → `npm run test:run` → `npm ci` e `npm test` em `functions/`. Check "Build e Testes".
 
+### `auditoria-diaria.yml` — todo dia às 06:00 (SP) e sob demanda
+
+Não deploya. Build, testes (front e functions), `npm audit --audit-level=high` (front e functions), higiene (nenhum `.env` versionado, nenhum `dangerouslySetInnerHTML`) e smoke de produção (site, páginas legais, function de OG, e confere que o bundle publicado — incluindo os chunks — carrega a site key do App Check e a chave VAPID). Falha → e-mail do GitHub. Na primeira execução achou uma crítica nas dependências das functions (corrigida no #34).
+
 ### `deploy.yml` — push em `main` (a cada merge)
 
 Mesmos testes e build, depois `firebase-tools deploy --only hosting,firestore:rules,storage,functions --force --project atchei` autenticado pelo secret `FIREBASE_SERVICE_ACCOUNT` (JSON gravado em `GOOGLE_APPLICATION_CREDENTIALS`). `concurrency: deploy-producao` com `cancel-in-progress: false`: um deploy por vez, nunca cancelado no meio (merges seguidos podem marcar o run intermediário como *cancelled* — o último é o que vale). `--force` confirma sozinho a exclusão de functions removidas do código.
@@ -364,6 +373,18 @@ O *create* feito pelo owner configura sozinho o invoker público (`allUsers` →
 
 **Ver logs das functions** → `gcloud logging read 'resource.type="cloud_run_revision" severity>=WARNING' --project=atchei --limit=30` ou `npx firebase functions:log`.
 
+**Monitoramento** → Cloud Monitoring do projeto `atchei`: uptime check de `https://atchei.app.br/` a cada 5 min com alerta por e-mail para contato.atchei@gmail.com ("Atchei - site fora do ar", dispara após 5 min de falha). Orçamento com alertas na conta de faturamento "Pagamento do Firebase".
+
+**Validar rules antes do deploy** → `node -e` que serializa `firebase/firestore.rules` em `{source:{files:[{name,content}]}}` e `POST https://firebaserules.googleapis.com/v1/projects/atchei:test` com token do gcloud e header `X-Goog-User-Project: atchei`; resposta `{}` = compila.
+
+**Checks locais que o CI não perdoa** → `npx tsc -b` (não `tsc --noEmit` na raiz) e, nas functions, `node -e "require('./index.js')"` — os testes não carregam o `index.js`, o deploy carrega.
+
+**Login com Google** → provedor habilitado no Firebase Auth; `authDomain` = `atchei.app.br`; o cliente OAuth "Web client (auto created by Google Service)" precisa do redirect `https://atchei.app.br/__/auth/handler`; o service worker não pode interceptar `/__/` (`navigateFallbackDenylist` no `vite.config.ts`); header `Cross-Origin-Opener-Policy: same-origin-allow-popups` no Hosting.
+
+**Desafio da Kombi (operar a noite)** → painel admin → aba **Desafios**. "Liberar desafio" abre TODAS as mesas de uma vez (grava `config/desafio.aberto`); "Encerrar" fecha quando o estoque acaba — cuidado, encerrar derruba as rodadas em andamento (quem já ganhou mantém o comprovante). A mesa que fecha os 5 aparece na fila em tempo real com os nomes; "Entregue" carimba `entregueEm` e o comprovante vira canhoto nas 5 telas. O estoque é o número de adesivos impressos: um refrigerante por mesa.
+
+**Desafio da Kombi (reset da mesa de teste)** → apagar `desafios/mesa-teste` no console do Firestore. Uma mesa real que ganhou fica queimada de propósito; para reaproveitar, apagar o doc da mesa.
+
 **Rotacionar segredo** → `npx firebase functions:secrets:set RESEND_API_KEY --project atchei` e redeploy das functions que o usam.
 
 **Atualizar o `.env` de produção** → editar o secret `VITE_ENV` do repositório (é o conteúdo integral do `.env`); vale a partir do próximo deploy.
@@ -394,6 +415,13 @@ O *create* feito pelo owner configura sozinho o invoker público (`allUsers` →
 | 2026-09-01 | Chave do Google Maps migrada para o projeto `atchei` (antes vivia em outro projeto GCP); domínio `atchei.app.br` incluído nos referrers |
 | 2026-09-01 | `adminDeleteAccount`: exclusão de parceiro passa a apagar login, perfil, eventos, inscrições e tokens |
 | 2026-09-01 | Botão voltar com fallback (`goBack`) em todas as telas; limpeza de código morto pós-Pix; dependências sem vulnerabilidades |
-| 2026-09-02 | Conta admin oficial `contato.atchei@gmail.com`; contas de teste antigas em processo de exclusão |
+| 2026-09-02 | Conta admin oficial `contato.atchei@gmail.com`; contas de teste antigas excluídas em seguida |
+| 2026-09-02 | Push (FCM) ligado de fato: `VITE_FIREBASE_VAPID_KEY` no `.env`/`VITE_ENV`; sininho de notificações no perfil |
+| 2026-09-03 | E-mail de verificação com template e página do app (callable `solicitarVerificacaoEmail` via Resend) |
+| 2026-09-04 | Auditoria diária (GitHub Actions), uptime check + alerta no Cloud Monitoring, orçamento no faturamento, `www` no Hosting |
+| 2026-09-08 | **Desafio da Kombi** (`/desafio/:mesa`), login com Google, `?next=` no login/cadastro; `authDomain` = `atchei.app.br`; PWA deixa `/__/` e `/e/` para o servidor |
+| 2026-09-09 | `firebase-admin` 14 / `firebase-functions` 7 (API modular), 0 vulnerabilidades no front e nas functions (`overrides` de `uuid`), SA do CI com `run.admin` |
+| 2026-09-10 | `CLAUDE.md` no repo |
+| 2026-09-10 | Desafio da Kombi operável pelo painel: botão **Liberar/Encerrar** (`config/desafio`, lido pelas rules), mesa vencedora **queimada**, comprovante que não caduca mais e botão **Entregue** com os nomes dos 5. Um adesivo por mesa, um refrigerante por mesa — o estoque é a impressora. Descartadas as ideias de `desafioGanhadores`/trigger `onDesafioLiberado` (o carimbo de entrega já impede o segundo refrigerante) e de push para o admin (exigiria function nova) |
 
 Legados que o código ainda honra: perfis com id ≠ uid (vínculo por e-mail), tipos `atletica`/`estabelecimento`, prefixo `CHN-` no código curto, chaves `@chain:` do localStorage, campo `sold` em `TicketType` (substituído por `soldByTicket`).
