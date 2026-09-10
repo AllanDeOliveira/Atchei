@@ -35,7 +35,6 @@ export const Desafio = () => {
   const [ganhador, setGanhador] = useState<{ mesa: string; ganhouEmMs: number | null } | null | undefined>(undefined);
 
   const mesaOk = MESA_VALIDA.test(mesa);
-  const nomeMesa = mesa.replace(/-/g, ' ');
   const rotaAtual = `/desafio/${mesa}`;
   const irParaLogin = () => navigate(`/login?next=${encodeURIComponent(rotaAtual)}`);
 
@@ -91,7 +90,7 @@ export const Desafio = () => {
     const text = `Entra aqui AGORA pra gente fechar a mesa e ganhar o refrigerante da Kombi: ${url}`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'Desafio da Kombi', text, url });
+        await navigator.share({ title: 'Desafio Atchei', text, url });
       } catch {
         /* usuário cancelou o compartilhamento */
       }
@@ -121,8 +120,8 @@ export const Desafio = () => {
       </button>
 
       <div className="w-full max-w-sm text-center">
-        <p className="text-xs font-semibold text-accent uppercase tracking-wider">Desafio da Kombi</p>
-        <h1 className="font-display font-semibold text-2xl text-textLight mt-1 mb-6 capitalize">{nomeMesa || 'Mesa'}</h1>
+        {/* A mesa fica só no link do QR — a tela não mostra número nenhum. */}
+        <h1 className="font-display font-semibold text-2xl text-textLight mb-6">Desafio Atchei</h1>
 
         {!mesaOk ? (
           <p className="text-textMuted text-sm">QR Code inválido. Peça outro adesivo na Kombi.</p>
@@ -146,8 +145,7 @@ export const Desafio = () => {
             <CheckCircle2 className="mx-auto text-success" size={36} />
             <p className="text-sm font-semibold text-textLight">Você já garantiu sua Coca hoje!</p>
             <p className="text-xs text-textMuted leading-relaxed">
-              Foi na <span className="capitalize">{ganhador.mesa.replace(/-/g, ' ')}</span>
-              {ganhador.ganhouEmMs ? ` às ${hora(ganhador.ganhouEmMs)}` : ''}. Deixa pros outros. 😉
+              {ganhador.ganhouEmMs ? `Foi às ${hora(ganhador.ganhouEmMs)}. ` : ''}Deixa pros outros. 😉
             </p>
           </div>
         ) : estado === 'livre' ? (
@@ -159,6 +157,9 @@ export const Desafio = () => {
             <Button variant="primary" fullWidth onClick={comecar} loading={busy} className="py-4 text-sm">
               {d ? 'Começar de novo' : 'Começar desafio'}
             </Button>
+            <p className="text-[11px] text-textMuted leading-snug">
+              Pra retirar, <strong>os 5 mostram a tela verde pessoalmente</strong> pra tia da Kombi.
+            </p>
           </div>
         ) : estado === 'aberto' && d ? (
           <div className="surface rounded-2xl p-6">
@@ -185,19 +186,18 @@ export const Desafio = () => {
             <div className="rounded-2xl p-8 bg-success text-white shadow-glow-success-lg">
               <CheckCircle2 size={52} className="mx-auto" />
               <h2 className="font-display font-bold text-3xl mt-4 tracking-wide">COCA LIBERADA</h2>
-              <p className="mt-2 text-sm capitalize opacity-95">
-                {nomeMesa} · liberado às {hora(d.liberadoEmMs ?? agora)}
+              <p className="mt-2 text-sm opacity-95">Liberado às {hora(d.liberadoEmMs ?? agora)}</p>
+              <p className="text-sm mt-5 opacity-95 leading-relaxed">
+                <strong>Os 5 do grupo precisam mostrar esta tela, pessoalmente, pra tia da Kombi.</strong>
               </p>
-              <p className="text-sm mt-5 opacity-90 leading-relaxed">
-                Mostre esta tela na Kombi pra retirar o refrigerante. É <strong>1 por mesa</strong> — o grupo divide.
-              </p>
+              <p className="text-xs mt-2 opacity-85 leading-relaxed">É 1 refrigerante por mesa — o grupo divide.</p>
             </div>
           ) : (
             // Mesa "queimada": já pagou o prêmio dela. Quem chega depois procura outra.
             <div className="surface rounded-2xl p-6 space-y-3">
               <Flame className="mx-auto text-accent" size={36} />
               <p className="text-sm font-semibold text-textLight">A galera dessa mesa foi rápida e já levou a Coca!</p>
-              <p className="text-xs text-textMuted leading-relaxed">Procura outra mesa com o desafio ativo.</p>
+              <p className="text-xs text-textMuted leading-relaxed">Procura outra mesa com o QR e tenta lá.</p>
             </div>
           )
         ) : (
