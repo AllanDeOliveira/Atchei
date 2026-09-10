@@ -19,6 +19,17 @@ export const entrarNoDesafio = (mesa: string, uid: string, membrosAtuais: number
     ...(membrosAtuais + 1 >= TAMANHO_GRUPO ? { liberadoEm: serverTimestamp() } : {}),
   });
 
+/**
+ * Quem já ganhou (carimbado pela function quando a mesa fecha 5) não joga de novo —
+ * as rules recusam; aqui só lemos o próprio carimbo para mostrar a tela certa.
+ */
+export const ouvirGanhador = (uid: string, cb: (g: { mesa: string; ganhouEmMs: number | null } | null) => void) =>
+  onSnapshot(doc(db, 'desafioGanhadores', uid), (snap) => {
+    if (!snap.exists()) return cb(null);
+    const x = snap.data();
+    cb({ mesa: x.mesa, ganhouEmMs: (x.ganhouEm as Timestamp | null)?.toMillis() ?? null });
+  });
+
 /** Escuta a mesa em tempo real (todas as telas do grupo veem o contador subir). */
 export const ouvirDesafio = (mesa: string, cb: (d: DesafioMesa | null) => void) =>
   onSnapshot(ref(mesa), (snap) => {

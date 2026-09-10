@@ -8,7 +8,7 @@ import { InstallGuideModal } from '../components/InstallGuideModal';
 import { useInstalarApp } from '../hooks/useInstalarApp';
 import { estadoDesafio, msRestantes, TAMANHO_GRUPO } from '../lib/desafio';
 import type { DesafioMesa } from '../lib/desafio';
-import { iniciarDesafio, entrarNoDesafio, ouvirDesafio } from '../lib/storage/desafios';
+import { iniciarDesafio, entrarNoDesafio, ouvirDesafio, ouvirGanhador } from '../lib/storage/desafios';
 
 // Id da mesa vem do QR (ex.: mesa-3). Restrito para não virar id arbitrário de documento.
 const MESA_VALIDA = /^[a-z0-9-]{1,30}$/;
@@ -31,6 +31,8 @@ export const Desafio = () => {
   // CTA de instalar o app nas telas finais: a pessoa acabou de ganhar (ou quase) e está com o app aberto.
   const { disponivel: podeInstalar, precisaGuia, instalar } = useInstalarApp();
   const [showGuia, setShowGuia] = useState(false);
+  // Carimbo "já ganhou" (1 vitória por conta). undefined = ainda não sabemos.
+  const [ganhador, setGanhador] = useState<{ mesa: string; ganhouEmMs: number | null } | null | undefined>(undefined);
 
   const mesaOk = MESA_VALIDA.test(mesa);
   const nomeMesa = mesa.replace(/-/g, ' ');
@@ -48,18 +50,24 @@ export const Desafio = () => {
     return ouvirDesafio(mesa, setD);
   }, [user, mesa, mesaOk]);
 
+  useEffect(() => {
+    if (!user) return;
+    return ouvirGanhador(user.id, setGanhador);
+  }, [user]);
+
   const estado = d === undefined ? null : estadoDesafio(d, agora);
   const souMembro = !!(user && d && d.membros.includes(user.id));
 
   // Chegou pelo link já com conta: entra no grupo sozinho (uma tentativa por rodada).
   useEffect(() => {
-    if (!user || !d || estado !== 'aberto' || souMembro || tentouEntrar.current) return;
+    // Quem já ganhou não entra (as rules recusariam de qualquer jeito).
+    if (!user || !d || estado !== 'aberto' || souMembro || ganhador || tentouEntrar.current) return;
     tentouEntrar.current = true;
     entrarNoDesafio(mesa, user.id, d.membros.length).catch((e) => {
       console.warn('Não entrou no grupo:', e);
       toast.error('Não deu pra entrar — a mesa fechou ou o tempo acabou.');
     });
-  }, [user, d, estado, souMembro, mesa]);
+  }, [user, d, estado, souMembro, ganhador, mesa]);
   // Rodada nova (iniciadoEm muda) libera nova tentativa.
   useEffect(() => {
     tentouEntrar.current = false;
@@ -131,8 +139,17 @@ export const Desafio = () => {
               <p className="text-[11px] text-textMuted">Cria a conta em menos de 1 minuto e volta pra cá sozinho.</p>
             </div>
           )
-        ) : estado === null ? (
+        ) : estado === null || ganhador === undefined ? (
           <p className="text-textMuted text-sm">Carregando a mesa...</p>
+        ) : ganhador && !(estado === 'liberado' && souMembro) ? (
+          <div className="surface rounded-2xl p-6 space-y-3">
+            <CheckCircle2 className="mx-auto text-success" size={36} />
+            <p className="text-sm font-semibold text-textLight">Você já garantiu sua Coca hoje!</p>
+            <p className="text-xs text-textMuted leading-relaxed">
+              Foi na <span className="capitalize">{ganhador.mesa.replace(/-/g, ' ')}</span>
+              {ganhador.ganhouEmMs ? ` às ${hora(ganhador.ganhouEmMs)}` : ''}. Deixa pros outros. 😉
+            </p>
+          </div>
         ) : estado === 'livre' ? (
           <div className="surface rounded-2xl p-6 space-y-4">
             <Flame className="mx-auto text-primary" size={36} />
@@ -164,14 +181,25 @@ export const Desafio = () => {
             </p>
           </div>
         ) : estado === 'liberado' && d ? (
-          <div className="rounded-2xl p-8 bg-success text-white shadow-glow-success-lg">
-            <CheckCircle2 size={52} className="mx-auto" />
-            <h2 className="font-display font-bold text-3xl mt-4 tracking-wide">COCA LIBERADA</h2>
-            <p className="mt-2 text-sm capitalize opacity-95">
-              {nomeMesa} · liberado às {hora(d.liberadoEmMs ?? agora)}
-            </p>
-            <p className="text-sm mt-5 opacity-90 leading-relaxed">Mostre esta tela na Kombi pra retirar o refrigerante.</p>
-          </div>
+          souMembro ? (
+            <div className="rounded-2xl p-8 bg-success text-white shadow-glow-success-lg">
+              <CheckCircle2 size={52} className="mx-auto" />
+              <h2 className="font-display font-bold text-3xl mt-4 tracking-wide">COCA LIBERADA</h2>
+              <p className="mt-2 text-sm capitalize opacity-95">
+                {nomeMesa} · liberado às {hora(d.liberadoEmMs ?? agora)}
+              </p>
+              <p className="text-sm mt-5 opacity-90 leading-relaxed">
+                Mostre esta tela na Kombi pra retirar o refrigerante. É <strong>1 por mesa</strong> — o grupo divide.
+              </p>
+            </div>
+          ) : (
+            // Mesa "queimada": já pagou o prêmio dela. Quem chega depois procura outra.
+            <div className="surface rounded-2xl p-6 space-y-3">
+              <Flame className="mx-auto text-accent" size={36} />
+              <p className="text-sm font-semibold text-textLight">A galera dessa mesa foi rápida e já levou a Coca!</p>
+              <p className="text-xs text-textMuted leading-relaxed">Procura outra mesa com o desafio ativo.</p>
+            </div>
+          )
         ) : (
           <div className="rounded-2xl p-8 bg-danger text-white">
             <XCircle size={52} className="mx-auto" />

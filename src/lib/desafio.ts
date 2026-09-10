@@ -20,9 +20,9 @@ export type EstadoDesafio = 'livre' | 'aberto' | 'liberado' | 'expirado';
 
 /**
  * Estado da mesa num instante:
- * - livre:    ninguém jogando (ou a rodada anterior já cumpriu prazo + carência)
+ * - livre:    ninguém jogando (ou a rodada anterior falhou e já cumpriu prazo + carência)
  * - aberto:   grupo se formando, dentro do prazo
- * - liberado: fechou 5 — vale até a mesa reabrir
+ * - liberado: fechou 5 — a mesa fica "queimada" para sempre (1 prêmio por mesa = estoque)
  * - expirado: prazo estourou sem 5; a carência esconde QUANDO reabre (decisão de produto)
  */
 export function estadoDesafio(
@@ -30,9 +30,9 @@ export function estadoDesafio(
   agoraMs: number,
 ): EstadoDesafio {
   if (!d) return 'livre';
+  if (d.membros.length >= TAMANHO_GRUPO) return 'liberado';
   if (d.iniciadoEmMs === null) return 'aberto'; // acabou de iniciar, servidor ainda não carimbou
   if (agoraMs >= d.iniciadoEmMs + PRAZO_MS + CARENCIA_MS) return 'livre';
-  if (d.membros.length >= TAMANHO_GRUPO) return 'liberado';
   if (agoraMs < d.iniciadoEmMs + PRAZO_MS) return 'aberto';
   return 'expirado';
 }
