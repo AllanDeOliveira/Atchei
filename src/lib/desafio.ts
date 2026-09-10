@@ -4,7 +4,7 @@
 // tudo é contado pelo relógio do SERVIDOR a partir de iniciadoEm.
 
 export const TAMANHO_GRUPO = 5;
-export const PRAZO_MS = 5 * 60 * 1000;     // janela para juntar o grupo
+export const PRAZO_MS = 3 * 60 * 1000;     // janela para juntar o grupo (5 min era folgado demais no teste real)
 export const CARENCIA_MS = 5 * 60 * 1000;  // espera após expirar/liberar antes de a mesa reabrir
 
 export interface DesafioMesa {
