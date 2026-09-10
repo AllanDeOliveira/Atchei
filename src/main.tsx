@@ -26,7 +26,7 @@ function validateEnv() {
 
   if (missing.length > 0) {
     console.error(
-      `⚠️ Erro de Infraestrutura: As seguintes variáveis de ambiente estão ausentes: ${missing.join(', ')}`
+      `Erro de infraestrutura: as seguintes variáveis de ambiente estão ausentes: ${missing.join(', ')}`
     );
   }
 }

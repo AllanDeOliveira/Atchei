@@ -29,7 +29,7 @@ describe('CookieBanner Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Primeiro, vamos falar dos cookies 🍪')).toBeInTheDocument();
+    expect(screen.getByText('Primeiro, vamos falar dos cookies')).toBeInTheDocument();
   });
 
   it('renders cookie banner for logged in user when no consent is stored', () => {
@@ -39,7 +39,7 @@ describe('CookieBanner Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Primeiro, vamos falar dos cookies 🍪')).toBeInTheDocument();
+    expect(screen.getByText('Primeiro, vamos falar dos cookies')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /aceitar todos os cookies/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /administrar cookies/i })).toBeInTheDocument();
   });
@@ -53,7 +53,7 @@ describe('CookieBanner Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.queryByText('Primeiro, vamos falar dos cookies 🍪')).not.toBeInTheDocument();
+    expect(screen.queryByText('Primeiro, vamos falar dos cookies')).not.toBeInTheDocument();
   });
 
   it('accepts all cookies on primary button click', () => {
@@ -68,7 +68,7 @@ describe('CookieBanner Component', () => {
 
     expect(localStorage.getItem(COOKIE_CONSENT_KEY)).toBe('all');
     expect(aplicarConsentimento).toHaveBeenCalledWith(true);
-    expect(screen.queryByText('Primeiro, vamos falar dos cookies 🍪')).not.toBeInTheDocument();
+    expect(screen.queryByText('Primeiro, vamos falar dos cookies')).not.toBeInTheDocument();
   });
 
   it('opens preferences modal when clicking "Administrar cookies"', () => {
@@ -154,14 +154,14 @@ describe('CookieBanner Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.queryByText('Primeiro, vamos falar dos cookies 🍪')).not.toBeInTheDocument();
+    expect(screen.queryByText('Primeiro, vamos falar dos cookies')).not.toBeInTheDocument();
 
     act(() => {
       localStorage.setItem(INSTALL_DISMISS_KEY, '1');
       window.dispatchEvent(new Event(INSTALL_RESOLVED_EVENT));
     });
 
-    expect(screen.getByText('Primeiro, vamos falar dos cookies 🍪')).toBeInTheDocument();
+    expect(screen.getByText('Primeiro, vamos falar dos cookies')).toBeInTheDocument();
   });
 
   // O link do rodapé precisa funcionar mesmo antes de o convite ser resolvido.

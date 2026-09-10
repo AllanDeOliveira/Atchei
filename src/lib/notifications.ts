@@ -99,7 +99,7 @@ function bindForeground(messaging: ReturnType<typeof getMessaging>) {
   onMessage(messaging, (payload) => {
     const title = payload.notification?.title || 'Atchei';
     const body = payload.notification?.body || '';
-    toast(body ? `${title}\n${body}` : title, { duration: 6000, icon: '🔔' });
+    toast(body ? `${title}\n${body}` : title, { duration: 6000 });
   });
 }
 

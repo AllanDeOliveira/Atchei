@@ -67,7 +67,7 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
         {provaSocial && (
           <div className="flex items-center gap-1.5 text-primary font-sans font-semibold text-xs z-10">
             <Flame size={14} />
-            <span>{provaSocial} 🎉</span>
+            <span>{provaSocial}</span>
           </div>
         )}
 
