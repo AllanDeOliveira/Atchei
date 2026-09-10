@@ -161,7 +161,7 @@ src/
 | `/auth/action` | AuthAction | público | handler das ações de e-mail do Auth |
 | `/privacidade`, `/termos`, `/quem-somos` | Legal | público | |
 | `/validar/:eventId` | ValidateTickets | dono do evento / admin (checado na tela) | scanner em tela cheia |
-| `/desafio/:mesa` | Desafio | público (jogar exige login) | "Desafio da Kombi": QR da mesa; grupo de 5 em 5 min ganha o prêmio |
+| `/desafio/:mesa` | Desafio | público (jogar exige login) | "Desafio da Kombi": QR da mesa; grupo de 5 em 3 min ganha o prêmio |
 | `/create`, `/edit/:id` | CreateEvent | `PrivateRoute` | |
 | `/profile` | Profile | `PrivateRoute` | meus eventos / inscrições, edição de perfil |
 | `/admin` | AdminDashboard | `PrivateRoute` + `role === 'admin'` | |
@@ -249,7 +249,7 @@ Todas em `functions/index.js`, região `us-central1`, Node 22, gen2. Callables u
 | `registrations` | **`eventId_uid`** para inscrição própria; auto para manual/teste | `eventId`, `userId`, `userName`, `userEmail`, `userPhone`, `userCpf`, `paymentStatus`, `timestamp`, `ticketTypeId/Name`, `pedidoId`, `checkedIn`, `checkedInAt`, `checkedInBy`, `isTeste` | o próprio usuário (regras estritas), dono do evento, admin, functions |
 | `fcmTokens` | o token | `userId`, `token`, `updatedAt` | o dono; leitura só pelo backend |
 | `_rateLimits` | `<escopo>_<chave>` | contadores/janelas | só functions |
-| `desafios` | a mesa (`mesa-3`) | `mesa`, `liderId`, `membros[]` (uids), `iniciadoEm` (servidor), `liberadoEm` (servidor, ao 5º) | líder inicia/reinicia; cada membro só adiciona a si mesmo (rules fazem prazo de 5 min + carência de 5 min pelo relógio do servidor). Mesa que fechou 5 fica **queimada** (não reinicia): 1 prêmio por mesa = estoque. Quem já tem carimbo em `desafioGanhadores` não inicia nem entra |
+| `desafios` | a mesa (`mesa-3`) | `mesa`, `liderId`, `membros[]` (uids), `iniciadoEm` (servidor), `liberadoEm` (servidor, ao 5º) | líder inicia/reinicia; cada membro só adiciona a si mesmo (rules fazem prazo de 3 min + carência de 5 min pelo relógio do servidor). Mesa que fechou 5 fica **queimada** (não reinicia): 1 prêmio por mesa = estoque. Quem já tem carimbo em `desafioGanhadores` não inicia nem entra |
 | `desafioGanhadores` | uid | `mesa`, `ganhouEm` (servidor) | só a trigger `onDesafioLiberado`; o dono lê o próprio (1 vitória por conta) |
 
 Invariantes importantes:

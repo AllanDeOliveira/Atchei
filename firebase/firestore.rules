@@ -259,8 +259,8 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Desafio da Kombi: UM documento por mesa (id = mesa). Grupo de 5 em 5 minutos.
-    // Prazo (5 min) e carência (mais 5 min até a mesa reabrir) são contados pelo
+    // Desafio da Kombi: UM documento por mesa (id = mesa). Grupo de 5 em 3 minutos.
+    // Prazo (3 min) e carência (mais 5 min até a mesa reabrir) são contados pelo
     // relógio do SERVIDOR a partir de iniciadoEm — o cliente não estica o tempo,
     // não reabre a mesa antes da hora e só consegue adicionar a si mesmo ao grupo.
     match /desafios/{mesa} {
@@ -281,14 +281,14 @@ service cloud.firestore {
       allow read: if isAuthed();
       allow create: if inicioValido();
       allow update: if isAuthed() && (
-        // Reinício: só depois de prazo + carência de uma rodada que NÃO fechou 5.
+        // Reinício: só depois de prazo (3) + carência (5) de uma rodada que NÃO fechou 5.
         // Mesa que ganhou fica "queimada": 1 prêmio por mesa é o que limita o estoque.
-        (inicioValido() && resource.data.membros.size() < 5 && request.time >= resource.data.iniciadoEm + duration.value(10, 'm')) ||
+        (inicioValido() && resource.data.membros.size() < 5 && request.time >= resource.data.iniciadoEm + duration.value(8, 'm')) ||
         // Entrar no grupo: dentro do prazo, com vaga, sem estar nele, adicionando só a si
         // mesmo no fim da lista; quem completa o 5º carimba liberadoEm com a hora do servidor.
         (
           !jaGanhou()
-          && request.time < resource.data.iniciadoEm + duration.value(5, 'm')
+          && request.time < resource.data.iniciadoEm + duration.value(3, 'm')
           && resource.data.membros.size() < 5
           && !(request.auth.uid in resource.data.membros)
           && request.resource.data.membros == resource.data.membros.concat([request.auth.uid])

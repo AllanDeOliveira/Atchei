@@ -131,7 +131,7 @@ export const Desafio = () => {
             <div className="surface rounded-2xl p-6 space-y-4">
               <Flame className="mx-auto text-primary" size={36} />
               <p className="text-sm text-textLight leading-relaxed">
-                Junte <strong>5 amigos</strong> da mesa em <strong>5 minutos</strong>, todos com conta no Atchei, e ganhem um refrigerante de 1 L.
+                Junte <strong>5 amigos</strong> da mesa em <strong>3 minutos</strong>, todos com conta no Atchei, e ganhem um refrigerante de 1 L.
               </p>
               <Button variant="primary" fullWidth onClick={irParaLogin} className="py-4 text-sm">
                 Entrar para participar
@@ -154,7 +154,7 @@ export const Desafio = () => {
           <div className="surface rounded-2xl p-6 space-y-4">
             <Flame className="mx-auto text-primary" size={36} />
             <p className="text-sm text-textLight leading-relaxed">
-              Você começa o relógio: <strong>5 minutos</strong> pra 4 amigos abrirem o seu link e entrarem no grupo.
+              Você começa o relógio: <strong>3 minutos</strong> pra 4 amigos abrirem o seu link e entrarem no grupo.
             </p>
             <Button variant="primary" fullWidth onClick={comecar} loading={busy} className="py-4 text-sm">
               {d ? 'Começar de novo' : 'Começar desafio'}
