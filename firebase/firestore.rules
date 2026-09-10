@@ -259,14 +259,30 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Interruptor do Desafio da Kombi: leitura pública (a tela precisa explicar que
+    // está fechado antes mesmo do login), escrita só do admin pelo painel.
+    match /config/desafio {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Desafio da Kombi: UM documento por mesa (id = mesa). Grupo de 5 em 5 minutos.
-    // Prazo (5 min) e carência (mais 5 min até a mesa reabrir) são contados pelo
-    // relógio do SERVIDOR a partir de iniciadoEm — o cliente não estica o tempo,
-    // não reabre a mesa antes da hora e só consegue adicionar a si mesmo ao grupo.
+    // Um adesivo (QR) por mesa; TODAS abrem no mesmo horário e cada mesa vale um
+    // refrigerante — o estoque é o número de adesivos impressos.
+    // Abertura, prazo (5 min) e carência (mais 5 min até a mesa reabrir) são contados
+    // pelo relógio do SERVIDOR — o cliente não abre antes da hora, não estica o tempo,
+    // não reabre a mesa e só consegue adicionar a si mesmo ao grupo.
     match /desafios/{mesa} {
+      // Interruptor do desafio, ligado pelo admin no painel. Documento ausente ou
+      // aberto != true = fechado: o padrão seguro é ninguém jogar.
+      function jaAbriu() {
+        return exists(/databases/$(database)/documents/config/desafio)
+          && get(/databases/$(database)/documents/config/desafio).data.aberto == true;
+      }
       function inicioValido() {
         let d = request.resource.data;
         return isAuthed()
+          && jaAbriu()
           && d.mesa == mesa
           && d.liderId == request.auth.uid
           && d.membros == [request.auth.uid]
@@ -276,12 +292,18 @@ service cloud.firestore {
       allow read: if isAuthed();
       allow create: if inicioValido();
       allow update: if isAuthed() && (
-        // Reinício: só depois de prazo + carência da rodada anterior.
-        (inicioValido() && request.time >= resource.data.iniciadoEm + duration.value(10, 'm')) ||
+        // Reinício: só se a rodada anterior NÃO fechou os 5 (mesa vencedora fica
+        // queimada — um prêmio por mesa) e já cumpriu prazo + carência.
+        (
+          inicioValido()
+          && resource.data.membros.size() < 5
+          && request.time >= resource.data.iniciadoEm + duration.value(10, 'm')
+        ) ||
         // Entrar no grupo: dentro do prazo, com vaga, sem estar nele, adicionando só a si
         // mesmo no fim da lista; quem completa o 5º carimba liberadoEm com a hora do servidor.
         (
-          request.time < resource.data.iniciadoEm + duration.value(5, 'm')
+          jaAbriu()
+          && request.time < resource.data.iniciadoEm + duration.value(5, 'm')
           && resource.data.membros.size() < 5
           && !(request.auth.uid in resource.data.membros)
           && request.resource.data.membros == resource.data.membros.concat([request.auth.uid])
@@ -290,6 +312,15 @@ service cloud.firestore {
             (request.resource.data.membros.size() < 5 && !('liberadoEm' in request.resource.data))
             || (request.resource.data.membros.size() == 5 && request.resource.data.liberadoEm == request.time)
           )
+        ) ||
+        // Entrega do refrigerante: só admin, só em mesa que ganhou, só o carimbo — e uma
+        // vez só (o comprovante na tela do ganhador queima quando este campo aparece).
+        (
+          isAdmin()
+          && resource.data.membros.size() >= 5
+          && !('entregueEm' in resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['entregueEm'])
+          && request.resource.data.entregueEm == request.time
         )
       );
       allow delete: if isAdmin();
