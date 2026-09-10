@@ -56,6 +56,9 @@ export const Desafio = () => {
 
   const estado = d === undefined ? null : estadoDesafio(d, agora);
   const souMembro = !!(user && d && d.membros.includes(user.id));
+  // Último estado conhecido, para o tratamento de erro do "Começar" ler sem closure velho.
+  const estadoRef = useRef(estado);
+  estadoRef.current = estado;
 
   // Chegou pelo link já com conta: entra no grupo sozinho (uma tentativa por rodada).
   useEffect(() => {
@@ -78,8 +81,15 @@ export const Desafio = () => {
     try {
       await iniciarDesafio(mesa, user.id);
     } catch (e) {
-      console.error('Início do desafio:', e);
-      toast.error('A mesa ainda não reabriu. Tente mais tarde.');
+      // Duas pessoas tocando "Começar" ao mesmo tempo: a segunda é recusada pela regra,
+      // mas a rodada da primeira já chegou pelo listener e o auto-entrar a coloca no grupo.
+      await new Promise((r) => setTimeout(r, 800));
+      if (estadoRef.current === 'aberto') {
+        toast.success('Alguém da mesa já começou — você entrou no grupo.');
+      } else {
+        console.error('Início do desafio:', e);
+        toast.error('A mesa ainda não reabriu. Tente mais tarde.');
+      }
     } finally {
       setBusy(false);
     }
