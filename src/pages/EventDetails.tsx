@@ -168,7 +168,7 @@ export const EventDetails = () => {
       setMyReg({ ...registration, id: docId });
       // Reflete no contador local sem esperar o trigger do backend.
       setEvent(prev => prev ? { ...prev, registrationCount: (prev.registrationCount || 0) + 1 } : prev);
-      toast.success('Presença confirmada! 🎉');
+      toast.success('Presença confirmada!');
     } catch (error) {
       console.error("Erro ao confirmar presença:", error);
       // permission-denied com teto definido = evento lotou entre o load e o clique.

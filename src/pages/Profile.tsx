@@ -313,7 +313,7 @@ export const Profile = () => {
     // (cortesia, convidado extra) é decisão dele; só avisa.
     const ev = selectedEventForParticipants;
     if (ev.maxParticipants != null && (ev.registrationCount || 0) >= ev.maxParticipants) {
-      toast(`Atenção: o evento já atingiu o limite de ${ev.maxParticipants} participantes.`, { icon: '⚠️' });
+      toast(`Atenção: o evento já atingiu o limite de ${ev.maxParticipants} participantes.`);
     }
 
     try {
@@ -760,7 +760,7 @@ export const Profile = () => {
                             toast('Aguardando o vendedor confirmar o pagamento. Seu ingresso aparece aqui assim que ele confirmar.');
                           } else if (reg?.paymentStatus === 'Gratuito') {
                             // Presença é RSVP social, não ingresso — não existe QR para mostrar.
-                            toast('Presença confirmada! Este evento não emite ingresso — é só chegar. 🎉');
+                            toast('Presença confirmada! Este evento não emite ingresso — é só chegar.');
                           } else if (reg) {
                             setSelectedRegForTicket(reg);
                             setSelectedEventForTicket(event);

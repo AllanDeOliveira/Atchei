@@ -80,7 +80,7 @@ export const CookieBanner = () => {
         >
           <div className="flex items-start justify-between gap-3 mb-2">
             <h2 className="text-base font-display font-bold text-textLight flex items-center gap-2">
-              Primeiro, vamos falar dos cookies 🍪
+              Primeiro, vamos falar dos cookies
             </h2>
           </div>
 

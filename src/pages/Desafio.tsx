@@ -145,7 +145,7 @@ export const Desafio = () => {
             <CheckCircle2 className="mx-auto text-success" size={36} />
             <p className="text-sm font-semibold text-textLight">Você já garantiu sua Coca hoje!</p>
             <p className="text-xs text-textMuted leading-relaxed">
-              {ganhador.ganhouEmMs ? `Foi às ${hora(ganhador.ganhouEmMs)}. ` : ''}Deixa pros outros. 😉
+              {ganhador.ganhouEmMs ? `Foi às ${hora(ganhador.ganhouEmMs)}. ` : ''}Deixa pros outros.
             </p>
           </div>
         ) : estado === 'livre' ? (
