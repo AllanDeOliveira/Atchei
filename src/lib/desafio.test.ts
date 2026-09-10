@@ -17,9 +17,10 @@ describe('estadoDesafio', () => {
     expect(estadoDesafio({ membros: membros(3), iniciadoEmMs: t0 }, t0 + PRAZO_MS - 1)).toBe('aberto');
   });
 
-  it('com 5 no grupo: liberado até a mesa reabrir', () => {
+  it('com 5 no grupo: liberado — e a mesa fica queimada para sempre (1 prêmio por mesa)', () => {
     expect(estadoDesafio({ membros: membros(5), iniciadoEmMs: t0 }, t0 + 1000)).toBe('liberado');
     expect(estadoDesafio({ membros: membros(5), iniciadoEmMs: t0 }, t0 + PRAZO_MS + CARENCIA_MS - 1)).toBe('liberado');
+    expect(estadoDesafio({ membros: membros(5), iniciadoEmMs: t0 }, t0 + 24 * 60 * 60 * 1000)).toBe('liberado');
   });
 
   it('prazo estourado sem 5: expirado durante toda a carência', () => {
@@ -27,9 +28,8 @@ describe('estadoDesafio', () => {
     expect(estadoDesafio({ membros: membros(4), iniciadoEmMs: t0 }, t0 + PRAZO_MS + CARENCIA_MS - 1)).toBe('expirado');
   });
 
-  it('após prazo + carência: livre de novo (com ou sem os 5)', () => {
+  it('após prazo + carência sem os 5: livre de novo (quem perde tenta de novo)', () => {
     expect(estadoDesafio({ membros: membros(4), iniciadoEmMs: t0 }, t0 + PRAZO_MS + CARENCIA_MS)).toBe('livre');
-    expect(estadoDesafio({ membros: membros(5), iniciadoEmMs: t0 }, t0 + PRAZO_MS + CARENCIA_MS)).toBe('livre');
   });
 
   it('grupo é de 5', () => {

@@ -223,6 +223,7 @@ Todas em `functions/index.js`, região `us-central1`, Node 22, gen2. Callables u
 | `onRegistrationCreated` | `registrationCount +1` (e `soldByTicket.<lote> +1` em venda manual). Ignora ingressos de teste e intenções `'Aguardando pagamento'`. Envia push de confirmação de presença gratuita |
 | `onRegistrationDeleted` | simétrico: `-1`. Se o evento já foi apagado, o erro é engolido e logado |
 | `onRegistrationConfirmed` | transição `'Aguardando pagamento'` → `'Pago (WhatsApp)'`: entra na contagem e avisa o comprador por push (e o inverso, se um admin reverter) |
+| `onDesafioLiberado` (`desafios/{mesa}`) | quando a mesa passa de <5 para 5 membros, carimba os 5 em `desafioGanhadores/{uid}` (1 vitória por conta; as rules recusam quem tem carimbo) |
 
 ### 5.3 HTTP e cron
 
@@ -248,7 +249,8 @@ Todas em `functions/index.js`, região `us-central1`, Node 22, gen2. Callables u
 | `registrations` | **`eventId_uid`** para inscrição própria; auto para manual/teste | `eventId`, `userId`, `userName`, `userEmail`, `userPhone`, `userCpf`, `paymentStatus`, `timestamp`, `ticketTypeId/Name`, `pedidoId`, `checkedIn`, `checkedInAt`, `checkedInBy`, `isTeste` | o próprio usuário (regras estritas), dono do evento, admin, functions |
 | `fcmTokens` | o token | `userId`, `token`, `updatedAt` | o dono; leitura só pelo backend |
 | `_rateLimits` | `<escopo>_<chave>` | contadores/janelas | só functions |
-| `desafios` | a mesa (`mesa-3`) | `mesa`, `liderId`, `membros[]` (uids), `iniciadoEm` (servidor), `liberadoEm` (servidor, ao 5º) | líder inicia/reinicia; cada membro só adiciona a si mesmo (rules fazem prazo de 5 min + carência de 5 min pelo relógio do servidor) |
+| `desafios` | a mesa (`mesa-3`) | `mesa`, `liderId`, `membros[]` (uids), `iniciadoEm` (servidor), `liberadoEm` (servidor, ao 5º) | líder inicia/reinicia; cada membro só adiciona a si mesmo (rules fazem prazo de 5 min + carência de 5 min pelo relógio do servidor). Mesa que fechou 5 fica **queimada** (não reinicia): 1 prêmio por mesa = estoque. Quem já tem carimbo em `desafioGanhadores` não inicia nem entra |
+| `desafioGanhadores` | uid | `mesa`, `ganhouEm` (servidor) | só a trigger `onDesafioLiberado`; o dono lê o próprio (1 vitória por conta) |
 
 Invariantes importantes:
 

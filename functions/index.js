@@ -423,6 +423,30 @@ exports.onRegistrationConfirmed = onDocumentUpdated("registrations/{registration
 });
 
 // Renderizador de Open Graph / WhatsApp Preview para links /e/:id
+// Desafio da Kombi: quando a mesa fecha 5, carimba os 5 em desafioGanhadores/{uid}
+// (1 vitória por conta — as rules recusam quem tem carimbo). Só a function escreve
+// nessa coleção; dispara uma vez por mesa (transição de <5 para 5).
+exports.onDesafioLiberado = onDocumentUpdated("desafios/{mesa}", async (event) => {
+    const antes = event.data?.before?.data() || {};
+    const depois = event.data?.after?.data() || {};
+    const membros = Array.isArray(depois.membros) ? depois.membros : [];
+    const antesN = Array.isArray(antes.membros) ? antes.membros.length : 0;
+    if (membros.length < 5 || antesN >= 5) return;
+    try {
+        const batch = db.batch();
+        for (const uid of membros) {
+            batch.set(db.collection('desafioGanhadores').doc(uid), {
+                mesa: depois.mesa || event.params.mesa,
+                ganhouEm: FieldValue.serverTimestamp(),
+            }, { merge: true });
+        }
+        await batch.commit();
+        logger.info(`Desafio ${event.params.mesa} liberado: ${membros.length} ganhadores carimbados.`);
+    } catch (err) {
+        logger.error(`Erro ao carimbar ganhadores da mesa ${event.params.mesa}:`, err);
+    }
+});
+
 exports.renderEventOpenGraph = onRequest({ cors: true }, async (req, res) => {
     await handleOgPreview(req, res, db);
 });
