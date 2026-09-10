@@ -58,7 +58,9 @@ export const Desafio = () => {
   const souMembro = !!(user && d && d.membros.includes(user.id));
   // Último estado conhecido, para o tratamento de erro do "Começar" ler sem closure velho.
   const estadoRef = useRef(estado);
-  estadoRef.current = estado;
+  useEffect(() => {
+    estadoRef.current = estado;
+  }, [estado]);
 
   // Chegou pelo link já com conta: entra no grupo sozinho (uma tentativa por rodada).
   useEffect(() => {
