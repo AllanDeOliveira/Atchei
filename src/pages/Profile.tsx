@@ -177,10 +177,14 @@ export const Profile = () => {
       }
     };
     syncProfile();
+    // `user`/`updateUser` ficam de fora de propósito: o updateUser acima muda o `user`,
+    // que re-dispararia o effect (leitura do Firestore a cada render; loop se imageUrl for vazio).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userRole, loadEvents]);
 
+  // Função local async: a regra react-hooks/set-state-in-effect não enxerga o await do useCallback.
   useEffect(() => {
-    loadEvents();
+    (async () => { await loadEvents(); })();
   }, [loadEvents]);
 
   const handleDelete = async (id: string) => {

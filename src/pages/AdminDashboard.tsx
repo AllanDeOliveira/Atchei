@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storage } from '../lib/storage';
 import { formatDateBR, horaBR } from '../lib/formatters';
@@ -100,32 +100,34 @@ export const AdminDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingPartner, setIsSavingPartner] = useState(false);
 
-  const loadData = useCallback(async () => {
-    if (!userId || currentUser?.role !== 'admin') {
+  const isAdmin = currentUser?.role === 'admin';
+
+  // Carga inicial. Fica dentro do effect (função local async) porque a regra
+  // react-hooks/set-state-in-effect não enxerga o await dentro de um useCallback.
+  useEffect(() => {
+    if (!userId || !isAdmin) {
       navigate('/feed');
       return;
     }
+    const loadData = async () => {
+      try {
+        const [allEvents, allRegs, allProfiles] = await Promise.all([
+          storage.getEvents(),
+          storage.getRegistrations(),
+          storage.getProfiles()
+        ]);
 
-    try {
-      const [allEvents, allRegs, allProfiles] = await Promise.all([
-        storage.getEvents(),
-        storage.getRegistrations(),
-        storage.getProfiles()
-      ]);
-
-      setEvents(allEvents);
-      setRegistrations(allRegs);
-      setProfiles(allProfiles);
-    } catch (error) {
-      console.error("Erro ao carregar dados do admin:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [userId, navigate, currentUser]);
-
-  useEffect(() => {
+        setEvents(allEvents);
+        setRegistrations(allRegs);
+        setProfiles(allProfiles);
+      } catch (error) {
+        console.error("Erro ao carregar dados do admin:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     loadData();
-  }, [loadData]);
+  }, [userId, isAdmin, navigate]);
 
   // Mesas do Desafio da Kombi ao vivo: a mesa que fecha os 5 aparece aqui na hora,
   // sem recarregar. A coleção é pequena (uma por adesivo impresso).

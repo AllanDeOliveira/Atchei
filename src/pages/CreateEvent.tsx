@@ -1,3 +1,6 @@
+/* eslint-disable react-hooks/incompatible-library -- o `watch` do react-hook-form lê estado
+   mutável e o React Compiler pula o componente inteiro; o compilador não está no build,
+   então o aviso é só informativo. Em handlers, ler com `getValues`. */
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Input } from '../components/ui/Input';
@@ -73,7 +76,7 @@ const CreateEventContent = () => {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
 
-  const { register, handleSubmit: formSubmit, watch, setValue, formState: { isSubmitting }, reset } = useForm<EventFormValues>({
+  const { register, handleSubmit: formSubmit, watch, getValues, setValue, formState: { isSubmitting }, reset } = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
     defaultValues: {
       title: '',
@@ -102,6 +105,7 @@ const CreateEventContent = () => {
   const dateValue = watch('date');
   const timeValue = watch('time');
   const selectedCategory = watch('category') || 'Festa';
+  const whatsappContacts = watch('whatsappContacts') || [];
 
   const [isUploading, setIsUploading] = useState(false);
 
@@ -553,7 +557,7 @@ const CreateEventContent = () => {
 
                   <div className="space-y-3">
                     <label className="text-xs font-medium text-textMuted ml-1 block">Promoters de venda (WhatsApp)</label>
-                    {(watch('whatsappContacts') || []).map((_, i) => (
+                    {whatsappContacts.map((_, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <Input
                           placeholder="Nome"
@@ -565,11 +569,11 @@ const CreateEventContent = () => {
                           className="flex-1 text-sm font-mono bg-surface border-glassBorder text-textLight"
                           {...register(`whatsappContacts.${i}.phone` as const)}
                         />
-                        {(watch('whatsappContacts') || []).length > 1 && (
+                        {whatsappContacts.length > 1 && (
                           <button
                             type="button"
                             onClick={() => {
-                              const current = watch('whatsappContacts') || [];
+                              const current = getValues('whatsappContacts') || [];
                               setValue('whatsappContacts', current.filter((_, idx) => idx !== i));
                             }}
                             title="Remover promoter"
@@ -581,11 +585,11 @@ const CreateEventContent = () => {
                         )}
                       </div>
                     ))}
-                    {(watch('whatsappContacts') || []).length < 5 && (
+                    {whatsappContacts.length < 5 && (
                       <button
                         type="button"
                         onClick={() => {
-                          const current = watch('whatsappContacts') || [];
+                          const current = getValues('whatsappContacts') || [];
                           setValue('whatsappContacts', [...current, { name: '', phone: '' }]);
                         }}
                         className="w-full py-3 rounded-xl border border-dashed border-primary/45 text-primary font-sans font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-primary/10 transition-colors cursor-pointer duration-300"

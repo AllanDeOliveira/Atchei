@@ -118,4 +118,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+// Hook e provider no mesmo arquivo de propósito (16 imports apontam pra cá); a regra
+// só afeta o hot reload em desenvolvimento.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

@@ -16,12 +16,11 @@ export const ChangePassword = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Só quem está em primeiro acesso fica nesta tela.
+  const precisaTrocar = !!user?.mustChangePassword;
   useEffect(() => {
-    if (!user || !user.mustChangePassword) {
-      navigate('/feed');
-      return;
-    }
-  }, []);
+    if (!precisaTrocar) navigate('/feed');
+  }, [precisaTrocar, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -27,7 +27,9 @@ const slugify = (s: string): string =>
 
 export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModalProps) => {
   const ticketRef = useRef<HTMLDivElement>(null);
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  // Guardado junto com a URL de origem: trocar de ingresso "zera" o QR por derivação,
+  // sem setState síncrono no effect (regra react-hooks/set-state-in-effect).
+  const [qr, setQr] = useState<{ de: string; dataUrl: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
 
@@ -37,6 +39,7 @@ export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModa
   const qrRemoteUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=0&data=${encodeURIComponent(
     registration.id
   )}&color=1c1917&bgcolor=ffffff`;
+  const qrDataUrl = qr?.de === qrRemoteUrl ? qr.dataUrl : null;
 
   // Busca o QR e converte para data URL. Isso (1) deixa a imagem same-origin para
   // o html-to-image conseguir embuti-la sem esbarrar em CORS na hora de gerar o
@@ -44,20 +47,19 @@ export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModa
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
-    setQrDataUrl(null);
     (async () => {
       try {
         const res = await fetch(qrRemoteUrl, { mode: 'cors' });
         const blob = await res.blob();
         const reader = new FileReader();
         reader.onloadend = () => {
-          if (active && typeof reader.result === 'string') setQrDataUrl(reader.result);
+          if (active && typeof reader.result === 'string') setQr({ de: qrRemoteUrl, dataUrl: reader.result });
         };
         reader.readAsDataURL(blob);
       } catch {
         // Sem rede / CORS bloqueado: usa a URL direta (o preview funciona; só a
         // exportação do QR pode falhar nesse cenário extremo).
-        if (active) setQrDataUrl(qrRemoteUrl);
+        if (active) setQr({ de: qrRemoteUrl, dataUrl: qrRemoteUrl });
       }
     })();
     return () => {
