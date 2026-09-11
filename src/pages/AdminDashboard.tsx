@@ -404,7 +404,20 @@ export const AdminDashboard = () => {
                 size="sm"
                 className="rounded-xl"
                 loading={abrindo}
-                onClick={() => handleAbertura(!desafioAberto)}
+                onClick={() => {
+                  if (!desafioAberto) return handleAbertura(true);
+                  // Encerrar derruba toda rodada em andamento: não pode ser um toque por engano.
+                  setConfirmModal({
+                    show: true,
+                    title: 'Encerrar o desafio?',
+                    message: 'Ninguém mais começa e as rodadas em andamento caem. Quem já fechou os 5 mantém o comprovante.',
+                    type: 'warning',
+                    onConfirm: async () => {
+                      await handleAbertura(false);
+                      setConfirmModal(prev => ({ ...prev, show: false }));
+                    },
+                  });
+                }}
               >
                 {desafioAberto ? 'Encerrar desafio' : 'Liberar desafio'}
               </Button>

@@ -145,8 +145,9 @@ export const Desafio = () => {
           <p className="text-textMuted text-sm">QR Code inválido. Peça outro adesivo na Kombi.</p>
         ) : aberto === undefined ? (
           <p className="text-textMuted text-sm">Carregando...</p>
-        ) : !aberto ? (
-          // Fechado não adianta logar: as rules recusam o início.
+        ) : (!user && !isLoading && !aberto) || estado === 'fechado' ? (
+          // Fechado não adianta logar: as rules recusam o início. Logado, só cai aqui via
+          // `estado` — quem já ganhou (liberado/entregue) mantém o comprovante mesmo encerrado.
           <div className="surface rounded-2xl p-6 space-y-3">
             <Clock className="mx-auto text-primary" size={36} />
             <p className="text-sm text-textLight leading-relaxed">

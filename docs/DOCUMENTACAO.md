@@ -2,7 +2,7 @@
 
 Documento de referência do projeto: o que ele é, como está construído, como os dados se organizam, como a segurança funciona, como se roda, testa, faz deploy e opera. Complementa o [README](../README.md) (visão de produto e início rápido) e a [identidade visual](identidade-visual.md).
 
-Última revisão: 2026-09-10.
+Última revisão: 2026-09-11.
 
 > **Chegou agora no projeto?** Ordem sugerida: [README](../README.md) (10 min) → §1, §3 e §6 daqui (o domínio, o desenho e os dados) → [CLAUDE.md](../CLAUDE.md) (checks e decisões fechadas, mesmo que você não use o Claude Code) → §11 quando precisar operar. O histórico de decisões está em §13. Peça ao Allan acesso ao projeto Firebase `atchei` e ao repositório; o `.env` não está no git (veja o README para as variáveis).
 
@@ -251,7 +251,8 @@ Todas em `functions/index.js`, região `us-central1`, Node 22, gen2. Callables u
 | `registrations` | **`eventId_uid`** para inscrição própria; auto para manual/teste | `eventId`, `userId`, `userName`, `userEmail`, `userPhone`, `userCpf`, `paymentStatus`, `timestamp`, `ticketTypeId/Name`, `pedidoId`, `checkedIn`, `checkedInAt`, `checkedInBy`, `isTeste` | o próprio usuário (regras estritas), dono do evento, admin, functions |
 | `fcmTokens` | o token | `userId`, `token`, `updatedAt` | o dono; leitura só pelo backend |
 | `_rateLimits` | `<escopo>_<chave>` | contadores/janelas | só functions |
-| `desafios` | a mesa (`mesa-3`) | `mesa`, `liderId`, `membros[]` (uids), `iniciadoEm` (servidor), `liberadoEm` (servidor, ao 5º) | líder inicia/reinicia; cada membro só adiciona a si mesmo (rules fazem prazo de 3 min + carência de 5 min pelo relógio do servidor). Mesa que fechou 5 fica **queimada** (não reinicia): 1 prêmio por mesa = estoque. Quem já tem carimbo em `desafioGanhadores` não inicia nem entra |
+| `config` | `desafio` | `aberto` (bool) | **interruptor do Desafio da Kombi**, ligado/desligado pelo admin na aba "Desafios" do painel. Leitura pública (a tela explica "não está rolando" antes do login); escrita só admin. As rules de `desafios` leem este doc: **doc ausente ou `aberto != true` = fechado**, ninguém inicia nem entra |
+| `desafios` | a mesa (`mesa-3`) | `mesa`, `liderId`, `membros[]` (uids), `iniciadoEm` (servidor), `liberadoEm` (servidor, ao 5º), `entregueEm` (servidor, pelo admin) | só com `config/desafio.aberto == true`: líder inicia/reinicia; cada membro só adiciona a si mesmo (rules fazem prazo de 3 min + carência de 5 min pelo relógio do servidor). Mesa que fechou 5 fica **queimada** (não reinicia): 1 prêmio por mesa = estoque. Quem já tem carimbo em `desafioGanhadores` não inicia nem entra. `entregueEm`: só admin, só em mesa com 5, uma vez — troca a tela verde por "Refrigerante retirado" nos 5 celulares. Encerrar o desafio **não** apaga a tela verde de quem já ganhou |
 | `desafioGanhadores` | uid | `mesa`, `ganhouEm` (servidor) | só a trigger `onDesafioLiberado`; o dono lê o próprio (1 vitória por conta) |
 
 Invariantes importantes:
@@ -380,6 +381,8 @@ O *create* feito pelo owner configura sozinho o invoker público (`allUsers` →
 
 **Login com Google** → provedor habilitado no Firebase Auth; `authDomain` = `atchei.app.br`; o cliente OAuth "Web client (auto created by Google Service)" precisa do redirect `https://atchei.app.br/__/auth/handler`; o service worker não pode interceptar `/__/` (`navigateFallbackDenylist` no `vite.config.ts`); header `Cross-Origin-Opener-Policy: same-origin-allow-popups` no Hosting.
 
+**Desafio da Kombi (operação da noite)** → o desafio nasce **fechado**: antes de soltar os QR (e antes de qualquer ensaio), entrar como admin em `/admin`, aba **Desafios**, e apertar **Liberar desafio**. A mesa que fechar os 5 aparece na fila com os nomes; ao entregar o refrigerante, apertar **Entregue** (queima o comprovante nas 5 telas). **Encerrar desafio** (com confirmação) derruba as rodadas em andamento quando o estoque acabar; quem já ganhou mantém a tela verde.
+
 **Desafio da Kombi (reset da mesa de teste)** → apagar `desafios/mesa-teste` e os docs de `desafioGanhadores` dos participantes no console do Firestore. Uma mesa real que ganhou fica queimada de propósito; para reaproveitar, apagar o doc da mesa.
 
 **Rotacionar segredo** → `npx firebase functions:secrets:set RESEND_API_KEY --project atchei` e redeploy das functions que o usam.
@@ -419,5 +422,6 @@ O *create* feito pelo owner configura sozinho o invoker público (`allUsers` →
 | 2026-09-08 | **Desafio da Kombi** (`/desafio/:mesa`), login com Google, `?next=` no login/cadastro; `authDomain` = `atchei.app.br`; PWA deixa `/__/` e `/e/` para o servidor |
 | 2026-09-09 | `firebase-admin` 14 / `firebase-functions` 7 (API modular), 0 vulnerabilidades no front e nas functions (`overrides` de `uuid`), SA do CI com `run.admin` |
 | 2026-09-10 | Desafio: prazo de 3 min; mesa vencedora queimada; 1 vitória por conta (trigger `onDesafioLiberado`); `CLAUDE.md` no repo |
+| 2026-09-11 | Desafio: aba "Desafios" no painel admin — interruptor `config/desafio.aberto` lido pelas rules (nasce fechado), fila de entrega ao vivo, botão "Entregue" (`entregueEm`); Theo entra como segundo dev (#49). Fix: encerrar não esconde a tela verde de quem ganhou; "Encerrar" pede confirmação |
 
 Legados que o código ainda honra: perfis com id ≠ uid (vínculo por e-mail), tipos `atletica`/`estabelecimento`, prefixo `CHN-` no código curto, chaves `@chain:` do localStorage, campo `sold` em `TicketType` (substituído por `soldByTicket`).
