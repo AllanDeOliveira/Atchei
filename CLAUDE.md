@@ -37,5 +37,5 @@ Rules do Firestore compilam só no deploy; para validar antes: `POST https://fir
 - Sem pagamento in-app (Asaas removido em 2026-08-31); venda é via WhatsApp com intenção de compra.
 - App Check: aplicado no Firestore e nas callables; **não** aplicar em Storage nem Auth.
 - Cadastro exige 18+ (formulário e rules). Presença gratuita nasce desligada em evento novo.
-- Desafio da Kombi: prazo **3 min**, carência 5 min **sem mostrar quando reabre**, mesa vencedora queimada, 1 vitória por conta; ideias de trava por uid e cooldown por pessoa foram rejeitadas.
+- Desafio da Kombi: prazo **3 min**, carência 5 min **sem mostrar quando reabre**, mesa vencedora queimada, 1 vitória por conta; ideias de trava por uid e cooldown por pessoa foram rejeitadas. Liga e desliga pelo painel admin (`config/desafio.aberto`, lido pelas rules; **nasce fechado**); entrega é carimbada pelo admin (`entregueEm`), sem function nova. Quem já ganhou mantém a tela verde mesmo com o desafio encerrado.
 - Tema: âmbar `#FFB34D`, accent `#A66300`, Plus Jakarta Sans; status/contadores sem "pill" com contorno.
