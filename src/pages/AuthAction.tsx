@@ -53,7 +53,12 @@ export const AuthAction = () => {
   const mode = params.get('mode');
   const oobCode = params.get('oobCode');
 
-  const [estado, setEstado] = useState<Estado>({ fase: 'verificando' });
+  // Link sem mode/oobCode já nasce em erro — decidido no estado inicial, não num effect.
+  const [estado, setEstado] = useState<Estado>(() =>
+    !mode || !oobCode
+      ? { fase: 'erro', mensagem: 'Link incompleto. Abra o link direto do e-mail, sem editar o endereço.' }
+      : { fase: 'verificando' },
+  );
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -61,10 +66,7 @@ export const AuthAction = () => {
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    if (!mode || !oobCode) {
-      setEstado({ fase: 'erro', mensagem: 'Link incompleto. Abra o link direto do e-mail, sem editar o endereço.' });
-      return;
-    }
+    if (!mode || !oobCode) return;
 
     let cancelado = false;
 
