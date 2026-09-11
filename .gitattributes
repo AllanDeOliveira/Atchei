@@ -1,0 +1,3 @@
+# Quebras de linha sempre LF (no repositório e na árvore de trabalho), em qualquer máquina.
+# Evita diffs de CRLF/quebra final entre Windows e Linux; scripts dos workflows rodam em Linux.
+* text=auto eol=lf
