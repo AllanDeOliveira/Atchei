@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Share2, Users, CheckCircle2, XCircle, Flame, Download } from 'lucide-react';
+import { ArrowLeft, Share2, Users, CheckCircle2, XCircle, Flame, Download, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { horaBR } from '../lib/formatters';
 import { Button } from '../components/ui/Button';
 import { InstallGuideModal } from '../components/InstallGuideModal';
 import { useInstalarApp } from '../hooks/useInstalarApp';
 import { estadoDesafio, msRestantes, TAMANHO_GRUPO } from '../lib/desafio';
 import type { DesafioMesa } from '../lib/desafio';
-import { iniciarDesafio, entrarNoDesafio, ouvirDesafio, ouvirGanhador } from '../lib/storage/desafios';
+import { iniciarDesafio, entrarNoDesafio, ouvirDesafio, ouvirGanhador, ouvirAbertura } from '../lib/storage/desafios';
 
 // Id da mesa vem do QR (ex.: mesa-3). Restrito para não virar id arbitrário de documento.
 const MESA_VALIDA = /^[a-z0-9-]{1,30}$/;
@@ -17,7 +18,6 @@ const fmt = (ms: number) => {
   const s = Math.ceil(ms / 1000);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
-const hora = (ms: number) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
 export const Desafio = () => {
   const { mesa = '' } = useParams<{ mesa: string }>();
@@ -33,6 +33,8 @@ export const Desafio = () => {
   const [showGuia, setShowGuia] = useState(false);
   // Carimbo "já ganhou" (1 vitória por conta). undefined = ainda não sabemos.
   const [ganhador, setGanhador] = useState<{ mesa: string; ganhouEmMs: number | null } | null | undefined>(undefined);
+  // Interruptor do admin. undefined = ainda lendo.
+  const [aberto, setAberto] = useState<boolean | undefined>(undefined);
 
   const mesaOk = MESA_VALIDA.test(mesa);
   const rotaAtual = `/desafio/${mesa}`;
@@ -42,6 +44,10 @@ export const Desafio = () => {
     const t = setInterval(() => setAgora(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // O interruptor é público de propósito: quem escaneia sem conta precisa saber que o
+  // desafio não está rolando antes de criar login à toa.
+  useEffect(() => ouvirAbertura(setAberto), []);
 
   // Só logado lê a mesa (rules); deslogado nem assina — vê a chamada pra entrar.
   useEffect(() => {
@@ -54,7 +60,7 @@ export const Desafio = () => {
     return ouvirGanhador(user.id, setGanhador);
   }, [user]);
 
-  const estado = d === undefined ? null : estadoDesafio(d, agora);
+  const estado = d === undefined || aberto === undefined ? null : estadoDesafio(d, agora, aberto);
   const souMembro = !!(user && d && d.membros.includes(user.id));
   // Último estado conhecido, para o tratamento de erro do "Começar" ler sem closure velho.
   const estadoRef = useRef(estado);
@@ -137,6 +143,17 @@ export const Desafio = () => {
 
         {!mesaOk ? (
           <p className="text-textMuted text-sm">QR Code inválido. Peça outro adesivo na Kombi.</p>
+        ) : aberto === undefined ? (
+          <p className="text-textMuted text-sm">Carregando...</p>
+        ) : !aberto ? (
+          // Fechado não adianta logar: as rules recusam o início.
+          <div className="surface rounded-2xl p-6 space-y-3">
+            <Clock className="mx-auto text-primary" size={36} />
+            <p className="text-sm text-textLight leading-relaxed">
+              O desafio <strong>não está rolando agora</strong>.
+            </p>
+            <p className="text-[11px] text-textMuted">Guarde o QR Code da mesa — quando abrir, é só escanear de novo.</p>
+          </div>
         ) : !user ? (
           !isLoading && (
             <div className="surface rounded-2xl p-6 space-y-4">
@@ -157,7 +174,7 @@ export const Desafio = () => {
             <CheckCircle2 className="mx-auto text-success" size={36} />
             <p className="text-sm font-semibold text-textLight">Você já garantiu sua Coca hoje!</p>
             <p className="text-xs text-textMuted leading-relaxed">
-              {ganhador.ganhouEmMs ? `Foi às ${hora(ganhador.ganhouEmMs)}. ` : ''}Deixa pros outros.
+              {ganhador.ganhouEmMs ? `Foi às ${horaBR(ganhador.ganhouEmMs)}. ` : ''}Deixa pros outros.
             </p>
           </div>
         ) : estado === 'livre' ? (
@@ -198,7 +215,7 @@ export const Desafio = () => {
             <div className="rounded-2xl p-8 bg-success text-white shadow-glow-success-lg">
               <CheckCircle2 size={52} className="mx-auto" />
               <h2 className="font-display font-bold text-3xl mt-4 tracking-wide">COCA LIBERADA</h2>
-              <p className="mt-2 text-sm opacity-95">Liberado às {hora(d.liberadoEmMs ?? agora)}</p>
+              <p className="mt-2 text-sm opacity-95">Liberado às {horaBR(d.liberadoEmMs ?? agora)}</p>
               <p className="text-sm mt-5 opacity-95 leading-relaxed">
                 <strong>Os 5 do grupo precisam mostrar esta tela, pessoalmente, pra tia da Kombi.</strong>
               </p>
@@ -212,6 +229,13 @@ export const Desafio = () => {
               <p className="text-xs text-textMuted leading-relaxed">Procura outra mesa com o QR e tenta lá.</p>
             </div>
           )
+        ) : estado === 'entregue' && d ? (
+          <div className="surface rounded-2xl p-8">
+            <CheckCircle2 size={44} className="mx-auto text-success" />
+            <h2 className="font-display font-semibold text-xl text-textLight mt-4">Refrigerante retirado</h2>
+            <p className="text-sm text-textMuted mt-2">Entregue às {horaBR(d.entregueEmMs ?? agora)}</p>
+            <p className="text-xs text-textMuted mt-4">Uma mesa, um refrigerante. Valeu por jogar!</p>
+          </div>
         ) : (
           <div className="rounded-2xl p-8 bg-danger text-white">
             <XCircle size={52} className="mx-auto" />
@@ -220,7 +244,7 @@ export const Desafio = () => {
           </div>
         )}
 
-        {(estado === 'liberado' || estado === 'expirado') && podeInstalar && (
+        {(estado === 'liberado' || estado === 'entregue' || estado === 'expirado') && podeInstalar && (
           <div className="surface rounded-2xl p-5 mt-5 text-left flex items-start gap-3">
             <Download size={20} className="text-primary shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
