@@ -1,17 +1,20 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { storage } from '../lib/storage';
-import { formatDateBR } from '../lib/formatters';
+import { formatDateBR, horaBR } from '../lib/formatters';
 import type { EventItem, Registration } from '../lib/storage';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
 import { EditPartnerModal } from '../components/Admin/EditPartnerModal';
 import { NewPartnerModal } from '../components/Admin/NewPartnerModal';
 import { ConfirmModal } from '../components/Admin/ConfirmModal';
-import { Calendar, Users, Settings, Trash2, Search as SearchIcon, Building2, Mail } from 'lucide-react';
+import { Calendar, Users, Settings, Trash2, Search as SearchIcon, Building2, Mail, Flame, CheckCircle2 } from 'lucide-react';
 import { Input } from '../components/ui/Input';
 import { cn } from '../lib/utils';
 import type { AppProfile } from '../lib/storage';
+import { ouvirDesafios, marcarEntregue, ouvirAbertura, definirAbertura } from '../lib/storage/desafios';
+import { TAMANHO_GRUPO } from '../lib/desafio';
+import type { DesafioMesa } from '../lib/desafio';
 import { httpsCallable } from 'firebase/functions';
 import { getFunctionsInstance } from '../lib/firebase';
 import { initializeApp } from 'firebase/app';
@@ -37,7 +40,11 @@ export const AdminDashboard = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [profiles, setProfiles] = useState<AppProfile[]>([]);
-  const [activeTab, setActiveTab] = useState<'events' | 'partners'>('events');
+  const [activeTab, setActiveTab] = useState<'events' | 'partners' | 'desafios'>('events');
+  const [desafios, setDesafios] = useState<DesafioMesa[]>([]);
+  const [entregando, setEntregando] = useState('');
+  const [desafioAberto, setDesafioAberto] = useState(false);
+  const [abrindo, setAbrindo] = useState(false);
   const [query, setQuery] = useState('');
 
   // Partner Form State
@@ -119,6 +126,45 @@ export const AdminDashboard = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Mesas do Desafio da Kombi ao vivo: a mesa que fecha os 5 aparece aqui na hora,
+  // sem recarregar. A coleção é pequena (uma por adesivo impresso).
+  useEffect(() => {
+    if (currentUser?.role !== 'admin') return;
+    return ouvirDesafios(setDesafios);
+  }, [currentUser]);
+
+  useEffect(() => ouvirAbertura(setDesafioAberto), []);
+
+  // Nome de quem ganhou: os perfis já estão carregados nesta tela.
+  // ponytail: perfis legados têm id != uid — nesses casos cai no uid mesmo.
+  const nomeDe = (uid: string) => profiles.find(p => p.id === uid)?.name || uid;
+
+  const handleAbertura = async (aberto: boolean) => {
+    setAbrindo(true);
+    try {
+      await definirAbertura(aberto);
+      toast.success(aberto ? 'Desafio no ar — todas as mesas liberadas.' : 'Desafio encerrado.');
+    } catch (error) {
+      console.error('Erro ao mudar a abertura do desafio:', error);
+      toast.error('Não deu pra mudar o estado do desafio.');
+    } finally {
+      setAbrindo(false);
+    }
+  };
+
+  const handleEntregar = async (mesa: string) => {
+    setEntregando(mesa);
+    try {
+      await marcarEntregue(mesa);
+      toast.success('Entrega registrada — o comprovante da mesa foi queimado.');
+    } catch (error) {
+      console.error('Erro ao marcar entrega:', error);
+      toast.error('Não deu pra registrar a entrega.');
+    } finally {
+      setEntregando('');
+    }
+  };
 
   const handleDelete = async (id: string) => {
     setConfirmModal({
@@ -248,6 +294,13 @@ export const AdminDashboard = () => {
 
   const totalRegistrations = registrations.length;
 
+  // Fila da Kombi, mais recente primeiro. Não depende de relógio: a mesa vencedora é
+  // queimada, então "fechou os 5 e ainda não recebeu" já é a fila inteira.
+  const porMaisRecente = (a: DesafioMesa, b: DesafioMesa) => (b.liberadoEmMs ?? 0) - (a.liberadoEmMs ?? 0);
+  const ganhou = (m: DesafioMesa) => m.membros.length >= TAMANHO_GRUPO;
+  const aEntregar = desafios.filter(m => ganhou(m) && !m.entregueEmMs).sort(porMaisRecente);
+  const entregues = desafios.filter(m => ganhou(m) && m.entregueEmMs).sort(porMaisRecente);
+
   return (
     <>
       <div ref={containerRef} className="min-h-screen bg-background pb-28 pt-8 px-4 relative">
@@ -306,9 +359,24 @@ export const AdminDashboard = () => {
             <Building2 size={16} />
             Parceiros
           </button>
+          <button
+            onClick={() => setActiveTab('desafios')}
+            className={cn(
+              "flex-1 py-3.5 rounded-xl font-sans font-semibold text-sm transition-colors duration-200 flex items-center justify-center gap-2 border cursor-pointer",
+              activeTab === 'desafios'
+                ? "bg-accent/10 text-accent border-accent/30"
+                : "surface text-textMuted hover:text-textLight"
+            )}
+          >
+            <Flame size={16} />
+            Desafios
+            {aEntregar.length > 0 && (
+              <span className="font-display text-base leading-none text-accent">{aEntregar.length}</span>
+            )}
+          </button>
         </div>
 
-        <div className="relative mb-4 admin-anim z-10">
+        <div className={cn("relative mb-4 admin-anim z-10", activeTab === 'desafios' && "hidden")}>
           <Input
             placeholder={activeTab === 'events' ? "Buscar eventos..." : "Buscar parceiros..."}
             value={query}
@@ -318,7 +386,82 @@ export const AdminDashboard = () => {
           <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-primary" size={18} />
         </div>
 
-        {activeTab === 'events' ? (
+        {activeTab === 'desafios' ? (
+          <div className="relative z-10 space-y-6">
+            <div className="surface rounded-2xl p-5 flex items-center gap-4 flex-wrap">
+              <div className="flex-1 min-w-0">
+                <h2 className="font-display text-lg font-semibold text-textLight">
+                  {desafioAberto ? 'Desafio no ar' : 'Desafio fechado'}
+                </h2>
+                <p className="text-xs text-textMuted mt-1">
+                  {desafioAberto
+                    ? 'Todas as mesas com adesivo estão jogando. Feche quando o estoque acabar.'
+                    : 'Ninguém consegue começar. Abra na hora de soltar os QR Codes.'}
+                </p>
+              </div>
+              <Button
+                variant={desafioAberto ? 'secondary' : 'primary'}
+                size="sm"
+                className="rounded-xl"
+                loading={abrindo}
+                onClick={() => handleAbertura(!desafioAberto)}
+              >
+                {desafioAberto ? 'Encerrar desafio' : 'Liberar desafio'}
+              </Button>
+            </div>
+
+            <div>
+              <h2 className="font-display text-lg font-semibold text-textLight mb-1">Refrigerante liberado</h2>
+              <p className="text-xs text-textMuted mb-4">
+                A mesa aparece aqui assim que fecha os 5. Marque a entrega e o comprovante some das cinco telas.
+              </p>
+              {aEntregar.length === 0 ? (
+                <p className="text-sm text-textMuted surface rounded-2xl p-5">Nenhuma mesa esperando.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {aEntregar.map(m => (
+                    <div key={m.mesa} className="surface p-5 rounded-2xl flex flex-col gap-3 admin-anim shadow-sm text-left border border-success/30">
+                      <div className="flex justify-between items-baseline gap-2">
+                        <h3 className="font-display font-semibold text-base text-textLight capitalize">{m.mesa.replace(/-/g, ' ')}</h3>
+                        <span className="text-xs text-textMuted">{m.liberadoEmMs ? horaBR(m.liberadoEmMs) : '--:--'}</span>
+                      </div>
+                      <ul className="text-sm text-textLight space-y-1">
+                        {m.membros.map(uid => <li key={uid} className="truncate">{nomeDe(uid)}</li>)}
+                      </ul>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="rounded-xl"
+                        loading={entregando === m.mesa}
+                        onClick={() => handleEntregar(m.mesa)}
+                      >
+                        Entregue
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h2 className="font-display text-lg font-semibold text-textLight mb-4">Já entregues ({entregues.length})</h2>
+              {entregues.length === 0 ? (
+                <p className="text-sm text-textMuted surface rounded-2xl p-5">Nada entregue ainda.</p>
+              ) : (
+                <div className="space-y-2">
+                  {entregues.map(m => (
+                    <div key={m.mesa} className="surface rounded-xl px-4 py-3 flex items-center gap-3 text-sm">
+                      <CheckCircle2 size={16} className="text-success shrink-0" />
+                      <span className="font-semibold text-textLight capitalize shrink-0">{m.mesa.replace(/-/g, ' ')}</span>
+                      <span className="text-textMuted truncate flex-1">{m.membros.map(nomeDe).join(', ')}</span>
+                      <span className="text-xs text-textMuted shrink-0">{m.entregueEmMs ? horaBR(m.entregueEmMs) : ''}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : activeTab === 'events' ? (
           <>
             <div className="flex justify-between items-center mb-4 admin-anim relative z-10 flex-wrap gap-2">
               <h2 className="font-display text-lg font-semibold text-textLight">Gerenciar eventos</h2>

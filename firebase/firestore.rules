@@ -259,11 +259,24 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Interruptor do Desafio da Kombi, ligado pelo admin no painel: leitura pública
+    // (a tela precisa explicar que está fechado antes mesmo do login), escrita só admin.
+    match /config/desafio {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Desafio da Kombi: UM documento por mesa (id = mesa). Grupo de 5 em 3 minutos.
     // Prazo (3 min) e carência (mais 5 min até a mesa reabrir) são contados pelo
     // relógio do SERVIDOR a partir de iniciadoEm — o cliente não estica o tempo,
     // não reabre a mesa antes da hora e só consegue adicionar a si mesmo ao grupo.
     match /desafios/{mesa} {
+      // O desafio só roda quando o admin liga no painel. Documento ausente ou
+      // aberto != true = fechado: o padrão seguro é ninguém jogar.
+      function jaAbriu() {
+        return exists(/databases/$(database)/documents/config/desafio)
+          && get(/databases/$(database)/documents/config/desafio).data.aberto == true;
+      }
       // Quem já ganhou (carimbo gravado pela function onDesafioLiberado) não joga de novo.
       function jaGanhou() {
         return exists(/databases/$(database)/documents/desafioGanhadores/$(request.auth.uid));
@@ -271,6 +284,7 @@ service cloud.firestore {
       function inicioValido() {
         let d = request.resource.data;
         return isAuthed()
+          && jaAbriu()
           && !jaGanhou()
           && d.mesa == mesa
           && d.liderId == request.auth.uid
@@ -287,7 +301,8 @@ service cloud.firestore {
         // Entrar no grupo: dentro do prazo, com vaga, sem estar nele, adicionando só a si
         // mesmo no fim da lista; quem completa o 5º carimba liberadoEm com a hora do servidor.
         (
-          !jaGanhou()
+          jaAbriu()
+          && !jaGanhou()
           && request.time < resource.data.iniciadoEm + duration.value(3, 'm')
           && resource.data.membros.size() < 5
           && !(request.auth.uid in resource.data.membros)
@@ -297,6 +312,15 @@ service cloud.firestore {
             (request.resource.data.membros.size() < 5 && !('liberadoEm' in request.resource.data))
             || (request.resource.data.membros.size() == 5 && request.resource.data.liberadoEm == request.time)
           )
+        ) ||
+        // Entrega do refrigerante: só admin, só em mesa que ganhou, só o carimbo e uma
+        // vez só — é o que impede o mesmo grupo de retirar duas vezes com a tela verde.
+        (
+          isAdmin()
+          && resource.data.membros.size() >= 5
+          && !('entregueEm' in resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['entregueEm'])
+          && request.resource.data.entregueEm == request.time
         )
       );
       allow delete: if isAdmin();

@@ -15,6 +15,10 @@ export const formatDateBR = (dateStr: string): string => {
   return day ? `${day}/${month}/${year}` : dateStr;
 };
 
+/** Timestamp em ms → "21:35". */
+export const horaBR = (ms: number): string =>
+  new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
 /** Data ISO curta → "12 de agosto de 2026". UTC de propósito: a data do evento não tem hora. */
 export const formatDateExtenso = (dateStr: string): string => {
   const d = new Date(dateStr);
