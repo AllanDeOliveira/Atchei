@@ -34,6 +34,7 @@ export const InstallGuideModal = ({ open, onClose }: { open: boolean; onClose: (
         <p className="font-semibold text-textLight mb-1">No Safari / iPhone (iOS):</p>
         <p>1. Toque no botão de <strong>Compartilhar <Share size={12} className="inline text-primary" /></strong>.</p>
         <p>2. Role e toque em <strong>"Adicionar à Tela de Início"</strong>.</p>
+        <p>3. Abra o app instalado e ative as notificações no seu perfil. No iPhone, só o app instalado recebe lembretes.</p>
       </div>
     </div>
 

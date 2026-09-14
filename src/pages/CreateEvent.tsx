@@ -139,8 +139,7 @@ const CreateEventContent = () => {
 
       if (id) {
         try {
-          const events = await storage.getEvents();
-          const ev = events.find(e => e.id === id);
+          const ev = await storage.getEventById(id);
           if (ev) {
             reset({
               title: ev.title,

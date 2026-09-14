@@ -26,7 +26,7 @@ vi.mock('../lib/storage', () => ({
   STATUS_AGUARDANDO: 'Aguardando pagamento',
   STATUS_PAGO_WHATSAPP: 'Pago (WhatsApp)',
   storage: {
-    getEvents: vi.fn(),
+    getEventById: vi.fn(),
     getCurrentUser: vi.fn(),
     getProfileById: vi.fn(),
     getUserRegistration: vi.fn(),
@@ -83,7 +83,7 @@ describe('EventDetails Page', () => {
       logout: vi.fn(),
       updateUser: vi.fn(),
     });
-    vi.mocked(storage.getEvents).mockResolvedValue([mockEvent]);
+    vi.mocked(storage.getEventById).mockResolvedValue(mockEvent);
     vi.mocked(storage.getCurrentUser).mockReturnValue(mockUser);
     vi.mocked(storage.getProfileById).mockResolvedValue({
       id: 'creator-1',

@@ -8,7 +8,10 @@ export const fileStore = {
       const currentUser = authStore.getCurrentUser();
       const userId = currentUser ? currentUser.id : 'guest';
       const fileRef = ref(storageRef, `${folder}/${userId}/${Date.now()}_${file.name}`);
-      await uploadBytes(fileRef, file);
+      // O nome leva timestamp, então o objeto nunca muda: cache de 1 ano no aparelho.
+      // Sem isso o Storage responde max-age=0 e cada abertura do feed baixa todos os
+      // pôsteres de novo, pagando egress a cada visita.
+      await uploadBytes(fileRef, file, { cacheControl: 'public, max-age=31536000, immutable' });
       const url = await getDownloadURL(fileRef);
       return url;
     } catch (error) {

@@ -96,8 +96,9 @@ export const EventDetails = () => {
     if (id) {
       setIsLoading(true);
       try {
-        const allEvents = await storage.getEvents();
-        const found = allEvents.find((e: EventItem) => e.id === id);
+        // Por id: listar a coleção para achar um custava 50 leituras por visita
+        // e nem encontrava eventos além do 50º cadastrado.
+        const found = await storage.getEventById(id);
         const currentUser = storage.getCurrentUser();
         if (found && found.isTestEvent && currentUser?.role !== 'admin') {
           setEvent(null);
