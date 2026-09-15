@@ -23,13 +23,18 @@ jobs:
       - run: npm ci
 
       # O .env da raiz é gitignorado — o conteúdo vem do secret do repositório.
-      # As functions deployam SEM .env de propósito: as variáveis dele são só do
-      # Asaas (em stand-by, futuro incerto) e sem elas tudo cai em padrão seguro
-      # (sandbox / taxa 0). Se o Asaas voltar, criar um secret FUNCTIONS_ENV aqui.
       - name: Restaurar .env do front
         env:
           VITE_ENV: ${{ secrets.VITE_ENV }}
         run: printf '%s' "$VITE_ENV" > .env
+
+      # O deploy NÃO limpa variável de ambiente antiga de uma function: duas functions
+      # deployadas à mão com APP_BASE_URL=http://localhost:5173 ficaram assim por vários
+      # deploys do CI, e quem clicava num link compartilhado era mandado para localhost
+      # (2026-09-15). Gravar o .env aqui torna o ambiente das functions determinístico a
+      # cada deploy. Só valor público; segredo de verdade vive no Secret Manager.
+      - name: Gravar .env das functions
+        run: printf 'APP_BASE_URL=https://atchei.app.br\n' > functions/.env
 
       - name: Testes do app
         run: npm run test:run
