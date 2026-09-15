@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { InstallAppCard, DISMISS_KEY } from './InstallAppCard';
+import { InstallAppCard } from './InstallAppCard';
+import { INSTALL_DISMISS_KEY as DISMISS_KEY } from '../lib/storageKeys';
 import { INSTALL_RESOLVED_EVENT } from '../hooks/useInstallCardPending';
 import { COOKIE_CONSENT_KEY } from '../lib/firebase';
 

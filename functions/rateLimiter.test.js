@@ -72,10 +72,8 @@ describe('rateLimiter', () => {
 
   describe('LIMITS', () => {
     it('exporta constantes de limites corretas', () => {
-      expect(LIMITS.CRIAR_COBRANCA).toEqual({ max: 5, windowSec: 60 });
-      expect(LIMITS.CRIAR_COBRANCA_HORA).toEqual({ max: 20, windowSec: 3600 });
       expect(LIMITS.ADMIN_RESET).toEqual({ max: 3, windowSec: 300 });
-      expect(LIMITS.WEBHOOK).toEqual({ max: 60, windowSec: 60 });
+      expect(LIMITS.RESET_SENHA).toEqual({ max: 3, windowSec: 900 });
     });
   });
 

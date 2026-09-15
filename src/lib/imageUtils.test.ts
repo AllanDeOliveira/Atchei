@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isVideoUrl, dataURLtoBlob } from './imageUtils';
+import { isVideoUrl } from './imageUtils';
 
 describe('imageUtils', () => {
   describe('isVideoUrl', () => {
@@ -13,15 +13,6 @@ describe('imageUtils', () => {
       expect(isVideoUrl('')).toBe(false);
       expect(isVideoUrl('https://example.com/banner.jpg')).toBe(false);
       expect(isVideoUrl('https://example.com/photo.png')).toBe(false);
-    });
-  });
-
-  describe('dataURLtoBlob', () => {
-    it('deve converter base64 data URL para um objeto Blob', () => {
-      const base64Data = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-      const blob = dataURLtoBlob(base64Data);
-      expect(blob).toBeInstanceOf(Blob);
-      expect(blob.type).toBe('image/png');
     });
   });
 });

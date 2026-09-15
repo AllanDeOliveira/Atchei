@@ -130,7 +130,7 @@ const CreateEventContent = () => {
       if (userRole === 'admin') {
         try {
           const allProfiles = await storage.getProfiles();
-          // Perfis profissionais; docs legados ('atletica'/'estabelecimento') contam como profissional.
+          // Perfis profissionais (parceiros): tudo que não é conta pessoal nem admin.
           setProfiles(allProfiles.filter(p => p.type !== 'user' && p.type !== 'admin'));
         } catch (error) {
           console.error("Erro ao carregar perfis:", error);

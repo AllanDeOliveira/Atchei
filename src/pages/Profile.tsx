@@ -16,7 +16,7 @@ import { ParticipantsModal } from '../components/Profile/ParticipantsModal';
 import { ManualTicketModal } from '../components/Profile/ManualTicketModal';
 import type { ManualTicketData } from '../components/Profile/ManualTicketModal';
 import { useAuth } from '../contexts/AuthContext';
-import { compressImage, dataURLtoBlob } from '../lib/imageUtils';
+import { compressImage } from '../lib/imageUtils';
 import toast from 'react-hot-toast';
 
 import { formatCPF, formatPhone, mapsDirUrl, waMeUrl } from '../lib/formatters';
@@ -86,13 +86,9 @@ export const Profile = () => {
           toast.error("A imagem é muito grande. Escolha uma foto de até 10MB.");
           return;
         }
-        const compressed = await compressImage(file, 400, 400, 0.7);
-        if (compressed) {
-          const blob = dataURLtoBlob(compressed);
-          const compressedFile = new File([blob], `profile_${user?.id || 'partner'}.jpg`, { type: 'image/jpeg' });
-          const url = await storage.uploadFile(compressedFile, 'profiles');
-          setEditData(prev => ({ ...prev, imageUrl: url }));
-        }
+        const jpeg = await compressImage(file, 400, 400, 0.7, `profile_${user?.id || 'partner'}.jpg`);
+        const url = await storage.uploadFile(jpeg, 'profiles');
+        setEditData(prev => ({ ...prev, imageUrl: url }));
       } catch (error) {
         console.error("Erro ao fazer upload da foto de perfil:", error);
         toast.error("Erro ao enviar imagem de perfil.");

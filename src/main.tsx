@@ -3,11 +3,6 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.tsx';
 import { registerSW } from 'virtual:pwa-register';
-import { migrateLegacyStorageKeys } from './lib/storageKeys';
-
-// Renomeia as chaves "@chain:*" para "@atchei:*". Precisa rodar antes do primeiro
-// render: o AuthContext lê a sessão logo na montagem e não acharia a chave antiga.
-migrateLegacyStorageKeys();
 
 // Valida variáveis de ambiente obrigatórias antes do início da renderização do app
 // Evita falhas silenciosas difíceis de depurar quando o arquivo .env está incompleto

@@ -1,17 +1,7 @@
 const logger = require("firebase-functions/logger");
 
-/**
- * Escapa strings para uso seguro em atributos e conteúdo HTML.
- */
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
+// Mesma função dos e-mails; uma implementação só.
+const { escaparHtml: escapeHtml } = require('./email');
 
 /**
  * Formata data no padrão brasileiro dd/mm/aaaa.

@@ -97,7 +97,6 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
 VITE_FIREBASE_MEASUREMENT_ID=
 VITE_FIREBASE_VAPID_KEY=     # opcional — sem ela, push fica desativado
-VITE_USE_EMULATORS=          # 'true' para falar com os emuladores
 ```
 
 E um `.env.local` (gitignorado) com o token de depuração do App Check da sua máquina, registrado uma vez no console (Firebase → App Check → Apps → tokens de depuração):
@@ -108,7 +107,7 @@ VITE_APPCHECK_DEBUG_TOKEN=
 
 Para as functions, um `functions/.env` (veja `functions/.env.example`): `APP_BASE_URL`, `RESEND_API_KEY`, `EMAIL_FROM`. Em produção esses dois últimos vêm do **Secret Manager**, não do `.env`.
 
-> ⚠️ **Não existe backend de desenvolvimento.** Sem `VITE_USE_EMULATORS=true`, o `npm run dev` fala com o **mesmo projeto Firebase da produção** — qualquer dado que você mexer no localhost é mexida real.
+> **Não existe backend de desenvolvimento.** O `npm run dev` fala com o **mesmo projeto Firebase da produção** — qualquer dado que você mexer no localhost é mexida real.
 
 ```bash
 npm run dev          # Vite em http://localhost:5173

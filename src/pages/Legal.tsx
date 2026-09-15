@@ -41,9 +41,8 @@ export const Privacidade = () => (
     <h2>1. Quais dados coletamos</h2>
     <ul>
       <li><strong>Conta:</strong> nome, data de nascimento (para verificação da idade mínima de 18 anos), e-mail, senha (armazenada de forma criptografada pelo provedor de autenticação), tipo de perfil (pessoal ou profissional) e, se você adicionar, foto e descrição.</li>
-      <li><strong>Compra de ingresso via Pix:</strong> nome, CPF, e-mail e telefone celular, necessários para emissão da cobrança, identificação do ingresso e contato sobre a compra.</li>
+      <li><strong>Compra de ingresso:</strong> nome, CPF, e-mail e telefone celular, necessários para identificação do ingresso e contato sobre a compra.</li>
       <li><strong>Confirmação de presença em evento gratuito:</strong> nome, e-mail e telefone celular.</li>
-      <li><strong>Organizadores que recebem pagamentos:</strong> CPF/CNPJ, celular e e-mail, exigidos pela instituição de pagamento para cadastro do recebedor.</li>
       <li><strong>Contatos de venda (promoters):</strong> nome e número de WhatsApp, informados pelo organizador do evento.</li>
       <li><strong>Validação de ingresso (portaria):</strong> registro de check-in (ingresso, data/hora e conta que validou). A câmera é usada apenas para leitura do QR Code — nenhuma imagem é gravada.</li>
       <li><strong>Notificações:</strong> token de push do dispositivo, se você ativar notificações.</li>
@@ -65,7 +64,7 @@ export const Privacidade = () => (
     <h2>2. Para que usamos e com quais bases legais</h2>
     <ul>
       <li><strong>Prestar o serviço</strong> (criar conta, publicar eventos, emitir e validar ingressos, confirmar presença) — execução de contrato (art. 7º, V, LGPD).</li>
-      <li><strong>Processar pagamentos e emitir comprovantes</strong> — execução de contrato e cumprimento de obrigação legal/regulatória (art. 7º, II e V).</li>
+      <li><strong>Registrar intenções de compra e emitir ingressos</strong> após a confirmação do pagamento pelo organizador — execução de contrato (art. 7º, V).</li>
       <li><strong>Segurança, prevenção a fraudes e abuso</strong> (rate limiting, App Check, logs) — legítimo interesse (art. 7º, IX) e garantia da prevenção à fraude.</li>
       <li><strong>Notificações push</strong> — consentimento (art. 7º, I), revogável a qualquer momento nas configurações do dispositivo.</li>
       <li><strong>Métricas e melhoria da Plataforma</strong> — legítimo interesse, com dados agregados sempre que possível.</li>
@@ -74,7 +73,6 @@ export const Privacidade = () => (
     <h2>3. Com quem compartilhamos</h2>
     <p>Não vendemos dados pessoais. Compartilhamos apenas com:</p>
     <ul>
-      <li><strong>Asaas Gestão Financeira S.A.</strong> — processamento de pagamentos Pix e repasse aos organizadores (nome, CPF, e-mail do comprador; dados cadastrais do recebedor).</li>
       <li><strong>Google LLC (Firebase)</strong> — infraestrutura de autenticação, banco de dados, hospedagem, notificações e análise de uso.</li>
       <li><strong>Organizador do evento</strong> — recebe a lista de participantes do próprio evento (nome, CPF quando aplicável, e-mail e status do ingresso) para controle de entrada. O organizador é responsável pelo tratamento que fizer desses dados fora da Plataforma, na condição de controlador próprio.</li>
       <li><strong>Autoridades públicas</strong> — quando houver obrigação legal ou ordem judicial.</li>
@@ -90,7 +88,7 @@ export const Privacidade = () => (
     <h2>5. Por quanto tempo guardamos</h2>
     <ul>
       <li><strong>Dados de conta:</strong> enquanto a conta existir; após exclusão, apenas pelo prazo necessário ao cumprimento de obrigações legais.</li>
-      <li><strong>Registros de pagamento:</strong> 5 anos, para fins fiscais e de defesa em processos (arts. 15 e 16 da LGPD).</li>
+      <li><strong>Registros de ingressos emitidos:</strong> 5 anos, para defesa em processos (arts. 15 e 16 da LGPD).</li>
       <li><strong>Registros de acesso à aplicação:</strong> 6 meses, conforme art. 15 do Marco Civil da Internet (Lei nº 12.965/2014).</li>
       <li><strong>Inscrições e check-ins:</strong> até a prestação de contas do evento ao organizador e pelos prazos legais aplicáveis.</li>
     </ul>
@@ -116,7 +114,7 @@ export const Privacidade = () => (
       Para excluir definitivamente sua conta, envie a solicitação pelo e-mail do Encarregado
       indicado acima, a partir do e-mail cadastrado na conta. Confirmada a identidade,
       eliminaremos ou anonimizaremos seus dados pessoais, ressalvados os de guarda obrigatória
-      (registros de pagamento por 5 anos e registros de acesso por 6 meses), que ficam bloqueados
+      (registros de ingressos por 5 anos e registros de acesso por 6 meses), que ficam bloqueados
       para qualquer outro uso até o fim do prazo legal.
     </p>
 
@@ -171,7 +169,7 @@ export const QuemSomos = () => (
     <h2>O que oferecemos</h2>
     <ul>
       <li><strong>Feed de eventos da cidade:</strong> tudo o que vai acontecer, organizado por categoria e data.</li>
-      <li><strong>Ingressos por Pix:</strong> pagamento instantâneo e ingresso com QR Code na hora, direto no app.</li>
+      <li><strong>Ingressos:</strong> intenção de compra pelo WhatsApp do organizador e ingresso com QR Code no app assim que o pagamento é confirmado.</li>
       <li><strong>Confirmação de presença:</strong> em eventos gratuitos, garanta sua vaga com um toque.</li>
       <li><strong>Recuperação fácil:</strong> perdeu o ingresso? Recupere pelo e-mail ou CPF a qualquer momento.</li>
     </ul>
@@ -188,7 +186,7 @@ export const QuemSomos = () => (
     <ul>
       <li><strong>Feito para o interior:</strong> pensado para a realidade de Cáceres e região, não adaptado dos grandes centros.</li>
       <li><strong>Simples de verdade:</strong> criar um evento leva minutos; comprar, segundos.</li>
-      <li><strong>Segurança:</strong> pagamentos processados por instituição regulada, dados protegidos conforme a LGPD e ingresso validado uma única vez.</li>
+      <li><strong>Segurança:</strong> dados protegidos conforme a LGPD e ingresso validado uma única vez.</li>
     </ul>
 
     <p>
@@ -212,9 +210,9 @@ export const Termos = () => (
     <p>
       O Atchei é uma plataforma de divulgação de eventos, venda de ingressos e controle de
       presença. Atuamos como <strong>intermediários</strong> entre organizadores e participantes:
-      os eventos são criados, realizados e são de responsabilidade dos seus organizadores. Os
-      pagamentos são processados pela instituição de pagamento parceira (Asaas), com repasse
-      direto ao organizador.
+      os eventos são criados, realizados e são de responsabilidade dos seus organizadores. O
+      pagamento é combinado e feito diretamente entre participante e organizador, pelo
+      WhatsApp; a Plataforma não processa pagamentos.
     </p>
 
     <h2>2. Conta</h2>
@@ -227,7 +225,7 @@ export const Termos = () => (
     <h2>3. Organizadores</h2>
     <ul>
       <li>São responsáveis pela veracidade das informações do evento (data, local, preço, classificação etária) e pela sua realização.</li>
-      <li>Para receber pagamentos, devem completar o cadastro de recebedor junto à instituição de pagamento, fornecendo os dados exigidos por ela.</li>
+      <li>Para vender ingressos, devem informar um WhatsApp de contato no evento e confirmar na Plataforma os pagamentos recebidos, para que o ingresso seja emitido.</li>
       <li>Ao acessar a lista de participantes, o organizador assume a condição de controlador desses dados fora da Plataforma e se obriga a tratá-los conforme a LGPD — utilizá-los exclusivamente para a gestão do próprio evento, sem revenda ou uso para fins não relacionados.</li>
       <li>O cancelamento do evento obriga o organizador a reembolsar integralmente os ingressos vendidos.</li>
     </ul>
@@ -242,9 +240,9 @@ export const Termos = () => (
 
     <h2>5. Pagamentos, cancelamentos e reembolsos</h2>
     <ul>
-      <li>Os pagamentos são processados pela Asaas; a Plataforma não armazena dados bancários do comprador.</li>
+      <li>A Plataforma não processa pagamentos nem armazena dados bancários: o pagamento é feito diretamente ao organizador, que confirma o recebimento na Plataforma.</li>
       <li><strong>Arrependimento:</strong> em compras online, o participante pode desistir em até 7 dias corridos após a compra (art. 49 do CDC), desde que a solicitação ocorra antes da realização do evento.</li>
-      <li><strong>Evento cancelado ou adiado:</strong> reembolso integral, processado pelo organizador por meio da Plataforma/instituição de pagamento.</li>
+      <li><strong>Evento cancelado ou adiado:</strong> reembolso integral, de responsabilidade do organizador, pelo mesmo meio em que o pagamento foi feito.</li>
       <li>Taxas de serviço, quando aplicáveis, são informadas antes da conclusão da compra.</li>
     </ul>
 

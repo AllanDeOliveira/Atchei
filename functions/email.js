@@ -8,15 +8,15 @@ const logger = require("firebase-functions/logger");
  * URL de ação pelo Console. Gerando o link no servidor e enviando o e-mail daqui,
  * o template passa a ser nosso e o link aponta para /auth/action do próprio app.
  *
- * Usa a API HTTP do Resend em vez de SMTP + nodemailer: o projeto já fala com o
- * Asaas por `fetch` sem SDK, e assim não entra dependência nova nas functions.
+ * Usa a API HTTP do Resend em vez de SMTP + nodemailer: um `fetch`, nenhuma
+ * dependência nova nas functions.
  */
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 
 /** Escapa texto que vai para dentro do HTML do e-mail. */
 const escaparHtml = (valor) =>
-  String(valor)
+  String(valor ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

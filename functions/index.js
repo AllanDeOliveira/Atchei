@@ -23,7 +23,7 @@ const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
 const EMAIL_FROM = defineSecret("EMAIL_FROM");
 
 // Envia uma notificação push (FCM) para todos os dispositivos de um usuário.
-// Nunca lança erro: falha de notificação não pode comprometer o processamento do pagamento.
+// Nunca lança erro: falha de notificação não pode derrubar o gatilho que a disparou.
 async function enviarNotificacaoPush(userId, title, body, link) {
     if (!userId) return;
     try {
@@ -234,10 +234,6 @@ exports.criarIngressoTeste = onCall({ cors: true, enforceAppCheck: true }, async
                 valorTotal += price * qty;
                 itensComprados.push({ id: item.id, name, quantity: qty });
             }
-        } else {
-            const precoStr = String(eventData.pixTicketPrice ?? '')
-                .replace(/[^\d.,]/g, '').replace(/\.(?=\d{3})/g, '').replace(',', '.');
-            valorTotal = Number(precoStr) || 0;
         }
 
         const callerName = request.auth.token.name || callerEmail || 'Administrador (Teste)';
@@ -304,30 +300,6 @@ exports.criarIngressoTeste = onCall({ cors: true, enforceAppCheck: true }, async
         logger.error('Erro ao criar ingresso de teste:', error);
         throw new HttpsError('internal', 'Erro ao criar ingresso de teste.');
     }
-});
-
-// Upgrade pessoal → profissional. Fica no backend porque as rules proíbem o dono de
-// alterar o próprio `type` (evita auto-promoção a admin); aqui a transição é controlada.
-exports.tornarProfissional = onCall({ cors: true, enforceAppCheck: true }, async (request) => {
-    const uid = request.auth?.uid;
-    if (!uid) throw new HttpsError('unauthenticated', 'É preciso estar logado.');
-
-    const ref = db.collection('profiles').doc(uid);
-    const snap = await ref.get();
-    if (!snap.exists) {
-        // Conta antiga sem doc de perfil: cria já como profissional.
-        await ref.set({
-            name: request.auth.token.name || 'Usuário',
-            email: request.auth.token.email || '',
-            type: 'profissional',
-            mustChangePassword: false,
-        });
-    } else if (snap.data().type === 'user') {
-        await ref.update({ type: 'profissional' });
-    }
-    // Quem já é profissional/admin recebe ok idempotente.
-    logger.info(`Perfil ${uid} atualizado para profissional.`);
-    return { success: true };
 });
 
 exports.onRegistrationCreated = onDocumentCreated("registrations/{registrationId}", async (event) => {
@@ -422,7 +394,6 @@ exports.onRegistrationConfirmed = onDocumentUpdated("registrations/{registration
     }
 });
 
-// Renderizador de Open Graph / WhatsApp Preview para links /e/:id
 // Desafio da Kombi: quando a mesa fecha 5, carimba os 5 em desafioGanhadores/{uid}
 // (1 vitória por conta — as rules recusam quem tem carimbo). Só a function escreve
 // nessa coleção; dispara uma vez por mesa (transição de <5 para 5).
@@ -447,6 +418,7 @@ exports.onDesafioLiberado = onDocumentUpdated("desafios/{mesa}", async (event) =
     }
 });
 
+// Open Graph para links /e/:id (prévia no WhatsApp); a lógica vive em ogPreview.js.
 exports.renderEventOpenGraph = onRequest({ cors: true }, async (req, res) => {
     await handleOgPreview(req, res, db);
 });
@@ -459,9 +431,6 @@ exports.lembreteEventosD1 = onSchedule({
     const tomorrow = getTomorrowDateString(new Date(), "America/Sao_Paulo");
     await processarLembretesD1(db, tomorrow, enviarNotificacaoPush);
 });
-
-
-
 
 // Reset de senha, fluxo próprio: geramos o link no servidor com o Admin SDK, extraímos
 // o oobCode e o remontamos sobre /auth/action do próprio app (template e tela nossos,

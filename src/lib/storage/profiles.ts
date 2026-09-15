@@ -20,11 +20,11 @@ export const profileStore = {
   },
 
   // Diretório público (busca de visitante): só perfis profissionais — as rules negam
-  // listagem irrestrita sem login; docs legados ('atletica'/'estabelecimento') contam.
+  // listagem irrestrita sem login.
   getPublicProfiles: async (limitCount: number = 50): Promise<AppProfile[]> => {
     const q = query(
       collection(db, 'profiles'),
-      where('type', 'in', ['profissional', 'atletica', 'estabelecimento']),
+      where('type', '==', 'profissional'),
       limit(limitCount)
     );
     const querySnapshot = await getDocs(q);

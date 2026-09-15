@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import { getFunctions } from 'firebase/functions';
 import { initializeAnalytics, isSupported, setConsent } from 'firebase/analytics';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import type { Functions } from 'firebase/functions';
@@ -79,17 +79,11 @@ isSupported().then((ok) => {
   if (ok) initializeAnalytics(app, { config: { cookie_domain: 'none' } });
 });
 
-// Instância única do Functions, com hookup do emulador em dev local.
-// Lazy para que testes que mockam os módulos do Firebase não a inicializem.
+// Instância única do Functions. Lazy para que testes que mockam os módulos do
+// Firebase não a inicializem.
 let functionsInstance: Functions | null = null;
 export const getFunctionsInstance = (): Functions => {
-  if (!functionsInstance) {
-    functionsInstance = getFunctions(app);
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (isLocalhost && import.meta.env.VITE_USE_EMULATORS === 'true') {
-      connectFunctionsEmulator(functionsInstance, '127.0.0.1', 5001);
-    }
-  }
+  functionsInstance ??= getFunctions(app);
   return functionsInstance;
 };
 
