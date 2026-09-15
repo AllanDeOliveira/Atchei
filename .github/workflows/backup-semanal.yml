@@ -27,11 +27,15 @@ jobs:
   backup:
     name: Firestore + Auth + Storage, criptografado
     runs-on: ubuntu-latest
-    env:
-      GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-      DESTINO: ${{ runner.temp }}/backup
     steps:
       - uses: actions/checkout@v4
+
+      # O contexto `runner` não existe no `env` do job, só dentro de steps: por isso os
+      # caminhos vão para o GITHUB_ENV aqui e valem para todos os steps seguintes.
+      - name: Caminhos de trabalho
+        run: |
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+          echo "DESTINO=$RUNNER_TEMP/backup" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v4
         with:
