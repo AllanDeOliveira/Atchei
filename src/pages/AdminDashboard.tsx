@@ -21,6 +21,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { firebaseConfig } from '../lib/firebase';
 import toast from 'react-hot-toast';
+import { compressImage, dataURLtoBlob } from '../lib/imageUtils';
 
 
 // Gera senha temporária forte usando CSPRNG (não Math.random, que é previsível).
@@ -70,7 +71,12 @@ export const AdminDashboard = () => {
       }
       setIsUploading(true);
       try {
-        const url = await storage.uploadFile(file, 'profiles');
+        // Mesmo caminho da foto de perfil: 400 px e JPEG 0.7. Essa foto aparece no
+        // diretório público para todo visitante, e o bucket cobra por GB transferido.
+        const compressed = await compressImage(file, 400, 400, 0.7);
+        if (!compressed) throw new Error('compressImage devolveu vazio');
+        const jpeg = new File([dataURLtoBlob(compressed)], 'profile_partner.jpg', { type: 'image/jpeg' });
+        const url = await storage.uploadFile(jpeg, 'profiles');
         setNewPartner(prev => ({ ...prev, imageUrl: url }));
       } catch (err) {
         console.error(err);
