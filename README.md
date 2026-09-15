@@ -45,7 +45,7 @@ Os tipos legados `atletica` e `estabelecimento` foram fundidos em `profissional`
 ## 🛠️ Stack
 
 **Frontend** — React 19 · Vite 8 · TypeScript · Tailwind 3 · React Router 7 · Lucide
-`react-hook-form` + `zod` (formulário de evento) · `@vis.gl/react-google-maps` (Places) · `@zxing/browser` (leitura de QR) · `react-easy-crop` · `html-to-image` · `react-hot-toast` · `vite-plugin-pwa`
+`@vis.gl/react-google-maps` (Places) · `@zxing/browser` (leitura de QR) · `react-easy-crop` · `html-to-image` · `react-hot-toast` · `vite-plugin-pwa`
 
 **Backend** — Firebase: Authentication · Firestore · Cloud Storage · Cloud Functions gen2 (Node 22) · Cloud Messaging · App Check (reCAPTCHA v3) · Hosting · Analytics
 E-mail transacional via **Resend** (API HTTP, sem SDK). Google Maps Platform (Embed, JavaScript e Places).
