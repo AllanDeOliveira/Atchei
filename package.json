@@ -13,7 +13,6 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@hookform/resolvers": "^5.4.0",
     "@vis.gl/react-google-maps": "^1.8.3",
     "@zxing/browser": "^0.2.0",
     "@zxing/library": "^0.22.0",
@@ -24,11 +23,9 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-easy-crop": "^5.5.7",
-    "react-hook-form": "^7.76.1",
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.15.1",
-    "tailwind-merge": "^3.6.0",
-    "zod": "^4.4.3"
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -61,7 +61,7 @@ O scanner (`/validar/:eventId`) lê o QR Code (id do documento de inscrição) o
 | Roteamento | React Router | 7 | `BrowserRouter`, rotas em `src/App.tsx` |
 | Estilo | Tailwind CSS 3 + PostCSS/Autoprefixer | 3.4 | tema em `tailwind.config.js`; animações em CSS puro (`src/index.css`) |
 | Ícones | lucide-react | 1.x | |
-| Formulários | react-hook-form + zod + @hookform/resolvers | 7 / 4 | **só** no formulário de evento (`CreateEvent`); as demais telas validam na mão |
+| Formulários | nenhuma biblioteca | — | `useState` + validação em código (`src/lib/eventoForm.ts` no evento; as demais telas validam na mão) |
 | Mapas | @vis.gl/react-google-maps + Maps Embed API | 1.x | Places no cadastro de evento; iframe de embed na página do evento |
 | QR Code | @zxing/browser (+ @zxing/library como peer) | 0.2 | leitura na portaria |
 | Imagens | react-easy-crop, html-to-image, `src/lib/imageUtils.ts` | | recorte da capa, exportar ingresso, compressão client-side |

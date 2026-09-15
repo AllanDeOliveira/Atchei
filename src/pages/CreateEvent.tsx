@@ -1,6 +1,3 @@
-/* eslint-disable react-hooks/incompatible-library -- o `watch` do react-hook-form lê estado
-   mutável e o React Compiler pula o componente inteiro; o compilador não está no build,
-   então o aviso é só informativo. Em handlers, ler com `getValues`. */
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Input } from '../components/ui/Input';
@@ -14,10 +11,8 @@ import {
 } from 'lucide-react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import { useAuth } from '../contexts/AuthContext';
-import { useForm } from 'react-hook-form';
-import type { FieldErrors } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { EVENTO_VAZIO, validarEvento } from '../lib/eventoForm';
+import type { EventoForm } from '../lib/eventoForm';
 import toast from 'react-hot-toast';
 import type { Area } from 'react-easy-crop';
 import { getCroppedImg } from '../lib/imageUtils';
@@ -25,40 +20,6 @@ import { formatDateBR } from '../lib/formatters';
 import { DateTimePickerModal } from '../components/CreateEvent/DateTimePickerModal';
 import { LocationPickerModal } from '../components/CreateEvent/LocationPickerModal';
 import { ImageCropModal } from '../components/CreateEvent/ImageCropModal';
-
-const eventSchema = z.object({
-  title: z.string().min(3, "Mínimo 3 caracteres"),
-  date: z.string().min(1, "Data obrigatória"),
-  time: z.string().min(1, "Horário obrigatório"),
-  location: z.string().min(1, "Local obrigatório"),
-  address: z.string().min(1, "Endereço obrigatório"),
-  publicType: z.string().optional(),
-  category: z.string().optional(),
-  description: z.string().min(10, "A descrição deve ter no mínimo 10 caracteres"),
-  hasTickets: z.boolean(),
-  ticketPrice: z.string().optional(),
-  isTestEvent: z.boolean().optional(),
-  hasPresence: z.boolean().optional(),
-  // Teto total de participantes; string no form, convertido no submit. Vazio = sem limite.
-  maxParticipants: z.string().optional().refine(
-    v => !v || (/^\d+$/.test(v) && Number(v) > 0),
-    'O limite de participantes deve ser um número maior que zero'
-  ),
-  whatsappContacts: z.array(z.object({ name: z.string(), phone: z.string() })).optional(),
-  mediaUrls: z.array(z.string())
-}).refine(data => {
-  if (!data.hasTickets) return true;
-  if (data.whatsappContacts && data.whatsappContacts.length > 0) {
-    const firstPhone = data.whatsappContacts[0].phone.replace(/\D/g, '');
-    return firstPhone.length >= 10;
-  }
-  return false;
-}, {
-  message: "WhatsApp obrigatório para vendas (mín. 10 digitos)",
-  path: ["whatsappContacts"]
-});
-
-type EventFormValues = z.infer<typeof eventSchema>;
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
@@ -76,36 +37,16 @@ const CreateEventContent = () => {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
 
-  const { register, handleSubmit: formSubmit, watch, getValues, setValue, formState: { isSubmitting }, reset } = useForm<EventFormValues>({
-    resolver: zodResolver(eventSchema),
-    defaultValues: {
-      title: '',
-      date: '',
-      time: '',
-      publicType: 'Aberto',
-      category: 'Festa',
-      description: '',
-      location: 'Centro',
-      address: '',
-      mediaUrls: [],
-      hasTickets: false,
-      ticketPrice: '',
-      isTestEvent: false,
-      hasPresence: false,
-      maxParticipants: '',
-      whatsappContacts: [{ name: '', phone: '' }]
-    }
-  });
-
-  const mediaUrls = watch('mediaUrls');
-  const hasTickets = watch('hasTickets');
-  const isTestEvent = watch('isTestEvent');
-  const address = watch('address');
-  const hasPresence = watch('hasPresence');
-  const dateValue = watch('date');
-  const timeValue = watch('time');
-  const selectedCategory = watch('category') || 'Festa';
-  const whatsappContacts = watch('whatsappContacts') || [];
+  const [form, setForm] = useState<EventoForm>(EVENTO_VAZIO);
+  const [salvando, setSalvando] = useState(false);
+  const set = <K extends keyof EventoForm>(campo: K, valor: EventoForm[K]) =>
+    setForm(f => ({ ...f, [campo]: valor }));
+  const setContato = (i: number, campo: 'name' | 'phone', valor: string) =>
+    set('whatsappContacts', form.whatsappContacts.map((c, idx) => (idx === i ? { ...c, [campo]: valor } : c)));
+  const { mediaUrls, hasTickets, isTestEvent, address, hasPresence, whatsappContacts } = form;
+  const dateValue = form.date;
+  const timeValue = form.time;
+  const selectedCategory = form.category || 'Festa';
 
   const [isUploading, setIsUploading] = useState(false);
 
@@ -141,7 +82,7 @@ const CreateEventContent = () => {
         try {
           const ev = await storage.getEventById(id);
           if (ev) {
-            reset({
+            setForm({
               title: ev.title,
               date: ev.date,
               time: ev.time,
@@ -169,7 +110,7 @@ const CreateEventContent = () => {
       }
     };
     loadEventData();
-  }, [id, userRole, reset]);
+  }, [id, userRole]);
 
   // Basta estar logado: qualquer usuário pode criar seus próprios eventos.
   useEffect(() => {
@@ -178,7 +119,7 @@ const CreateEventContent = () => {
     }
   }, [userId, navigate]);
 
-  const onSubmit = async (data: EventFormValues) => {
+  const salvar = async (data: EventoForm) => {
     const targetCreatorId = selectedCreatorId || user?.profileId || userId!;
     // Teto total: string do form vira número; vazio vira null (sem limite; Firestore não aceita undefined).
     const { maxParticipants: maxPartStr, ...restData } = data;
@@ -204,10 +145,19 @@ const CreateEventContent = () => {
     }
   };
 
-  const onError = (errors: FieldErrors<EventFormValues>) => {
-    Object.values(errors).forEach(err => {
-      if (err && 'message' in err && typeof err.message === 'string') toast.error(err.message);
-    });
+  const enviar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const erros = validarEvento(form);
+    if (erros.length) {
+      erros.forEach(m => toast.error(m));
+      return;
+    }
+    setSalvando(true);
+    try {
+      await salvar(form);
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -245,7 +195,7 @@ const CreateEventContent = () => {
     try {
       const croppedFile = await getCroppedImg(imageSrc, area, currentFile.name);
       const url = await storage.uploadFile(croppedFile, 'events');
-      setValue('mediaUrls', [...mediaUrls, url], { shouldValidate: true });
+      set('mediaUrls', [...mediaUrls, url]);
       toast.success('Upload concluído!');
     } catch (error) {
       console.error("Erro no recorte/upload:", error);
@@ -258,7 +208,7 @@ const CreateEventContent = () => {
   };
 
   const removeMedia = (index: number) => {
-    setValue('mediaUrls', mediaUrls.filter((_: string, i: number) => i !== index), { shouldValidate: true });
+    set('mediaUrls', mediaUrls.filter((_, i) => i !== index));
   };
 
   return (
@@ -288,7 +238,7 @@ const CreateEventContent = () => {
         </div>
 
         {user ? (
-          <form onSubmit={formSubmit(onSubmit, onError)} className="space-y-3.5 md:space-y-5 relative z-10">
+          <form onSubmit={enviar} className="space-y-3.5 md:space-y-5 relative z-10">
             {/* Admin Select Partner */}
             {userRole === 'admin' && (
               <div className="create-anim space-y-1 text-left">
@@ -358,7 +308,8 @@ const CreateEventContent = () => {
               <Input
                 placeholder="Ex: Sunset Party"
                 className="bg-surface border-glassBorder text-textLight"
-                {...register('title')}
+                value={form.title}
+                onChange={e => set('title', e.target.value)}
               />
             </div>
 
@@ -375,7 +326,7 @@ const CreateEventContent = () => {
                     <button
                       key={cat}
                       type="button"
-                      onClick={() => setValue('category', cat)}
+                      onClick={() => set('category', cat)}
                       className={cn(
                         "px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border",
                         isSelected
@@ -396,7 +347,8 @@ const CreateEventContent = () => {
               <textarea
                 placeholder="Descreva o evento..."
                 className="w-full min-h-[90px] md:min-h-[120px] bg-surface border border-glassBorder rounded-xl px-3 md:px-4 py-2.5 md:py-3 text-xs md:text-sm font-sans text-textLight focus:outline-none focus:border-primary/40 transition-all duration-300 resize-none placeholder:text-textMuted/50"
-                {...register('description')}
+                value={form.description}
+                onChange={e => set('description', e.target.value)}
               />
             </div>
 
@@ -448,7 +400,8 @@ const CreateEventContent = () => {
                 <Input
                   placeholder="Ex: Pub Aurora"
                   className="bg-surface border-glassBorder text-textLight"
-                  {...register('location')}
+                  value={form.location}
+                  onChange={e => set('location', e.target.value)}
                 />
               </div>
               <button
@@ -467,7 +420,8 @@ const CreateEventContent = () => {
               <Input
                 placeholder="Ex: Rua X, 123 - Bairro - Cidade/UF"
                 className="bg-surface border-glassBorder text-textLight"
-                {...register('address')}
+                value={form.address}
+                onChange={e => set('address', e.target.value)}
               />
             </div>
 
@@ -479,7 +433,7 @@ const CreateEventContent = () => {
                 <label className="text-xs md:text-sm font-display font-semibold text-textLight">Habilitar confirmação de presença?</label>
                 <button
                   type="button"
-                  onClick={() => setValue('hasPresence', !hasPresence, { shouldValidate: true })}
+                  onClick={() => set('hasPresence', !hasPresence)}
                   title="Habilitar Confirmação de Presença"
                   aria-label="Habilitar Confirmação de Presença"
                   role="switch"
@@ -510,7 +464,8 @@ const CreateEventContent = () => {
                 min={1}
                 inputMode="numeric"
                 placeholder="Sem limite"
-                {...register('maxParticipants')}
+                value={form.maxParticipants}
+                onChange={e => set('maxParticipants', e.target.value)}
                 className="w-full h-11 bg-surfaceHover/50 border border-glassBorder rounded-xl px-4 text-sm font-sans text-textLight focus:outline-none focus:border-primary/40 focus:shadow-glow-primary placeholder:text-textMuted/50 transition-all duration-300"
               />
               <p className="text-[11px] text-textMuted leading-relaxed">
@@ -524,7 +479,7 @@ const CreateEventContent = () => {
                 <label className="text-xs md:text-sm font-display font-semibold text-textLight">Possui ingressos?</label>
                 <button
                   type="button"
-                  onClick={() => setValue('hasTickets', !hasTickets, { shouldValidate: true })}
+                  onClick={() => set('hasTickets', !hasTickets)}
                   title="Possui ingressos"
                   aria-label="Possui ingressos"
                   role="switch"
@@ -550,31 +505,31 @@ const CreateEventContent = () => {
                     <Input
                       placeholder="Ex: R$ 30,00 ou Lote 1 R$20 / Lote 2 R$30"
                       className="bg-surface border-glassBorder text-textLight"
-                      {...register('ticketPrice')}
+                      value={form.ticketPrice}
+                      onChange={e => set('ticketPrice', e.target.value)}
                     />
                   </div>
 
                   <div className="space-y-3">
                     <label className="text-xs font-medium text-textMuted ml-1 block">Promoters de venda (WhatsApp)</label>
-                    {whatsappContacts.map((_, i) => (
+                    {whatsappContacts.map((c, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <Input
                           placeholder="Nome"
                           className="flex-1 text-sm font-sans bg-surface border-glassBorder text-textLight"
-                          {...register(`whatsappContacts.${i}.name` as const)}
+                          value={c.name}
+                          onChange={e => setContato(i, 'name', e.target.value)}
                         />
                         <Input
                           placeholder="(00) 00000-0000"
                           className="flex-1 text-sm font-mono bg-surface border-glassBorder text-textLight"
-                          {...register(`whatsappContacts.${i}.phone` as const)}
+                          value={c.phone}
+                          onChange={e => setContato(i, 'phone', e.target.value)}
                         />
                         {whatsappContacts.length > 1 && (
                           <button
                             type="button"
-                            onClick={() => {
-                              const current = getValues('whatsappContacts') || [];
-                              setValue('whatsappContacts', current.filter((_, idx) => idx !== i));
-                            }}
+                            onClick={() => set('whatsappContacts', whatsappContacts.filter((_, idx) => idx !== i))}
                             title="Remover promoter"
                             aria-label="Remover promoter"
                             className="text-danger hover:brightness-110 p-2.5 border border-glassBorder bg-surface hover:bg-surfaceHover rounded-xl transition-all duration-300"
@@ -587,10 +542,7 @@ const CreateEventContent = () => {
                     {whatsappContacts.length < 5 && (
                       <button
                         type="button"
-                        onClick={() => {
-                          const current = getValues('whatsappContacts') || [];
-                          setValue('whatsappContacts', [...current, { name: '', phone: '' }]);
-                        }}
+                        onClick={() => set('whatsappContacts', [...whatsappContacts, { name: '', phone: '' }])}
                         className="w-full py-3 rounded-xl border border-dashed border-primary/45 text-primary font-sans font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-primary/10 transition-colors cursor-pointer duration-300"
                       >
                         <Plus size={14} />
@@ -610,7 +562,7 @@ const CreateEventContent = () => {
                   id="testEvent"
                   className="accent-primary w-4 h-4 md:w-5 md:h-5 cursor-pointer border border-glassBorder rounded-md"
                   checked={!!isTestEvent}
-                  onChange={e => setValue('isTestEvent', e.target.checked, { shouldValidate: true })}
+                  onChange={e => set('isTestEvent', e.target.checked)}
                 />
                 <label htmlFor="testEvent" className="text-xs md:text-sm text-textMuted flex items-center gap-1.5 md:gap-2 cursor-pointer select-none font-medium">
                   <AlertTriangle size={14} className="text-accent" />
@@ -620,8 +572,8 @@ const CreateEventContent = () => {
             )}
 
             <div className="create-anim pt-3 md:pt-4">
-              <Button type="submit" loading={isSubmitting} fullWidth className="rounded-xl py-3 md:py-4 text-sm md:text-base">
-                {isSubmitting ? (isEdit ? 'Salvando...' : 'Criando...') : (isEdit ? 'Salvar alterações' : 'Criar evento')}
+              <Button type="submit" loading={salvando} fullWidth className="rounded-xl py-3 md:py-4 text-sm md:text-base">
+                {salvando ? (isEdit ? 'Salvando...' : 'Criando...') : (isEdit ? 'Salvar alterações' : 'Criar evento')}
               </Button>
             </div>
           </form>
@@ -635,8 +587,8 @@ const CreateEventContent = () => {
         open={showMapModal}
         endereco={address}
         onPick={({ nome, endereco }) => {
-          if (nome) setValue('location', nome);
-          setValue('address', endereco, { shouldValidate: true });
+          if (nome) set('location', nome);
+          set('address', endereco);
         }}
         onClose={() => setShowMapModal(false)}
       />
@@ -653,8 +605,8 @@ const CreateEventContent = () => {
         date={dateValue}
         time={timeValue}
         onConfirm={(data, hora) => {
-          if (data) setValue('date', data, { shouldValidate: true });
-          setValue('time', hora, { shouldValidate: true });
+          if (data) set('date', data);
+          set('time', hora);
           setShowDatePickerModal(false);
         }}
         onClose={() => setShowDatePickerModal(false)}
