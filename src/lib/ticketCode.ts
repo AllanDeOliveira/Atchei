@@ -55,10 +55,9 @@ const normalizeLoose = (raw: string): string => {
 
 // Verifica se um texto livre corresponde ao código curto de um id.
 // Aceita o núcleo puro ("12AB34CD") ou com prefixo ("ATX12AB34CD").
-// "CHN" é o prefixo legado — ingressos emitidos sob o nome Chain ainda o exibem.
 export const matchesTicketCode = (raw: string, id: string): boolean => {
   const norm = normalizeLoose(raw);
   if (norm.length < 6) return false;
   const core = ticketCodeCore(id);
-  return norm === core || norm === 'CHN' + core || norm === 'ATX' + core;
+  return norm === core || norm === 'ATX' + core;
 };

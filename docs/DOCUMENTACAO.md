@@ -146,7 +146,7 @@ src/
     formatters.ts         datas, telefone, CPF, links (wa.me, Maps, Google Agenda), máscaras
     ticketCode.ts         código curto ATX-XXXX-XXXX
     imageUtils.ts         compressão, recorte, detecção de vídeo, dataURL→Blob
-    storageKeys.ts        chaves do localStorage (prefixo @atchei:) + migração do legado @chain:
+    storageKeys.ts        chaves do localStorage (prefixo @atchei:)
     utils.ts              cn() (clsx + tailwind-merge) e goBack()
   test/                   setup.ts (jest-dom, matchMedia) e firebase.mock.ts
 ```
@@ -215,7 +215,6 @@ Todas em `functions/index.js`, região `us-central1`, Node 22, gen2. Callables u
 | `adminResetPassword` | admin (painel, editar parceiro) | redefine a senha de um uid e marca `mustChangePassword` | auth + claim admin + rate limit 3/5min por admin |
 | `adminDeleteAccount` | admin (painel, excluir parceiro) | apaga **tudo** da conta: eventos criados (uid ou id de perfil legado) e as inscrições deles, inscrições próprias, `fcmTokens`, usuário do Auth e docs de perfil. Recusa apagar a conta do próprio chamador | auth + claim admin |
 | `criarIngressoTeste` | admin (página do evento) | gera ingresso de teste validável (`isTeste: true`, `pedidoId` determinístico `TESTE-<evento>-<admin>`), sem mexer em contagens | auth + claim admin |
-| `tornarProfissional` | usuário logado | promove o próprio perfil de `user` para `profissional` (o cliente não pode alterar `type` pelas rules) | auth |
 | `solicitarResetSenha` | tela de login | gera o link de redefinição via Admin SDK e envia por **Resend** com template próprio (o Google recusa personalizar os templates deste projeto) | rate limit 3/15min por e-mail; segredos `RESEND_API_KEY`, `EMAIL_FROM` |
 
 ### 5.2 Triggers do Firestore (`registrations/{id}`)
@@ -270,7 +269,7 @@ Invariantes importantes:
 
 - Firebase Auth com **e-mail/senha** e **Google** (popup). Quem entra com Google sem perfil conclui o cadastro informando só a data de nascimento (as rules exigem 18+ para criar o perfil). Verificação de e-mail é enviada no cadastro por senha e o perfil avisa enquanto não verificar. `?next=` em `/login` e `/register` devolve a pessoa à tela de origem (evento, desafio) — só caminhos internos são aceitos.
 - **Admin** = custom claim `admin: true` (concedido pelo `set-admins.js` ou direto pela API do Identity Toolkit). É a única fonte de autorização nas **rules** e nas **functions**. Na interface, o papel vem de `profiles/{id}.type === 'admin'`. Os dois precisam existir.
-- O cliente **não pode** mudar `type` nem `email` do próprio perfil (sem auto-promoção); promoção a profissional passa pela callable `tornarProfissional`.
+- O cliente **não pode** mudar `type` nem `email` do próprio perfil (sem auto-promoção); perfil profissional nasce no cadastro ou pelo painel admin.
 
 ### 7.2 Firestore rules (`firebase/firestore.rules`)
 
@@ -313,11 +312,11 @@ Invariantes importantes:
 | reCAPTCHA (App Check) | site key registrada no projeto `atchei` |
 | Segredos | `RESEND_API_KEY`, `EMAIL_FROM` (Secret Manager) |
 
-**Não há ambiente de desenvolvimento.** `npm run dev` usa o mesmo backend da produção; a única separação possível são os emuladores (`VITE_USE_EMULATORS=true` + host `localhost`), usados só para Functions no código atual. Trate qualquer ação no localhost como ação em produção.
+**Não há ambiente de desenvolvimento.** `npm run dev` usa o mesmo backend da produção. Trate qualquer ação no localhost como ação em produção.
 
-Variáveis do frontend (`.env`, todas públicas): ver README. `.env.local`: `VITE_APPCHECK_DEBUG_TOKEN`. Variáveis das functions (`functions/.env`, só local): `APP_BASE_URL`, `RESEND_API_KEY`, `EMAIL_FROM` — o CI deploya as functions **sem** `.env` de propósito; produção usa Secret Manager.
+Variáveis do frontend (`.env`, todas públicas): ver README. `.env.local`: `VITE_APPCHECK_DEBUG_TOKEN`. Variáveis das functions (`functions/.env`, local): `APP_BASE_URL`, `RESEND_API_KEY`, `EMAIL_FROM` — o CI grava um `functions/.env` só com `APP_BASE_URL` a cada deploy (§10); os segredos de produção vêm do Secret Manager.
 
-`localStorage` usa o prefixo `@atchei:` (`user`, `install-dismissed`); `main.tsx` migra as chaves do prefixo legado `@chain:` uma única vez. Consentimento de cookies em `atchei:cookie-consent`.
+`localStorage` usa o prefixo `@atchei:` (`user`, `install-dismissed`). Consentimento de cookies em `atchei:cookie-consent`.
 
 ---
 
@@ -435,6 +434,7 @@ O *create* feito pelo owner configura sozinho o invoker público (`allUsers` →
 | 2026-09-10 | Desafio: prazo de 3 min; mesa vencedora queimada; 1 vitória por conta (trigger `onDesafioLiberado`); `CLAUDE.md` no repo |
 | 2026-09-11 | Desafio: aba "Desafios" no painel admin — interruptor `config/desafio.aberto` lido pelas rules (nasce fechado), fila de entrega ao vivo, botão "Entregue" (`entregueEm`); Theo entra como segundo dev (#49). Fix: encerrar não esconde a tela verde de quem ganhou; "Encerrar" pede confirmação |
 | 2026-09-15 | Backup semanal validado de ponta a ponta (run manual + `gpg -d` na máquina do Allan); PR #53 em produção. Bug achado no smoke: `APP_BASE_URL=http://localhost:5173` em duas functions deployadas à mão, links de compartilhamento iam para localhost → CI passa a gravar `functions/.env`; auditoria diária confere o redirect de `/e/` |
+| 2026-09-15 | Limpeza da auditoria de over-engineering (`/ponytail-audit`): migração `@chain:` aposentada; callable `tornarProfissional` removida (nunca chamada pelo app); compat de tipos `atletica`/`estabelecimento` e do prefixo `CHN` retirada (nenhum dado legado no Firestore); campo `sold` removido; sobras do Asaas em functions, `.env.example` e textos legais; hookup de emulador; `escapeHtml` único; `compressImage` devolve `File` sem ida e volta por base64 |
 | 2026-09-14 | **Infra fica no Firebase; debate de plataforma encerrado até um gatilho disparar** (ver "Custo e plataforma" abaixo). Ajustes de custo e lançamento: busca de evento por id (era listar 50), pôster comprimido e com cache imutável, aviso de instalação no iPhone para receber push, TTL do App Check em 7 dias, proteção contra exclusão do Firestore, backup semanal criptografado fora do Google |
 
 ### Custo e plataforma (2026-09-14)
@@ -451,4 +451,4 @@ Discutimos migrar para plataformas mais comuns no mercado (Supabase/Postgres, Cl
 
 **Gatilhos que reabrem o debate** (qualquer um): métrica dentro do app cruzando inscrição com perfil ou comparando períodos entre eventos → banco; egress de imagem acima de R$ 50/mês → R2 só para mídia; deploy ou cold start piorando de forma medida, ou SDK pesado entrando → `require` preguiçoso, depois `codebase` separada; fatura total acima de USD 50 por dois meses seguidos → olhar linha a linha antes de decidir.
 
-Legados que o código ainda honra: perfis com id ≠ uid (vínculo por e-mail), tipos `atletica`/`estabelecimento`, prefixo `CHN-` no código curto, chaves `@chain:` do localStorage, campo `sold` em `TicketType` (substituído por `soldByTicket`).
+Legado que o código ainda honra: perfis com id ≠ uid (vínculo por e-mail).

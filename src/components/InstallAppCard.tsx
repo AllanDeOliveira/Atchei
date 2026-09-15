@@ -6,8 +6,6 @@ import { COOKIE_CONSENT_KEY } from '../lib/firebase';
 import { useInstalarApp } from '../hooks/useInstalarApp';
 import { InstallGuideModal } from './InstallGuideModal';
 
-export { DISMISS_KEY };
-
 /**
  * Pop-up flutuante para adicionar o app à tela inicial (PWA), com o mesmo design do aviso de cookies.
  * Só no mobile e em navegadores com caminho de instalação (prompt nativo ou iOS/Safari).

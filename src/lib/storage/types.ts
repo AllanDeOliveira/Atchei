@@ -1,9 +1,6 @@
 export interface AppProfile {
   id: string;
   name: string;
-  // 'atletica'/'estabelecimento' foram fundidos em 'profissional'; docs antigos no
-  // Firestore ainda podem carregar os valores legados — trate qualquer tipo que não
-  // seja 'user'/'admin' como profissional.
   type: 'user' | 'profissional' | 'admin';
   description: string;
   imageUrl?: string;
@@ -30,8 +27,6 @@ export interface TicketType {
   name: string;
   price: number;
   capacity: number;
-  /** Legado: os vendidos moram em EventItem.soldByTicket (só o backend escreve). */
-  sold?: number;
   status: 'active' | 'sold_out';
 }
 

@@ -87,7 +87,7 @@ service cloud.firestore {
       // vazaria nome + e-mail de contas pessoais (type 'user').
       allow list: if
         isAdmin() ||
-        resource.data.type in ['profissional', 'atletica', 'estabelecimento'] ||
+        resource.data.type == 'profissional' ||
         (isAuthed() && 'email' in request.auth.token && 'email' in resource.data &&
          resource.data.email.lower() == request.auth.token.email.lower());
 

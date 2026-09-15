@@ -82,8 +82,8 @@ export const authStore = {
     return user;
   },
 
-  // Perfil 'user' (pessoal) participa de eventos; 'profissional' também vende
-  // ingressos e cadastra a conta de recebimento Asaas (vira role 'partner').
+  // Perfil 'user' (pessoal) participa de eventos; 'profissional' também cria eventos
+  // e vende ingressos (vira role 'partner').
   register: async (email: string, password: string, name: string, type: 'user' | 'profissional' = 'user', birthDate?: string): Promise<User | null> => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);

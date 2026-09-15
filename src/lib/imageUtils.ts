@@ -4,90 +4,47 @@
  */
 
 /**
- * Comprime uma imagem File para base64 JPEG com dimensões e qualidade configuráveis.
+ * Redimensiona e comprime uma imagem para JPEG, devolvendo um File pronto para upload.
+ * Em falha (formato não decodificável, sem canvas) devolve o arquivo original.
  */
 export const compressImage = (
   file: File,
   maxWidth: number = 600,
   maxHeight: number = 600,
-  quality: number = 0.7
-): Promise<string> => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(event.target?.result as string);
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-        resolve(compressedBase64);
-      };
-      img.onerror = () => {
-        resolve(event.target?.result as string);
-      };
+  quality: number = 0.7,
+  fileName: string = 'imagem.jpg'
+): Promise<File> =>
+  new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const escala = Math.min(1, maxWidth / img.width, maxHeight / img.height);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * escala);
+      canvas.height = Math.round(img.height * escala);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(file);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        (blob) => resolve(blob ? new File([blob], fileName, { type: 'image/jpeg' }) : file),
+        'image/jpeg',
+        quality
+      );
     };
-    reader.onerror = () => {
-      resolve('');
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
     };
+    img.src = url;
   });
-};
-
-/**
- * Converte um data URL (base64) em um Blob.
- */
-export const dataURLtoBlob = (dataurl: string): Blob => {
-  const arr = dataurl.split(',');
-  const mime = arr[0].match(/:(.*?);/)![1];
-  const bstr = atob(arr[1]);
-  let n = bstr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = bstr.charCodeAt(n);
-  }
-  return new Blob([u8arr], { type: mime });
-};
 
 /**
  * Verifica se uma URL representa um arquivo de vídeo.
  */
 export const isVideoUrl = (url: string): boolean => {
-  if (!url) return false;
-  const cleanUrl = url.split('?')[0].toLowerCase();
-  return (
-    cleanUrl.endsWith('.mp4') ||
-    cleanUrl.endsWith('.mov') ||
-    cleanUrl.endsWith('.webm') ||
-    cleanUrl.endsWith('.avi') ||
-    cleanUrl.endsWith('.mkv') ||
-    cleanUrl.endsWith('.3gp') ||
-    cleanUrl.includes('/video/')
-  );
+  const clean = (url || '').split('?')[0].toLowerCase();
+  return /\.(mp4|mov|webm|avi|mkv|3gp)$/.test(clean) || clean.includes('/video/');
 };
 
 const createImage = (url: string): Promise<HTMLImageElement> =>

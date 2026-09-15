@@ -52,7 +52,7 @@ export const Search = () => {
 
   const filteredEvents = events.filter(e => e.title.toLowerCase().includes(query.toLowerCase()));
   
-  // Perfis profissionais na busca; docs legados ('atletica'/'estabelecimento') contam como profissional.
+  // Perfis profissionais na busca: tudo que não é conta pessoal nem admin.
   const filteredProfiles = profiles.filter(p =>
     activeTab === 'perfis' &&
     p.type !== 'user' && p.type !== 'admin' &&
