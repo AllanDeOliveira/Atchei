@@ -342,7 +342,7 @@ Não deploya. Build, testes (front e functions), `npm audit --audit-level=high` 
 
 ### `deploy.yml` — push em `main` (a cada merge)
 
-Mesmos testes e build, depois `firebase-tools deploy --only hosting,firestore:rules,storage,functions --force --project atchei` autenticado pelo secret `FIREBASE_SERVICE_ACCOUNT` (JSON gravado em `GOOGLE_APPLICATION_CREDENTIALS`). `concurrency: deploy-producao` com `cancel-in-progress: false`: um deploy por vez, nunca cancelado no meio (merges seguidos podem marcar o run intermediário como *cancelled* — o último é o que vale). `--force` confirma sozinho a exclusão de functions removidas do código.
+Mesmos testes e build, grava `functions/.env` (só `APP_BASE_URL=https://atchei.app.br`, porque o deploy sobrescreve variável de ambiente mas não limpa uma antiga), depois `firebase-tools deploy --only hosting,firestore:rules,storage,functions --force --project atchei` autenticado pelo secret `FIREBASE_SERVICE_ACCOUNT` (JSON gravado em `GOOGLE_APPLICATION_CREDENTIALS`). `concurrency: deploy-producao` com `cancel-in-progress: false`: um deploy por vez, nunca cancelado no meio (merges seguidos podem marcar o run intermediário como *cancelled* — o último é o que vale). `--force` confirma sozinho a exclusão de functions removidas do código.
 
 ### `backup-semanal.yml` — domingo às 03:00 (SP) e sob demanda
 
@@ -375,6 +375,8 @@ O *create* feito pelo owner configura sozinho o invoker público (`allUsers` →
 **Registrar máquina de dev no App Check** → rodar o app uma vez, copiar o token de depuração do console do navegador, registrar em Firebase → App Check → Apps → tokens de depuração, e fixá-lo em `.env.local` (`VITE_APPCHECK_DEBUG_TOKEN`). Reiniciar o `npm run dev`.
 
 **Mapa do evento com 403** → o referrer da página não está na lista da chave do Maps (ou o navegador não envia Referer). Diagnóstico: `curl -H "Referer: https://<origem>/" "https://www.google.com/maps/embed/v1/place?key=<chave>&q=teste"`. Ajuste: `gcloud services api-keys update <key> --allowed-referrers=... --api-target=service=maps-embed-backend.googleapis.com --api-target=service=maps-backend.googleapis.com --api-target=service=places.googleapis.com --project=atchei`.
+
+**Link de compartilhamento ou de e-mail apontando para localhost** → `APP_BASE_URL` errada no ambiente da function deployada. O deploy sobrescreve a variável mas não limpa uma antiga; em 2026-09-15 `renderEventOpenGraph` e `onRegistrationCreated` estavam com `http://localhost:5173` desde um deploy manual. Conferir: `gcloud functions describe <fn> --gen2 --region <us-central1|southamerica-east1> --format='value(serviceConfig.environmentVariables)' --project atchei`. Corrigir: qualquer deploy pelo CI (ele grava `functions/.env` com o valor certo). A CDN guarda o HTML de `/e/` por 10 min (`s-maxage=600`); para conferir na hora, acrescente `?v=1` à URL. A auditoria diária confere o redirect de `/e/`.
 
 **Ver logs das functions** → `gcloud logging read 'resource.type="cloud_run_revision" severity>=WARNING' --project=atchei --limit=30` ou `npx firebase functions:log`.
 
@@ -432,6 +434,7 @@ O *create* feito pelo owner configura sozinho o invoker público (`allUsers` →
 | 2026-09-09 | `firebase-admin` 14 / `firebase-functions` 7 (API modular), 0 vulnerabilidades no front e nas functions (`overrides` de `uuid`), SA do CI com `run.admin` |
 | 2026-09-10 | Desafio: prazo de 3 min; mesa vencedora queimada; 1 vitória por conta (trigger `onDesafioLiberado`); `CLAUDE.md` no repo |
 | 2026-09-11 | Desafio: aba "Desafios" no painel admin — interruptor `config/desafio.aberto` lido pelas rules (nasce fechado), fila de entrega ao vivo, botão "Entregue" (`entregueEm`); Theo entra como segundo dev (#49). Fix: encerrar não esconde a tela verde de quem ganhou; "Encerrar" pede confirmação |
+| 2026-09-15 | Backup semanal validado de ponta a ponta (run manual + `gpg -d` na máquina do Allan); PR #53 em produção. Bug achado no smoke: `APP_BASE_URL=http://localhost:5173` em duas functions deployadas à mão, links de compartilhamento iam para localhost → CI passa a gravar `functions/.env`; auditoria diária confere o redirect de `/e/` |
 | 2026-09-14 | **Infra fica no Firebase; debate de plataforma encerrado até um gatilho disparar** (ver "Custo e plataforma" abaixo). Ajustes de custo e lançamento: busca de evento por id (era listar 50), pôster comprimido e com cache imutável, aviso de instalação no iPhone para receber push, TTL do App Check em 7 dias, proteção contra exclusão do Firestore, backup semanal criptografado fora do Google |
 
 ### Custo e plataforma (2026-09-14)

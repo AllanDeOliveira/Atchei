@@ -81,6 +81,11 @@ jobs:
           check "https://atchei.app.br/privacidade" "200"
           # Rewrite /e/** -> function renderEventOpenGraph (id inexistente redireciona)
           check "https://atchei.app.br/e/auditoria-diaria" "200|301|302|404"
+          # A function monta os links com APP_BASE_URL: se a variável estiver errada na
+          # function deployada, o redirect (e o og:url de eventos reais) sai do site.
+          loc=$(curl -s -o /dev/null -w "%{redirect_url}" -m 20 "https://atchei.app.br/e/auditoria-diaria")
+          echo "/e/ redireciona para: $loc"
+          echo "$loc" | grep -qE "^https://atchei\.app\.br(/|$)" || { echo "::error::/e/ redireciona para '$loc' (esperado https://atchei.app.br)"; exit 1; }
           # O bundle publicado precisa carregar a chave do App Check e a VAPID do push
           html=$(curl -s -m 20 https://atchei.app.br/)
           js=$(echo "$html" | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1)
