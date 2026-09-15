@@ -186,13 +186,13 @@ Fachada única `storage` que funde cinco módulos, para as telas não conhecerem
 | `profiles.ts` | `getProfiles`, `getPublicProfiles` (só tipos profissionais — restrição espelhada nas rules), `getProfileById`, `saveProfile`, `updateProfile` |
 | `events.ts` | `getEvents`, `getPaginatedEvents` (10 por página, cursor), `getUpcomingEvents`, `saveEvent`, `deleteEvent`, `getEventById`, `getAgendaByProfileId` |
 | `registrations.ts` | `saveSelfRegistration` (id determinístico `eventId_uid`), `saveRegistration` (manual), `getRegistrationsForUser/ForEvent` (+ paginada), `getUserRegistration`, `checkInRegistration`, `confirmRegistrationPayment`, `deleteRegistration` |
-| `files.ts` | `uploadFile` (Storage) |
+| `files.ts` | `uploadFile` (Storage; nome único por timestamp e `cacheControl` imutável de 1 ano, para o aparelho não baixar o mesmo pôster a cada visita) |
 | `types.ts` | tipos de domínio, `EVENT_CATEGORIES`, `eventoVigente`, `soldCount`, `STATUS_AGUARDANDO`, `STATUS_PAGO_WHATSAPP` |
 
 ### 4.5 PWA, push e analytics
 
 - **PWA**: `vite-plugin-pwa` com `registerType: 'autoUpdate'` e manifest (nome, cores `#FFB34D`/`#FFFCF8`, ícones, `display: standalone`). `InstallAppCard` convida à instalação; `useInstallCardPending` coordena com o `CookieBanner` (os dois ocupam a mesma posição — o convite aparece primeiro).
-- **Push**: `notifications.ts` registra o token FCM (chave VAPID em `VITE_FIREBASE_VAPID_KEY`; sem ela o recurso se desliga sozinho) em `fcmTokens/{token}` com o `userId`; o backend envia via `sendEachForMulticast` e limpa tokens inválidos. `NotificationToggle` no perfil.
+- **Push**: `notifications.ts` registra o token FCM (chave VAPID em `VITE_FIREBASE_VAPID_KEY`; sem ela o recurso se desliga sozinho) em `fcmTokens/{token}` com o `userId`; o backend envia via `sendEachForMulticast` e limpa tokens inválidos. `NotificationToggle` no perfil. No iPhone o push só existe com o app instalado na tela inicial (iOS 16.4+): no Safari o toggle vira "Instale o app para receber lembretes" e abre o guia, em vez de sumir. O lembrete D-1 sai só por push; quem não tem push não recebe.
 - **Analytics + LGPD**: GA4 sobe sempre, mas em **Consent Mode v2** — sem consentimento mede sem cookie (interesse legítimo); com "aceitar" no `CookieBanner` grava `_ga`. Publicidade sempre negada. `cookie_domain: 'none'` evita o bug do domínio `.web.app` na Public Suffix List.
 - **App Check** no cliente: `initializeAppCheck` com `ReCaptchaV3Provider` quando `VITE_RECAPTCHA_SITE_KEY` existe; em dev usa o token de depuração fixo de `VITE_APPCHECK_DEBUG_TOKEN` (`.env.local`).
 
@@ -288,6 +288,7 @@ Invariantes importantes:
 - Cliente: reCAPTCHA v3 (`VITE_RECAPTCHA_SITE_KEY`, chave do projeto `atchei`).
 - **Firestore: enforcement APLICADO** (2026-08-31) — requisições sem token válido são recusadas.
 - **Callables: `enforceAppCheck: true`** em todas.
+- **TTL do token: 7 dias** (2026-09-14; era 1 dia). Cada renovação de token é uma avaliação do reCAPTCHA, gratuito até 10 mil/mês e cobrado acima disso. Com 1 dia, mil usuários ativos por dia estouram a cota em dez dias; com 7 dias, a mesma base fica dentro dela. Configurado pela API `recaptchaV3Config.tokenTtl`, não vive no código.
 - **Storage e Authentication: não aplicados, de propósito.** As fotos carregam por URL direta em `<img>` (sem token) e as rules já restringem a escrita; Auth é pré-lançamento. Não aplicar.
 - Dev: token de depuração fixo por máquina (`VITE_APPCHECK_DEBUG_TOKEN` em `.env.local`), registrado no console. Sem isso cada `npm run dev` conta como "sem verificação" na métrica.
 
@@ -343,6 +344,10 @@ Não deploya. Build, testes (front e functions), `npm audit --audit-level=high` 
 
 Mesmos testes e build, depois `firebase-tools deploy --only hosting,firestore:rules,storage,functions --force --project atchei` autenticado pelo secret `FIREBASE_SERVICE_ACCOUNT` (JSON gravado em `GOOGLE_APPLICATION_CREDENTIALS`). `concurrency: deploy-producao` com `cancel-in-progress: false`: um deploy por vez, nunca cancelado no meio (merges seguidos podem marcar o run intermediário como *cancelled* — o último é o que vale). `--force` confirma sozinho a exclusão de functions removidas do código.
 
+### `backup-semanal.yml` — domingo às 03:00 (SP) e sob demanda
+
+Cópia de tudo que vive só no Google: `firebase auth:export` (usuários com hash de senha), `functions/scripts/backup-firestore.js` (todas as coleções de raiz em JSON, datas em ISO) e `gcloud storage rsync` do bucket. Empacota, criptografa com `gpg` simétrico (secret `BACKUP_PASSPHRASE`) e publica como artefato do GitHub por 90 dias. Motivo: o backup gerenciado do Firestore fica dentro do mesmo projeto e não vale nada se o projeto for suspenso; este sai do Google. Preparação e restauração em §11.
+
 ### Limitações conhecidas
 
 - A service account do CI **não consegue criar function nova** (falha em "Could not get operation details" / IAM). Primeiro deploy de uma function nova é manual — ver §11.
@@ -374,6 +379,10 @@ O *create* feito pelo owner configura sozinho o invoker público (`allUsers` →
 **Ver logs das functions** → `gcloud logging read 'resource.type="cloud_run_revision" severity>=WARNING' --project=atchei --limit=30` ou `npx firebase functions:log`.
 
 **Monitoramento** → Cloud Monitoring do projeto `atchei`: uptime check de `https://atchei.app.br/` a cada 5 min com alerta por e-mail para contato.atchei@gmail.com ("Atchei - site fora do ar", dispara após 5 min de falha). Orçamento com alertas na conta de faturamento "Pagamento do Firebase".
+
+**Backup: preparar** → (1) gerar a frase com `openssl rand -base64 32`, gravar no secret `BACKUP_PASSPHRASE` do repositório **e** num gerenciador de senhas fora do GitHub; (2) copiar os parâmetros de hash de senha (Firebase → Authentication → Users → menu de três pontos → "Password hash parameters": `algorithm`, `base64_signer_key`, `base64_salt_separator`, `rounds`, `mem_cost`) para o mesmo gerenciador de senhas. Sem eles as senhas exportadas não podem ser importadas em lugar nenhum. (3) Rodar o workflow uma vez pelo botão "Run workflow" e baixar o artefato para confirmar que abre.
+
+**Backup: restaurar** → baixar o artefato, `gpg -d atchei-backup-AAAAMMDD.tgz.gpg > backup.tgz` (pede a frase), `tar -xzf backup.tgz`. Dentro: `auth.json`, `firestore/<colecao>.json` (mapa `id → documento`), `storage/`. Para voltar ao Firebase: `npx firebase auth:import auth.json --hash-algo=SCRYPT --hash-key=<base64_signer_key> --salt-separator=<base64_salt_separator> --rounds=<rounds> --mem-cost=<mem_cost> --project <projeto>`; Firestore via script curto com `firebase-admin` lendo os JSON (datas voltam com `new Date(iso)`); Storage com `gcloud storage rsync -r`. Para outro provedor: o JSON é o formato de entrada, e o Supabase tem importador de usuários do Firebase que aceita esses hashes.
 
 **Validar rules antes do deploy** → `node -e` que serializa `firebase/firestore.rules` em `{source:{files:[{name,content}]}}` e `POST https://firebaserules.googleapis.com/v1/projects/atchei:test` com token do gcloud e header `X-Goog-User-Project: atchei`; resposta `{}` = compila.
 
@@ -423,5 +432,20 @@ O *create* feito pelo owner configura sozinho o invoker público (`allUsers` →
 | 2026-09-09 | `firebase-admin` 14 / `firebase-functions` 7 (API modular), 0 vulnerabilidades no front e nas functions (`overrides` de `uuid`), SA do CI com `run.admin` |
 | 2026-09-10 | Desafio: prazo de 3 min; mesa vencedora queimada; 1 vitória por conta (trigger `onDesafioLiberado`); `CLAUDE.md` no repo |
 | 2026-09-11 | Desafio: aba "Desafios" no painel admin — interruptor `config/desafio.aberto` lido pelas rules (nasce fechado), fila de entrega ao vivo, botão "Entregue" (`entregueEm`); Theo entra como segundo dev (#49). Fix: encerrar não esconde a tela verde de quem ganhou; "Encerrar" pede confirmação |
+| 2026-09-14 | **Infra fica no Firebase; debate de plataforma encerrado até um gatilho disparar** (ver "Custo e plataforma" abaixo). Ajustes de custo e lançamento: busca de evento por id (era listar 50), pôster comprimido e com cache imutável, aviso de instalação no iPhone para receber push, TTL do App Check em 7 dias, proteção contra exclusão do Firestore, backup semanal criptografado fora do Google |
+
+### Custo e plataforma (2026-09-14)
+
+Discutimos migrar para plataformas mais comuns no mercado (Supabase/Postgres, Cloudflare R2 e Pages, API própria em PaaS, SSR). Decisão: **não agora**. O raciocínio, para não reabrir sem dado novo:
+
+- **Uso real medido no Cloud Monitoring, 30 dias**: ~46,7 mil leituras (1,5 mil/dia contra 50 mil/dia grátis), 132 escritas, 11 MB de egress do Storage, 352 chamadas de function. Banco com 1 evento, 4 inscrições, 6 perfis. Conta: zero.
+- **Preços confirmados no catálogo de billing**: leitura em São Paulo USD 0,04 por 100 mil, escrita USD 0,14 por 100 mil; download do Storage USD 0,12/GB **sem cota gratuita** (a cota só vale para bucket nos EUA); functions em Iowa, dentro dos 2 milhões de chamadas grátis.
+- **Projeção mensal, USD, sessão = 1 feed + 2 páginas de evento**: 300 sessões/dia → 2 (hoje) / 0 (após ajustes); 3 mil/dia → 30 / 12; 30 mil/dia (irreal para Cáceres) → ~1.040 / ~100. Supabase Pro tem piso de USD 25 e não elimina egress de imagem nem proteção contra bot. Nas escalas realistas o Firebase sai mais barato; na irreal, empatam.
+- **O que de fato pesa na fatura aqui**, em ordem: avaliações do reCAPTCHA via App Check (escala com pessoas, controlado pelo TTL), egress de imagem (comprimir + cache resolve até ~8 mil sessões/dia; R2 zera), leituras do Firestore (buscar por id, nunca listar para achar). Nenhum exige trocar de plataforma.
+- **O que o mercado faz e por quê**: Postgres domina onde o dado tem vários consumidores (BI, financeiro, integrações) e onde se contrata por SQL. Firebase é usado na borda (Auth, push, analytics) e raramente como banco central. O Atchei tem um consumidor e dois devs; quando tiver relatório cruzando eventos ou um segundo sistema lendo o dado, a migração do banco passa a fazer sentido, e a camada `src/lib/storage` é o que a deixa barata.
+- **Riscos que não dependem de escala e já foram tratados**: o Google não tem teto de gasto (só alerta); o backup gerenciado do Firestore vive no mesmo projeto e não protege contra suspensão de conta. Daí o backup semanal fora do Google e a proteção contra exclusão do banco.
+- **Verificado e descartado**: functions "em Iowa longe do banco" (as quatro disparadas pelo Firestore já rodam em São Paulo; as de Iowa são callables raras, OG para robôs e o cron); "12 functions = fragmentação" (um arquivo, um deploy, testes por módulo; o que pesa no cold start são `require` no topo, não linhas); Cloudflare Pages (quebraria o handler de login em `/__/` e o rewrite de `/e/`); SSR para o Open Graph (a rota já tem `s-maxage=600` na CDN; se o cold start incomodar, `minInstances: 1`); DNS do Resend (DKIM, SPF e DMARC já estavam no ar).
+
+**Gatilhos que reabrem o debate** (qualquer um): métrica dentro do app cruzando inscrição com perfil ou comparando períodos entre eventos → banco; egress de imagem acima de R$ 50/mês → R2 só para mídia; deploy ou cold start piorando de forma medida, ou SDK pesado entrando → `require` preguiçoso, depois `codebase` separada; fatura total acima de USD 50 por dois meses seguidos → olhar linha a linha antes de decidir.
 
 Legados que o código ainda honra: perfis com id ≠ uid (vínculo por e-mail), tipos `atletica`/`estabelecimento`, prefixo `CHN-` no código curto, chaves `@chain:` do localStorage, campo `sold` em `TicketType` (substituído por `soldByTicket`).

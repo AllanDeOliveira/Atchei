@@ -113,16 +113,14 @@ export const Profile = () => {
 
   const loadEvents = useCallback(async () => {
     try {
-      const all = await storage.getEvents();
       const currentUser = storage.getCurrentUser();
       const currentUserId = currentUser?.id;
       const currentUserRole = currentUser?.role;
       const currentProfileId = currentUser?.profileId;
 
-      const visibleEvents = currentUserRole === 'admin' ? all : all.filter(e => !e.isTestEvent);
-
       if (currentUserRole === 'admin') {
-        setMyEvents(visibleEvents);
+        // Admin vê tudo: é uma conta só, listar aqui não pesa na fatura.
+        setMyEvents(await storage.getEvents());
         // Admin também cria e participa: carrega as próprias inscrições para a aba "Participados".
         if (currentUserId) {
           const myRegs = await storage.getRegistrationsForUser(currentUserId);
@@ -131,11 +129,16 @@ export const Profile = () => {
       } else if (currentUserId) {
         // Qualquer usuário pode criar eventos: a lista junta os criados por ele
         // e os com presença confirmada (o card decide as ações por dono).
+        // Por criador e por id, não varrendo a coleção: antes eram 50 leituras
+        // por visita e a lista parava no 50º evento cadastrado.
         const targetId = currentProfileId || currentUserId;
         const myRegs = await storage.getRegistrationsForUser(currentUserId);
         setMyRegistrations(myRegs);
-        const myRegIds = myRegs.map(r => r.eventId);
-        setMyEvents(visibleEvents.filter(e => e.creatorId === targetId || myRegIds.includes(e.id)));
+        const criados = await storage.getAgendaByProfileId(targetId);
+        const idsCriados = new Set(criados.map(e => e.id));
+        const idsInscrito = [...new Set(myRegs.map(r => r.eventId))].filter(eid => !idsCriados.has(eid));
+        const inscritos = await Promise.all(idsInscrito.map(eid => storage.getEventById(eid)));
+        setMyEvents([...criados, ...inscritos.flatMap(e => (e ? [e] : []))].filter(e => !e.isTestEvent));
       }
     } catch (error) {
       console.error("Erro ao carregar eventos do perfil:", error);

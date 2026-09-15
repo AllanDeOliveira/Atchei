@@ -99,6 +99,13 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
     image.src = url;
   });
 
+// Pôster: teto de 1200 px no lado maior e JPEG a 0.8. Cada abertura do feed baixa
+// até 10 pôsteres e o bucket cobra por GB transferido (São Paulo não tem cota
+// gratuita); um recorte cru de câmera passa de 3 MB, comprimido fica perto de
+// 150 KB sem diferença visível no celular.
+const POSTER_MAX_PX = 1200;
+const POSTER_JPEG_QUALITY = 0.8;
+
 export async function getCroppedImg(
   imageSrc: string,
   pixelCrop: { x: number; y: number; width: number; height: number },
@@ -112,8 +119,9 @@ export async function getCroppedImg(
     throw new Error('No 2d context');
   }
 
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
+  const escala = Math.min(1, POSTER_MAX_PX / Math.max(pixelCrop.width, pixelCrop.height));
+  canvas.width = Math.round(pixelCrop.width * escala);
+  canvas.height = Math.round(pixelCrop.height * escala);
 
   ctx.drawImage(
     image,
@@ -123,8 +131,8 @@ export async function getCroppedImg(
     pixelCrop.height,
     0,
     0,
-    pixelCrop.width,
-    pixelCrop.height
+    canvas.width,
+    canvas.height
   );
 
   return new Promise((resolve, reject) => {
@@ -134,7 +142,7 @@ export async function getCroppedImg(
       } else {
         reject(new Error('Canvas is empty'));
       }
-    }, 'image/jpeg');
+    }, 'image/jpeg', POSTER_JPEG_QUALITY);
   });
 }
 

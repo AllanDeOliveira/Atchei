@@ -1,0 +1,91 @@
+# Backup semanal do Atchei, guardado FORA do Google.
+#
+# Por quê: tudo do app vive num único projeto Google (Auth, Firestore, Storage). O backup
+# gerenciado do Firestore fica dentro desse mesmo projeto e não ajuda se o projeto for
+# suspenso ou a conta bloqueada, cenário raro mas sem volta. Este job tira uma cópia
+# legível (JSON, usuários com hash de senha, arquivos do Storage), criptografa e publica
+# como artefato do GitHub por 90 dias. Código no GitHub + domínio no Registro.br + este
+# backup = dá para reerguer o app em outro provedor com os dados. Sem ele, é do zero.
+#
+# Segredos necessários (Settings > Secrets and variables > Actions):
+#   FIREBASE_SERVICE_ACCOUNT  o mesmo do deploy (a SA github-deploy tem leitura em tudo).
+#   BACKUP_PASSPHRASE         frase longa e aleatória (ex.: `openssl rand -base64 32`).
+#                             Guardar TAMBÉM fora do GitHub (gerenciador de senhas): sem ela
+#                             o backup é ilegível. Preparação e restauração: docs §11.
+#
+# Fora do backup, de propósito: os parâmetros de hash de senha da Auth (não saem por API;
+# copiar uma vez do console, ver docs §11) e as rules (estão no git).
+
+name: Backup semanal
+
+on:
+  schedule:
+    - cron: "0 6 * * 0"   # domingo 06:00 UTC = 03:00 em São Paulo
+  workflow_dispatch:
+
+jobs:
+  backup:
+    name: Firestore + Auth + Storage, criptografado
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # O contexto `runner` não existe no `env` do job, só dentro de steps: por isso os
+      # caminhos vão para o GITHUB_ENV aqui e valem para todos os steps seguintes.
+      - name: Caminhos de trabalho
+        run: |
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/sa.json" >> "$GITHUB_ENV"
+          echo "DESTINO=$RUNNER_TEMP/backup" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Conferir segredos
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$BACKUP_PASSPHRASE" || { echo "::error::Secret BACKUP_PASSPHRASE ausente (ver cabeçalho do workflow)"; exit 1; }
+          test -n "$FIREBASE_SERVICE_ACCOUNT" || { echo "::error::Secret FIREBASE_SERVICE_ACCOUNT ausente"; exit 1; }
+
+      - name: Credenciais
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS" --quiet
+          mkdir -p "$DESTINO"
+
+      - name: Auth (usuários com hash de senha)
+        run: npx firebase-tools auth:export "$DESTINO/auth.json" --format=json --project atchei
+
+      - name: Firestore (JSON por coleção)
+        working-directory: functions
+        run: |
+          npm ci
+          node scripts/backup-firestore.js "$DESTINO/firestore"
+
+      - name: Storage (fotos e pôsteres)
+        run: gcloud storage rsync -r gs://atchei.firebasestorage.app "$DESTINO/storage" --quiet
+
+      # A frase entra por stdin, não por argumento: argumento aparece na lista de processos.
+      - name: Empacotar e criptografar
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          NOME="atchei-backup-$(date -u +%Y%m%d).tgz.gpg"
+          tar -C "$RUNNER_TEMP" -czf "$RUNNER_TEMP/backup.tgz" backup
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --symmetric --cipher-algo AES256 --passphrase-fd 0 -o "$NOME" "$RUNNER_TEMP/backup.tgz"
+          rm -rf "$RUNNER_TEMP/backup.tgz" "$DESTINO" "$GOOGLE_APPLICATION_CREDENTIALS"
+          ls -la "$NOME"
+          echo "NOME=$NOME" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NOME }}
+          path: ${{ env.NOME }}
+          retention-days: 90
+          if-no-files-found: error

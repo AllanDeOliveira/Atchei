@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Bell, BellRing } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import { isIos, isStandalone } from '../hooks/useInstalarApp';
+import { InstallGuideModal } from './InstallGuideModal';
 import {
   notificationsSupported,
   getNotificationPermission,
@@ -21,6 +23,7 @@ export const NotificationToggle = () => {
   const [supported, setSupported] = useState<boolean | null>(null);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const [busy, setBusy] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -34,6 +37,24 @@ export const NotificationToggle = () => {
       active = false;
     };
   }, []);
+
+  // iPhone só recebe push com o app instalado na tela inicial (iOS 16.4+). Em vez de
+  // sumir em silêncio, aponta o caminho: sem isso o lembrete D-1 nunca chega a quem
+  // abre o Atchei no Safari.
+  if (HAS_VAPID && user && supported === false && isIos() && !isStandalone()) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setShowGuide(true)}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface border border-glassBorder hover:border-accent/40 rounded-lg text-textLight text-xs font-semibold transition-all duration-200 cursor-pointer neo-click"
+        >
+          <Bell size={14} /> Instale o app para receber lembretes
+        </button>
+        <InstallGuideModal open={showGuide} onClose={() => setShowGuide(false)} />
+      </>
+    );
+  }
 
   // Não exibe nada quando não há suporte, chave ou usuário logado (ou ainda verificando).
   if (!HAS_VAPID || !user || !supported || permission === 'unsupported') {
