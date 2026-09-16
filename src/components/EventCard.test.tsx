@@ -101,4 +101,20 @@ describe('EventCard component', () => {
 
     expect(screen.getByText('Show')).toBeInTheDocument();
   });
+
+  it('mostra "Comprar ingresso" só em evento com venda e WhatsApp de contato', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <EventCard event={mockEvent} />
+      </MemoryRouter>
+    );
+    expect(screen.queryByTitle('Comprar ingresso')).toBeNull();
+
+    rerender(
+      <MemoryRouter>
+        <EventCard event={{ ...mockEvent, hasTickets: true, whatsappContacts: [{ name: 'Ana', phone: '65999991234' }] }} />
+      </MemoryRouter>
+    );
+    expect(screen.getByTitle('Comprar ingresso')).toBeInTheDocument();
+  });
 });

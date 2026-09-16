@@ -170,13 +170,16 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
 
             {/* Actions */}
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={(e) => { e.stopPropagation(); openWhatsApp(); }}
-                className="w-9 h-9 rounded-xl bg-success/10 text-success border border-success/20 flex items-center justify-center hover:bg-success hover:text-textDark transition-all duration-200 neo-click cursor-pointer"
-                title="Comprar ingresso"
-              >
-                <Ticket size={16} />
-              </button>
+              {/* Só quando o toque tem para onde ir: evento com venda e um WhatsApp de contato. */}
+              {event.hasTickets && event.whatsappContacts?.[0] && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); openWhatsApp(); }}
+                  className="w-9 h-9 rounded-xl bg-success/10 text-success border border-success/20 flex items-center justify-center hover:bg-success hover:text-textDark transition-all duration-200 neo-click cursor-pointer"
+                  title="Comprar ingresso"
+                >
+                  <Ticket size={16} />
+                </button>
+              )}
               <button
                 onClick={(e) => { e.stopPropagation(); openMaps(); }}
                 className="w-9 h-9 rounded-xl bg-accent/10 text-accent border border-accent/20 flex items-center justify-center hover:bg-accent hover:text-textDark transition-all duration-200 neo-click cursor-pointer"
