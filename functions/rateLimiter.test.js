@@ -166,6 +166,15 @@ describe('rateLimiter', () => {
       expect(result.retryAfterMs).toBe(0);
     });
 
+    it('nega quando a transação falha e failClosed está ligado (rotas de e-mail)', async () => {
+      mockRunTransaction.mockRejectedValue(new Error('Firestore error'));
+
+      const result = await checkRateLimit('user123', 'testFunc', 5, 60, { failClosed: true });
+
+      expect(result.allowed).toBe(false);
+      expect(result.retryAfterMs).toBeGreaterThan(0);
+    });
+
     it('calcula retryAfterMs corretamente', async () => {
       const elapsed = 45000;
       const windowSec = 60;

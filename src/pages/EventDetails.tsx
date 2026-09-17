@@ -107,8 +107,15 @@ export const EventDetails = () => {
         }
 
         if (found) {
-          const orgProfile = await storage.getProfileById(found.creatorId);
-          setOrganizer(orgProfile || null);
+          // Perfil de conta pessoal não é público (rules recusam a leitura): cai no
+          // nome/foto gravados no evento na criação.
+          const orgProfile = await storage.getProfileById(found.creatorId).catch(() => undefined);
+          setOrganizer(
+            orgProfile ??
+              (found.creatorName
+                ? { id: found.creatorId, name: found.creatorName, imageUrl: found.creatorImageUrl, type: 'user', description: '' }
+                : null),
+          );
         }
 
         if (userId) {
@@ -385,12 +392,15 @@ export const EventDetails = () => {
                       <p className="font-sans font-semibold text-sm text-textLight mt-0.5 leading-tight">{organizer.name}</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => navigate(`/agenda/${organizer.id}`)}
-                    className="bg-primary text-textDark font-sans font-semibold text-xs px-3.5 py-2 rounded-xl transition-all duration-200 neo-click hover:bg-primaryHover cursor-pointer shrink-0"
-                  >
-                    Ver perfil
-                  </button>
+                  {/* Só perfil profissional tem agenda pública; conta pessoal daria "não encontrado". */}
+                  {organizer.type === 'profissional' && (
+                    <button
+                      onClick={() => navigate(`/agenda/${organizer.id}`)}
+                      className="bg-primary text-textDark font-sans font-semibold text-xs px-3.5 py-2 rounded-xl transition-all duration-200 neo-click hover:bg-primaryHover cursor-pointer shrink-0"
+                    >
+                      Ver perfil
+                    </button>
+                  )}
                 </div>
               )}
 

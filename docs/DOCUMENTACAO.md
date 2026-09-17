@@ -2,7 +2,7 @@
 
 Documento de referência do projeto: o que ele é, como está construído, como os dados se organizam, como a segurança funciona, como se roda, testa, faz deploy e opera. Complementa o [README](../README.md) (visão de produto e início rápido) e a [identidade visual](identidade-visual.md).
 
-Última revisão: 2026-09-11.
+Última revisão: 2026-09-17.
 
 > **Chegou agora no projeto?** Ordem sugerida: [README](../README.md) (10 min) → §1, §3 e §6 daqui (o domínio, o desenho e os dados) → [CLAUDE.md](../CLAUDE.md) (checks e decisões fechadas, mesmo que você não use o Claude Code) → §11 quando precisar operar. O histórico de decisões está em §13. Peça ao Allan acesso ao projeto Firebase `atchei` e ao repositório; o `.env` não está no git (veja o README para as variáveis).
 
@@ -246,7 +246,7 @@ Todas em `functions/index.js`, região `us-central1`, Node 22, gen2. Callables u
 | Coleção | Id | Campos principais | Quem escreve |
 |---|---|---|---|
 | `profiles` | uid (contas novas) ou id legado | `name`, `email`, `type` (`user` / `profissional` / `admin` / legados), `description`, `imageUrl`, `instagram`, `birthDate` (YYYY-MM-DD), `mustChangePassword` | o dono (sem mudar `type`/`email`), admin, functions |
-| `events` | auto | `title`, `date` (YYYY-MM-DD), `time`, `location`, `address`, `mediaUrls[]`, `category`, `publicType`, `description`, `creatorId`, `hasPresence`, `hasTickets`, `ticketPrice`, `whatsappContacts[{name, phone}]`, `maxParticipants`, `tickets[]`, `isTestEvent`, `registrationCount`*, `soldByTicket`* | criador (uid ou perfil legado), admin; * só backend |
+| `events` | auto | `title`, `date` (YYYY-MM-DD), `time`, `location`, `address`, `mediaUrls[]`, `category`, `publicType`, `description`, `creatorId`, `creatorName`, `creatorImageUrl` (nome/foto de quem criou, gravados na criação: a página do evento não lê o perfil), `hasPresence`, `hasTickets`, `ticketPrice`, `whatsappContacts[{name, phone}]`, `maxParticipants`, `tickets[]`, `isTestEvent`, `registrationCount`*, `soldByTicket`* | criador (uid ou perfil legado), admin; * só backend |
 | `registrations` | **`eventId_uid`** para inscrição própria; auto para manual/teste | `eventId`, `userId`, `userName`, `userEmail`, `userPhone`, `userCpf`, `paymentStatus`, `timestamp`, `ticketTypeId/Name`, `pedidoId`, `checkedIn`, `checkedInAt`, `checkedInBy`, `isTeste` | o próprio usuário (regras estritas), dono do evento, admin, functions |
 | `fcmTokens` | o token | `userId`, `token`, `updatedAt` | o dono; leitura só pelo backend |
 | `_rateLimits` | `<escopo>_<chave>` | contadores/janelas | só functions |
@@ -273,7 +273,7 @@ Invariantes importantes:
 
 ### 7.2 Firestore rules (`firebase/firestore.rules`)
 
-- `profiles`: `get` público (página do organizador; uid não é enumerável), **`list` restrito** (diretório de profissionais, o próprio perfil ou admin — impede dump de nomes+e-mails), `create` só do próprio uid com tipo `user`/`profissional` e **18+ validado na regra**, `update` só do dono por e-mail, `delete` só admin.
+- `profiles`: **`get` público só para perfil `profissional`** (página do organizador, agenda); perfil de conta pessoal (`user`) e admin só o próprio dono (uid ou e-mail legado) e admin leem, porque o doc tem e-mail e data de nascimento e o uid vaza por `events.creatorId` e `desafios/*.membros` (fechado em 17/09; antes era `get` público). **`list` restrito** (diretório de profissionais, o próprio perfil ou admin — impede dump de nomes+e-mails), `create` só do próprio uid com tipo `user`/`profissional` e **18+ validado na regra**, `update` só do dono por e-mail, `delete` só admin.
 - `events`: leitura pública; `create` só com `creatorId` do próprio usuário (uid ou perfil legado); `update`/`delete` só criador ou admin; o criador **não** pode alterar `creatorId`, `registrationCount` nem `soldByTicket`.
 - `registrations`: leitura só do dono, do organizador do evento ou admin. Criação própria exige evento com presença habilitada (ou venda, para intenção), capacidade disponível, `userId == uid`, id `eventId_uid`, sem `checkedIn` e sem `paymentStatus` pago. Update do organizador restrito ao check-in (irreversível) e à confirmação `'Aguardando pagamento'` → `'Pago (WhatsApp)'`. Delete: admin, o próprio usuário (só presença/intenção não validadas) ou o organizador (só intenções).
 - `fcmTokens`: escrita só do próprio uid, leitura negada. `_rateLimits`: tudo negado.
@@ -436,6 +436,7 @@ O *create* feito pelo owner configura sozinho o invoker público (`allUsers` →
 | 2026-09-15 | Backup semanal validado de ponta a ponta (run manual + `gpg -d` na máquina do Allan); PR #53 em produção. Bug achado no smoke: `APP_BASE_URL=http://localhost:5173` em duas functions deployadas à mão, links de compartilhamento iam para localhost → CI passa a gravar `functions/.env`; auditoria diária confere o redirect de `/e/` |
 | 2026-09-15 | Limpeza da auditoria de over-engineering (`/ponytail-audit`): migração `@chain:` aposentada; callable `tornarProfissional` removida (nunca chamada pelo app); compat de tipos `atletica`/`estabelecimento` e do prefixo `CHN` retirada (nenhum dado legado no Firestore); campo `sold` removido; sobras do Asaas em functions, `.env.example` e textos legais; hookup de emulador; `escapeHtml` único; `compressImage` devolve `File` sem ida e volta por base64 |
 | 2026-09-14 | **Infra fica no Firebase; debate de plataforma encerrado até um gatilho disparar** (ver "Custo e plataforma" abaixo). Ajustes de custo e lançamento: busca de evento por id (era listar 50), pôster comprimido e com cache imutável, aviso de instalação no iPhone para receber push, TTL do App Check em 7 dias, proteção contra exclusão do Firestore, backup semanal criptografado fora do Google |
+| 2026-09-17 | Segurança (achado fora do relatório de auditoria de 16/09): perfil de conta pessoal deixa de ser legível por id (`get` só dono/admin; profissional segue público); nome/foto do criador passam a ficar no evento (`creatorName`/`creatorImageUrl`, script `preencher-criador-eventos.js` para os antigos); painel admin mostra "Criado por"; HSTS no Hosting; rate limiter fail-closed nas rotas de e-mail. CSP ficou de fora de propósito (quebraria login Google, reCAPTCHA e Maps) |
 
 ### Custo e plataforma (2026-09-14)
 

@@ -54,6 +54,10 @@ export type EventItem = {
   category?: EventCategory;
   description: string;
   creatorId: string;
+  /** Nome/foto de quem criou, gravados na criação: a página do evento mostra o organizador
+   *  sem ler o perfil (perfil de conta pessoal não é público — rules). */
+  creatorName?: string;
+  creatorImageUrl?: string;
   hasTickets?: boolean;
   ticketPrice?: string;
   whatsappContacts?: { name: string; phone: string }[];
