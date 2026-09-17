@@ -18,9 +18,10 @@ const LIMITS = {
  * @param {string} functionName - Nome da função (chave para distinguir limites).
  * @param {number} maxRequests - Máximo de requisições permitidas na janela.
  * @param {number} windowSeconds - Tamanho da janela em segundos.
+ * @param {{failClosed?: boolean}} [opts] - failClosed: em falha de infra NEGA em vez de liberar.
  * @returns {Promise<{allowed: boolean, retryAfterMs: number}>}
  */
-async function checkRateLimit(identifier, functionName, maxRequests, windowSeconds) {
+async function checkRateLimit(identifier, functionName, maxRequests, windowSeconds, { failClosed = false } = {}) {
   if (!identifier || !functionName) {
     logger.warn("checkRateLimit chamado sem identifier ou functionName. Permitindo por segurança.");
     return { allowed: true, retryAfterMs: 0 };
@@ -84,10 +85,11 @@ async function checkRateLimit(identifier, functionName, maxRequests, windowSecon
 
     return result;
   } catch (error) {
-    // Em caso de erro na verificação, permitir a requisição (fail-open)
-    // para não bloquear operações legítimas por falha infra
-    logger.error("Erro no checkRateLimit, permitindo requisição (fail-open):", error);
-    return { allowed: true, retryAfterMs: 0 };
+    // Falha de infra (Firestore): por padrão libera (fail-open) para não travar operação
+    // legítima. As rotas que disparam e-mail passam failClosed: negar é mais barato do que
+    // deixar inundar a cota do Resend sem contador.
+    logger.error(`Erro no checkRateLimit (${failClosed ? "negando" : "permitindo"} requisição):`, error);
+    return failClosed ? { allowed: false, retryAfterMs: 60_000 } : { allowed: true, retryAfterMs: 0 };
   }
 }
 

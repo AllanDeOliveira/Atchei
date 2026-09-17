@@ -105,5 +105,23 @@ describe('EventDetails Page', () => {
 
     expect(screen.getByText('Festival de Música Sertaneja')).toBeInTheDocument();
     expect(screen.getAllByText('Parque de Exposições')[0]).toBeInTheDocument();
+    expect(screen.getByText('Organizador Teste')).toBeInTheDocument();
+    expect(screen.getByText('Ver perfil')).toBeInTheDocument();
+  });
+
+  it('mostra o organizador pelo creatorName quando o perfil não é legível (conta pessoal)', async () => {
+    vi.mocked(storage.getEventById).mockResolvedValue({ ...mockEvent, creatorName: 'Maria Silva' });
+    vi.mocked(storage.getProfileById).mockRejectedValue(Object.assign(new Error('denied'), { code: 'permission-denied' }));
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <EventDetails />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByText('Maria Silva')).toBeInTheDocument();
+    expect(screen.queryByText('Ver perfil')).not.toBeInTheDocument();
   });
 });

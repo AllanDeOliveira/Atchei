@@ -449,7 +449,7 @@ exports.solicitarResetSenha = onCall({ cors: true, enforceAppCheck: true, secret
 
     // Rate limit pelo próprio e-mail: impede usar o endpoint para inundar a caixa
     // de alguém. Estourar o limite também responde neutro, para não vazar nada.
-    const rl = await checkRateLimit(email, 'solicitarResetSenha', LIMITS.RESET_SENHA.max, LIMITS.RESET_SENHA.windowSec);
+    const rl = await checkRateLimit(email, 'solicitarResetSenha', LIMITS.RESET_SENHA.max, LIMITS.RESET_SENHA.windowSec, { failClosed: true });
     if (!rl.allowed) {
         logger.warn(`Rate limit de reset de senha atingido para ${email}.`);
         return { ok: true };
@@ -499,7 +499,7 @@ exports.solicitarVerificacaoEmail = onCall({ cors: true, enforceAppCheck: true, 
     }
 
     // Por uid: um usuário não inunda a própria caixa (nem a cota do Resend).
-    const rl = await checkRateLimit(request.auth.uid, 'solicitarVerificacaoEmail', LIMITS.VERIFICACAO_EMAIL.max, LIMITS.VERIFICACAO_EMAIL.windowSec);
+    const rl = await checkRateLimit(request.auth.uid, 'solicitarVerificacaoEmail', LIMITS.VERIFICACAO_EMAIL.max, LIMITS.VERIFICACAO_EMAIL.windowSec, { failClosed: true });
     if (!rl.allowed) {
         throw new HttpsError('resource-exhausted', `Muitos pedidos. Tente novamente em ${Math.ceil(rl.retryAfterMs / 1000)} segundos.`);
     }
