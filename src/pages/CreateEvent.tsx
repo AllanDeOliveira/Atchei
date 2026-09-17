@@ -15,7 +15,7 @@ import { EVENTO_VAZIO, validarEvento } from '../lib/eventoForm';
 import type { EventoForm } from '../lib/eventoForm';
 import toast from 'react-hot-toast';
 import type { Area } from 'react-easy-crop';
-import { getCroppedImg } from '../lib/imageUtils';
+import { getCroppedImg, getImagemInteira } from '../lib/imageUtils';
 import { formatDateBR } from '../lib/formatters';
 import { DateTimePickerModal } from '../components/CreateEvent/DateTimePickerModal';
 import { LocationPickerModal } from '../components/CreateEvent/LocationPickerModal';
@@ -197,13 +197,17 @@ const CreateEventContent = () => {
     setCurrentFile(null);
   };
 
-  const handleCropConfirm = async (area: Area) => {
+  // Recortada em 16:9 ou inteira (flyer em pé): o resto do caminho é o mesmo.
+  const handleCropConfirm = (area: Area) => subirCapa(() => getCroppedImg(imageSrc, area, currentFile!.name));
+  const handleUsarInteira = () => subirCapa(() => getImagemInteira(imageSrc, currentFile!.name));
+
+  const subirCapa = async (gerar: () => Promise<File>) => {
     if (!imageSrc || !currentFile) return;
     setIsUploading(true);
     const toastId = toast.loading('Processando imagem e fazendo upload...');
 
     try {
-      const croppedFile = await getCroppedImg(imageSrc, area, currentFile.name);
+      const croppedFile = await gerar();
       const url = await storage.uploadFile(croppedFile, 'events');
       set('mediaUrls', [...mediaUrls, url]);
       toast.success('Upload concluído!');
@@ -607,6 +611,7 @@ const CreateEventContent = () => {
         imageSrc={imageSrc}
         uploading={isUploading}
         onConfirm={handleCropConfirm}
+        onUsarInteira={handleUsarInteira}
         onClose={fecharCrop}
       />
 

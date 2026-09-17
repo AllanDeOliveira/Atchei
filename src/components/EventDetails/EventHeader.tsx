@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { ArrowLeft, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { isVideoUrl } from '../../lib/imageUtils';
+import { CapaEvento } from '../CapaEvento';
 
 interface EventHeaderProps {
   title: string;
@@ -94,17 +95,22 @@ export const EventHeader: React.FC<EventHeaderProps> = ({
           </div>
         ) : (
           <div className={`w-full h-full relative flex items-center justify-center overflow-hidden ${isPlaceholder ? 'bg-gradient-to-br from-surface via-surfaceHover to-surface p-12' : 'bg-black/5'}`}>
-            {/* Foto preenche a caixa inteira (corta as bordas se a proporção for outra). */}
-            <img
-              src={mediaList[currentMediaIndex]}
-              alt={isPlaceholder ? title : `${title} - Foto ${currentMediaIndex + 1}`}
-              className={`relative z-10 select-none transition-all duration-300 ${
-                isPlaceholder
-                  ? 'w-auto h-24 md:h-32 object-contain opacity-50'
-                  : 'w-full h-full object-cover'
-              }`}
-              draggable="false"
-            />
+            {isPlaceholder ? (
+              <img
+                src={mediaList[currentMediaIndex]}
+                alt={title}
+                className="relative z-10 select-none w-auto h-24 md:h-32 object-contain opacity-50"
+                draggable="false"
+              />
+            ) : (
+              // Foto deitada preenche a caixa; flyer em pé aparece inteiro sobre fundo desfocado.
+              <CapaEvento
+                src={mediaList[currentMediaIndex]}
+                alt={`${title} - Foto ${currentMediaIndex + 1}`}
+                className="relative z-10 w-full h-full overflow-hidden"
+                imgClassName="select-none transition-all duration-300"
+              />
+            )}
           </div>
         )}
 
