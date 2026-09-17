@@ -3,6 +3,7 @@ import type { EventItem } from '../lib/storage';
 import { Navigation, Clock, MapPin, ExternalLink, Ticket, ArrowRight, Flame } from 'lucide-react';
 import { isVideoUrl } from '../lib/imageUtils';
 import { mapsDirUrl, waMeUrl, formatDateBR, confirmadosLabel } from '../lib/formatters';
+import { CapaEvento } from './CapaEvento';
 
 interface EventCardProps {
   event: EventItem;
@@ -47,7 +48,7 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
               autoPlay
             />
           ) : (
-            <img src={event.mediaUrls[0]} alt={event.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            <CapaEvento src={event.mediaUrls[0]} alt={event.title} className="absolute inset-0 w-full h-full overflow-hidden" imgClassName="group-hover:scale-105 transition-transform duration-500" />
           )
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-accent/5 to-surface flex items-center justify-center p-6">
@@ -101,7 +102,7 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
                 autoPlay
               />
             ) : (
-              <img src={event.mediaUrls[0]} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              <CapaEvento src={event.mediaUrls[0]} alt={event.title} className="relative w-full h-full overflow-hidden" imgClassName="transition-transform duration-500 group-hover:scale-105" />
             )
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-surface via-surfaceHover to-surface flex items-center justify-center p-6">

@@ -63,6 +63,16 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
 const POSTER_MAX_PX = 1200;
 const POSTER_JPEG_QUALITY = 0.8;
 
+/**
+ * Imagem inteira, sem recorte, só comprimida: flyer em pé (1080 × 1920, formato de Story)
+ * não cabe na faixa 16:9 — o recorte jogava fora dois terços da arte. A capa mostra a
+ * imagem em pé inteira sobre um fundo desfocado (ver components/CapaEvento).
+ */
+export async function getImagemInteira(imageSrc: string, fileName: string = 'poster.jpg'): Promise<File> {
+  const img = await createImage(imageSrc);
+  return getCroppedImg(imageSrc, { x: 0, y: 0, width: img.naturalWidth, height: img.naturalHeight }, fileName);
+}
+
 export async function getCroppedImg(
   imageSrc: string,
   pixelCrop: { x: number; y: number; width: number; height: number },
