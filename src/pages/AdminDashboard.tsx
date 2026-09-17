@@ -504,6 +504,7 @@ export const AdminDashboard = () => {
                       <div className="flex-1 min-w-0">
                         <h3 className="font-display font-semibold text-base text-textLight truncate">{event.title}</h3>
                         <p className="text-xs text-textMuted mt-1.5">{formatDateBR(event.date)}</p>
+                        <p className="text-xs text-textMuted mt-1 truncate">Criado por {event.creatorName || nomeDe(event.creatorId)}</p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <Users size={12} className="text-primary" />

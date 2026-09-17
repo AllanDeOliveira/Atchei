@@ -76,12 +76,18 @@ service cloud.firestore {
     }
 
     match /profiles/{profileId} {
-      // Leitura de UM perfil é pública (página do organizador; UID não é enumerável).
-      // LISTAGEM é restrita: visitante anônimo só enxerga o diretório profissional
-      // (a query do cliente precisa filtrar por type — ver storage.getPublicProfiles);
-      // logado pode listar (o fallback de login busca o próprio perfil por e-mail).
-      // Impede o dump anônimo da base inteira (nomes + e-mails) via query aberta.
-      allow get: if true;
+      // Leitura de UM perfil: pública só para perfil profissional (página do organizador,
+      // agenda). Conta pessoal guarda e-mail e data de nascimento, e o uid dela NÃO é
+      // segredo (events.creatorId é público; desafios/*.membros é legível por logado):
+      // só o dono (por uid ou e-mail legado) e admin leem. A página do evento mostra o
+      // organizador pessoal pelo creatorName gravado no evento. Doc inexistente
+      // (resource == null) é negado, exceto para o próprio uid.
+      allow get: if
+        isAdmin() ||
+        (isAuthed() && request.auth.uid == profileId) ||
+        (resource != null && resource.data.type == 'profissional') ||
+        (isAuthed() && resource != null && 'email' in request.auth.token && 'email' in resource.data &&
+         resource.data.email.lower() == request.auth.token.email.lower());
       // Listagem: diretório profissional (público), o próprio perfil (fallback de
       // login por e-mail) ou admin. Logado comum NÃO lista a base inteira — isso
       // vazaria nome + e-mail de contas pessoais (type 'user').

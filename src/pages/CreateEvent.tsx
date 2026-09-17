@@ -123,6 +123,15 @@ const CreateEventContent = () => {
     const targetCreatorId = selectedCreatorId || user?.profileId || userId!;
     // Teto total: string do form vira número; vazio vira null (sem limite; Firestore não aceita undefined).
     const { maxParticipants: maxPartStr, ...restData } = data;
+    // Nome/foto de quem criou ficam no evento: a página do evento mostra o organizador sem
+    // ler o perfil (perfil de conta pessoal não é público). Admin criando para um parceiro
+    // usa o perfil escolhido; em edição sem perfil resolvível, o merge preserva o que já há.
+    const perfilCriador = profiles.find(p => p.id === selectedCreatorId);
+    const identidadeCriador = perfilCriador
+      ? { creatorName: perfilCriador.name, creatorImageUrl: perfilCriador.imageUrl || '' }
+      : !selectedCreatorId && user
+        ? { creatorName: user.name, creatorImageUrl: user.imageUrl || '' }
+        : {};
     const eventData: EventItem = {
       ...restData,
       maxParticipants: maxPartStr && Number(maxPartStr) > 0 ? Number(maxPartStr) : null,
@@ -131,6 +140,7 @@ const CreateEventContent = () => {
       category: (data.category || 'Festa') as EventCategory,
       whatsappContacts: data.whatsappContacts?.filter(c => c.phone.trim() !== '') || [],
       creatorId: id ? (selectedCreatorId || originalCreatorId || targetCreatorId) : targetCreatorId,
+      ...identidadeCriador,
     };
     try {
       await storage.saveEvent(eventData);
