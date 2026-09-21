@@ -7,6 +7,8 @@ type Props = {
   className: string;
   /** Classes extras da imagem da frente (ex.: zoom no hover). */
   imgClassName?: string;
+  /** Primeira capa da tela: é o LCP, então baixa com prioridade alta e sem lazy. As demais esperam. */
+  prioridade?: boolean;
 };
 
 /**
@@ -15,7 +17,7 @@ type Props = {
  * desfocada: recortar em faixa 16:9 jogava fora dois terços da arte, e cortar na
  * exibição deixava só o meio.
  */
-export const CapaEvento = ({ src, alt, className, imgClassName = '' }: Props) => {
+export const CapaEvento = ({ src, alt, className, imgClassName = '', prioridade = false }: Props) => {
   const [emPe, setEmPe] = useState(false);
   const medir = (el: HTMLImageElement) => setEmPe(el.naturalHeight > el.naturalWidth);
   // Imagem já em cache dispara `load` antes de o React ligar o onLoad: mede ao montar.
@@ -38,6 +40,8 @@ export const CapaEvento = ({ src, alt, className, imgClassName = '' }: Props) =>
         src={src}
         alt={alt}
         draggable={false}
+        fetchPriority={prioridade ? 'high' : undefined}
+        loading={prioridade ? undefined : 'lazy'}
         onLoad={(e) => medir(e.currentTarget)}
         className={`relative w-full h-full ${emPe ? 'object-contain' : 'object-cover'} ${imgClassName}`}
       />

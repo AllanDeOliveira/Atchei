@@ -8,9 +8,11 @@ import { CapaEvento } from './CapaEvento';
 interface EventCardProps {
   event: EventItem;
   variant?: 'default' | 'highlight';
+  /** Primeiro cartão com capa na tela (ver CapaEvento). */
+  prioridade?: boolean;
 }
 
-export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
+export const EventCard = ({ event, variant = 'default', prioridade = false }: EventCardProps) => {
   const navigate = useNavigate();
   const provaSocial = confirmadosLabel(event.registrationCount || 0);
 
@@ -48,7 +50,7 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
               autoPlay
             />
           ) : (
-            <CapaEvento src={event.mediaUrls[0]} alt={event.title} className="absolute inset-0 w-full h-full overflow-hidden" imgClassName="group-hover:scale-105 transition-transform duration-500" />
+            <CapaEvento src={event.mediaUrls[0]} alt={event.title} prioridade={prioridade} className="absolute inset-0 w-full h-full overflow-hidden" imgClassName="group-hover:scale-105 transition-transform duration-500" />
           )
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-accent/5 to-surface flex items-center justify-center p-6">
@@ -104,7 +106,7 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
                 autoPlay
               />
             ) : (
-              <CapaEvento src={event.mediaUrls[0]} alt={event.title} className="relative w-full h-full overflow-hidden" imgClassName="transition-transform duration-500 group-hover:scale-105" />
+              <CapaEvento src={event.mediaUrls[0]} alt={event.title} prioridade={prioridade} className="relative w-full h-full overflow-hidden" imgClassName="transition-transform duration-500 group-hover:scale-105" />
             )
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-surface via-surfaceHover to-surface flex items-center justify-center p-6">

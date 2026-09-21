@@ -308,8 +308,8 @@ export const Feed = () => {
             ))
           ) : highlights.length > 0 ? (
             <>
-              {highlights.map(event => (
-                 <EventCard key={`hl-${event.id}`} event={event} variant="highlight" />
+              {highlights.map((event, i) => (
+                 <EventCard key={`hl-${event.id}`} event={event} variant="highlight" prioridade={i === 0} />
               ))}
               <div className="min-w-[20px] shrink-0" />
             </>
@@ -387,9 +387,9 @@ export const Feed = () => {
           ))
         ) : (
           <>
-            {filteredEvents.map((event) => (
+            {filteredEvents.map((event, i) => (
               <div key={event.id} className="event-card-anim">
-                 <EventCard event={event} />
+                 <EventCard event={event} prioridade={highlights.length === 0 && i === 0} />
               </div>
             ))}
 

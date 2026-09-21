@@ -4,8 +4,26 @@
  */
 
 /**
- * Redimensiona e comprime uma imagem para JPEG, devolvendo um File pronto para upload.
- * Em falha (formato não decodificável, sem canvas) devolve o arquivo original.
+ * Canvas -> File. WebP fica ~30% menor que JPEG na mesma qualidade e todo navegador atual
+ * decodifica (iOS 14+). Navegador sem codificador WebP devolve PNG (spec) ou null: aí cai no
+ * JPEG. Devolve null se o canvas estiver vazio. A extensão do nome segue o formato gerado.
+ */
+export const canvasParaArquivo = (canvas: HTMLCanvasElement, fileName: string, quality: number): Promise<File | null> =>
+  new Promise((resolve) => {
+    const nome = (ext: string) => fileName.replace(/\.[a-z0-9]+$/i, '') + ext;
+    canvas.toBlob((webp) => {
+      if (webp?.type === 'image/webp') return resolve(new File([webp], nome('.webp'), { type: 'image/webp' }));
+      canvas.toBlob(
+        (jpeg) => resolve(jpeg ? new File([jpeg], nome('.jpg'), { type: 'image/jpeg' }) : null),
+        'image/jpeg',
+        quality
+      );
+    }, 'image/webp', quality);
+  });
+
+/**
+ * Redimensiona e comprime uma imagem (WebP, ou JPEG onde não há codificador), devolvendo um
+ * File pronto para upload. Em falha (formato não decodificável, sem canvas) devolve o original.
  */
 export const compressImage = (
   file: File,
@@ -26,11 +44,7 @@ export const compressImage = (
       const ctx = canvas.getContext('2d');
       if (!ctx) return resolve(file);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(
-        (blob) => resolve(blob ? new File([blob], fileName, { type: 'image/jpeg' }) : file),
-        'image/jpeg',
-        quality
-      );
+      canvasParaArquivo(canvas, fileName, quality).then((arquivo) => resolve(arquivo ?? file));
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -56,12 +70,13 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
     image.src = url;
   });
 
-// Pôster: teto de 1200 px no lado maior e JPEG a 0.8. Cada abertura do feed baixa
+// Pôster: teto de 1200 px no lado maior e qualidade 0.8 (WebP; JPEG onde não há codificador).
+// Cada abertura do feed baixa
 // até 10 pôsteres e o bucket cobra por GB transferido (São Paulo não tem cota
 // gratuita); um recorte cru de câmera passa de 3 MB, comprimido fica perto de
 // 150 KB sem diferença visível no celular.
 const POSTER_MAX_PX = 1200;
-const POSTER_JPEG_QUALITY = 0.8;
+const POSTER_QUALITY = 0.8;
 
 /**
  * Imagem inteira, sem recorte, só comprimida: flyer em pé (1080 × 1920, formato de Story)
@@ -102,14 +117,8 @@ export async function getCroppedImg(
     canvas.height
   );
 
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((file) => {
-      if (file) {
-        resolve(new File([file], fileName, { type: 'image/jpeg' }));
-      } else {
-        reject(new Error('Canvas is empty'));
-      }
-    }, 'image/jpeg', POSTER_JPEG_QUALITY);
-  });
+  const arquivo = await canvasParaArquivo(canvas, fileName, POSTER_QUALITY);
+  if (!arquivo) throw new Error('Canvas is empty');
+  return arquivo;
 }
 
