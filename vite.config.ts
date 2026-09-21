@@ -16,7 +16,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo.png'],
+      includeAssets: ['logo.png', 'fonts/*.woff2'],
       workbox: {
         // O fallback de navegação (index.html) NÃO pode capturar rotas servidas pelo
         // servidor: /__/auth/* (handler de login do Firebase — senão o popup do Google
