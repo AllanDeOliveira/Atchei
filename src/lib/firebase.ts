@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
@@ -37,7 +37,13 @@ if (appCheckSiteKey && !import.meta.env.TEST) {
   });
 }
 
-export const auth = getAuth(app);
+// initializeAuth em vez de getAuth: o getAuth registra o resolvedor de popup/redirect, que no
+// celular baixa /__/auth/iframe.js (~90 KB) e a gapi em toda visita, mesmo de quem nunca faz login
+// (era a cadeia de rede mais longa da home). A lista de persistência é a mesma do getAuth, então
+// ninguém é deslogado. O resolvedor entra só no signInWithPopup (storage/auth.ts).
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+});
 // E-mails de verificação/redefinição saem no template pt-BR do Firebase.
 auth.languageCode = 'pt';
 export const db = getFirestore(app);
@@ -75,9 +81,15 @@ aplicarConsentimento(
 // navegador recusa o cookie ("domínio inválido") e o _ga nunca persiste, fazendo
 // cada visita ser contada como um usuário novo. Em domínio próprio isso não
 // aparece; em <projeto>.web.app, sim.
-isSupported().then((ok) => {
-  if (ok) initializeAnalytics(app, { config: { cookie_domain: 'none' } });
-});
+//
+// Só depois do `load`: o gtag (150 KB) deixa de disputar rede e CPU com a primeira pintura.
+const iniciarAnalytics = () => {
+  isSupported().then((ok) => {
+    if (ok) initializeAnalytics(app, { config: { cookie_domain: 'none' } });
+  });
+};
+if (document.readyState === 'complete') iniciarAnalytics();
+else window.addEventListener('load', iniciarAnalytics, { once: true });
 
 // Instância única do Functions. Lazy para que testes que mockam os módulos do
 // Firebase não a inicializem.

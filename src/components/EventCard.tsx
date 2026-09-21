@@ -55,6 +55,8 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
             <img 
               src={`${import.meta.env.BASE_URL}placeholder-logo.png`}
               alt=""
+              width={155}
+              height={152}
               className="w-auto h-12 object-contain opacity-40 group-hover:scale-105 transition-transform duration-500"
             />
           </div>
@@ -109,6 +111,8 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
               <img 
                 src={`${import.meta.env.BASE_URL}placeholder-logo.png`}
                 alt=""
+                width={155}
+                height={152}
                 className="w-auto h-12 object-contain opacity-50 transition-transform duration-500 group-hover:scale-105"
               />
             </div>
@@ -163,7 +167,7 @@ export const EventCard = ({ event, variant = 'default' }: EventCardProps) => {
               )}
 
               {provaSocial && (
-                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-primary">
+                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-accent">
                   <Flame size={11} className="shrink-0" /> {provaSocial}
                 </p>
               )}

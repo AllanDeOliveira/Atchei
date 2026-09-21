@@ -457,6 +457,8 @@ export const Profile = () => {
             <img 
               src={`${import.meta.env.BASE_URL}placeholder-logo.png`}
               alt="Atchei"
+              width={155}
+              height={152}
               className="w-auto h-14 object-contain brightness-110 drop-shadow-sm"
             />
           </div>

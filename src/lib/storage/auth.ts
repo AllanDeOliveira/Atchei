@@ -15,7 +15,8 @@ import {
   createUserWithEmailAndPassword,
   updatePassword,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  browserPopupRedirectResolver
 } from 'firebase/auth';
 import { httpsCallable } from 'firebase/functions';
 import { getFunctionsInstance } from '../firebase';
@@ -34,7 +35,8 @@ export const authStore = {
    * o cadastro pede só a data de nascimento (as rules exigem 18+) e cria o perfil.
    */
   loginComGoogle: async (): Promise<{ user: User } | { precisaCompletar: true; name: string; email: string }> => {
-    const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+    // O resolvedor vai aqui porque o auth é criado sem ele (ver lib/firebase.ts).
+    const cred = await signInWithPopup(auth, new GoogleAuthProvider(), browserPopupRedirectResolver);
     const fbUser = cred.user;
     const email = (fbUser.email || '').toLowerCase();
 

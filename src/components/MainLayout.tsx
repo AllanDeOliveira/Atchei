@@ -61,14 +61,13 @@ export const MainLayout = () => (
               href="https://instagram.com/atchei.app"
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Instagram do Atchei"
               className="inline-flex items-center gap-2 hover:text-primary transition-colors text-sm"
             >
               <InstagramIcon size={18} /> @atchei.app
             </a>
           </div>
         </div>
-        <p className="text-[11px] text-white/40 mt-8 pt-6 border-t border-white/10">
+        <p className="text-[11px] text-white/60 mt-8 pt-6 border-t border-white/10">
           © {new Date().getFullYear()} Atchei — Cáceres, MT
         </p>
       </div>
