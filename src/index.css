@@ -198,7 +198,10 @@
     animation: anim-enter 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
-  .feed-header, .agenda-header {
+  /* O cabeçalho do feed (saudação) NÃO anima: é o maior texto da tela (LCP) e, enquanto
+     está em opacity 0 entrando, o navegador não o conta como pintado. Só o PageSpeed via
+     o LCP 3,5 s depois do FCP por causa disso. */
+  .agenda-header {
     --anim-from: -20px;
     animation: anim-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
@@ -225,7 +228,7 @@
   @media (prefers-reduced-motion: reduce) {
     .admin-anim, .agenda-event, .create-anim, .anim-up, .stagger-el,
     .profile-el, .fin-anim, .event-card-anim, .search-result, .highlights-section,
-    .feed-header, .agenda-header, .success-title, .success-text {
+    .agenda-header, .success-title, .success-text {
       animation: none;
     }
   }
