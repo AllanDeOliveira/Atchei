@@ -93,8 +93,8 @@ export const Register = () => {
       </button>
       <div className="w-full max-w-sm flex flex-col items-center relative z-10">
 
-        <div className="flex flex-col items-center gap-3 stagger-el mb-8">
-          <img src={`${import.meta.env.BASE_URL}placeholder-logo.png`} alt="Atchei" className="w-24 h-24 object-contain brightness-110 drop-shadow-[0_4px_20px_rgba(255,179,77,0.35)]" />
+        <div className="flex flex-col items-center gap-2 stagger-el mb-6">
+          <img src={`${import.meta.env.BASE_URL}placeholder-logo.png`} alt="Atchei" className="w-16 h-16 object-contain brightness-110 drop-shadow-[0_4px_20px_rgba(255,179,77,0.35)]" />
           <h2 className="font-display font-semibold text-2xl text-accent mt-2">{completar ? 'Concluir cadastro' : 'Criar conta'}</h2>
         </div>
 
@@ -104,7 +104,7 @@ export const Register = () => {
               <GoogleButton next={next} />
               <div className="flex items-center gap-3 mt-5">
                 <span className="h-px flex-1 bg-glassBorder" />
-                <span className="text-[11px] text-textMuted">ou com e-mail</span>
+                <span className="text-xs text-textMuted">ou com e-mail</span>
                 <span className="h-px flex-1 bg-glassBorder" />
               </div>
             </div>
@@ -130,10 +130,10 @@ export const Register = () => {
                         : 'border-glassBorder bg-surfaceHover/40 hover:border-primary/25'
                     }`}
                   >
-                    <span className={`block text-sm font-semibold ${tipo === opcao.valor ? 'text-primary' : 'text-textLight'}`}>
+                    <span className={`block text-sm font-semibold ${tipo === opcao.valor ? 'text-accent' : 'text-textLight'}`}>
                       {opcao.titulo}
                     </span>
-                    <span className="block text-[11px] text-textMuted mt-0.5 leading-snug">{opcao.descricao}</span>
+                    <span className="block text-xs text-textMuted mt-0.5 leading-snug">{opcao.descricao}</span>
                   </button>
                 ))}
               </div>
@@ -167,7 +167,7 @@ export const Register = () => {
               max={new Date().toISOString().slice(0, 10)}
               onChange={e => setBirthDate(e.target.value)}
             />
-            <p className="text-[10px] text-textMuted ml-1">É necessário ter 18 anos ou mais.</p>
+            <p className="text-xs text-textMuted ml-1">É necessário ter 18 anos ou mais.</p>
           </div>
 
           {!completar && (
@@ -197,11 +197,11 @@ export const Register = () => {
             </>
           )}
 
-          <p className="stagger-el text-[11px] text-textMuted leading-snug text-center pt-1">
+          <p className="stagger-el text-xs text-textMuted leading-snug text-center pt-1">
             Ao criar a conta, você concorda com os{' '}
-            <Link to="/termos" className="text-primary underline underline-offset-2">Termos de Uso</Link>{' '}
+            <Link to="/termos" className="text-accent underline underline-offset-2">Termos de Uso</Link>{' '}
             e a{' '}
-            <Link to="/privacidade" className="text-primary underline underline-offset-2">Política de Privacidade</Link>.
+            <Link to="/privacidade" className="text-accent underline underline-offset-2">Política de Privacidade</Link>.
           </p>
 
           <div className="stagger-el pt-2">
@@ -220,7 +220,7 @@ export const Register = () => {
           {!completar && (
             <p className="stagger-el text-center text-xs text-textMuted">
               Já tem conta?{' '}
-              <Link to={`/login${window.location.search}`} className="text-primary font-medium hover:underline">
+              <Link to={`/login${window.location.search}`} className="text-accent font-medium hover:underline">
                 Fazer login
               </Link>
             </p>

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import type { EventItem } from '../lib/storage';
-import { Navigation, Clock, MapPin, ExternalLink, Ticket, ArrowRight, Flame } from 'lucide-react';
+import { Navigation, Clock, MapPin, ExternalLink, Ticket, Flame } from 'lucide-react';
 import { isVideoUrl } from '../lib/imageUtils';
 import { mapsDirUrl, waMeUrl, formatDateBR, confirmadosLabel } from '../lib/formatters';
 import { CapaEvento } from './CapaEvento';
@@ -35,7 +35,7 @@ export const EventCard = ({ event, variant = 'default', prioridade = false }: Ev
       <button
         type="button"
         aria-label={`Ver detalhes de ${event.title}`}
-        className="relative min-w-[260px] max-w-[260px] h-[180px] rounded-2xl overflow-hidden border border-glassBorder shadow-sm hover:-translate-y-1 hover:border-primary/30 hover:shadow-md transition-all duration-200 cursor-pointer shrink-0 group text-left block"
+        className="relative min-w-[260px] max-w-[260px] h-[180px] md:min-w-[440px] md:max-w-[440px] md:h-[260px] rounded-2xl overflow-hidden border border-glassBorder shadow-sm hover:-translate-y-1 hover:border-primary/30 hover:shadow-md transition-all duration-200 cursor-pointer shrink-0 group text-left block"
         onClick={() => navigate(`/event/${event.id}`)}
       >
         {/* Background */}
@@ -70,19 +70,19 @@ export const EventCard = ({ event, variant = 'default', prioridade = false }: Ev
         {/* Content */}
         <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
           {event.category && (
-            <span className="inline-block px-2 py-0.5 mb-1.5 rounded-md bg-white/20 backdrop-blur-md text-white text-[10px] font-semibold tracking-wide">
+            <span className="inline-block px-2 py-0.5 mb-1.5 rounded-md bg-white/20 backdrop-blur-md text-white text-xs font-semibold tracking-wide">
               {event.category}
             </span>
           )}
-          <h3 className="font-display font-semibold text-base text-white leading-tight truncate">
+          <h3 className="font-display font-semibold text-base md:text-xl text-white leading-tight truncate">
             {event.title}
           </h3>
           <div className="flex items-center gap-2 mt-1.5">
             <Clock size={12} className="text-white/70" />
-            <span className="font-mono text-[10px] text-white/95 font-bold">{formatDateBR(event.date)} {event.time}</span>
+            <span className="font-mono text-xs text-white/95 font-bold">{formatDateBR(event.date)} {event.time}</span>
             <span className="text-white/30">·</span>
             <MapPin size={12} className="text-white/70" />
-            <span className="font-mono text-[10px] text-white/90 truncate">{event.location}</span>
+            <span className="font-mono text-xs text-white/90 truncate">{event.location}</span>
           </div>
         </div>
 
@@ -123,7 +123,7 @@ export const EventCard = ({ event, variant = 'default', prioridade = false }: Ev
           {/* Category badge top left */}
           {event.category && (
             <div className="absolute top-3 left-3">
-              <span className="bg-surface/90 border border-glassBorder rounded-lg px-2.5 py-1 text-[10px] font-semibold text-textLight backdrop-blur-sm shadow-sm">
+              <span className="bg-surface/90 border border-glassBorder rounded-lg px-2.5 py-1 text-xs font-semibold text-textLight backdrop-blur-sm shadow-sm">
                 {event.category}
               </span>
             </div>
@@ -132,8 +132,8 @@ export const EventCard = ({ event, variant = 'default', prioridade = false }: Ev
           {/* Time badge top right */}
           <div className="absolute top-3 right-3">
             <div className="bg-surface/90 border border-glassBorder rounded-lg px-3 py-1 flex items-center gap-1.5 backdrop-blur-sm">
-              <Clock size={12} className="text-primary" />
-              <span className="font-mono text-[10px] font-bold text-textLight">{formatDateBR(event.date)} {event.time}</span>
+              <Clock size={12} className="text-accent" />
+              <span className="font-mono text-xs font-bold text-textLight">{formatDateBR(event.date)} {event.time}</span>
             </div>
           </div>
         </button>
@@ -143,7 +143,9 @@ export const EventCard = ({ event, variant = 'default', prioridade = false }: Ev
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h3 className="font-display font-semibold text-lg text-textLight leading-tight truncate">
-                {event.title}
+                <button type="button" onClick={() => navigate(`/event/${event.id}`)} className="max-w-full truncate text-left hover:underline cursor-pointer">
+                  {event.title}
+                </button>
               </h3>
 
               {/* Location - clickable for maps */}
@@ -162,46 +164,38 @@ export const EventCard = ({ event, variant = 'default', prioridade = false }: Ev
                   className="mt-1 w-full min-w-0 flex items-center gap-1.5 text-textMuted hover:text-textLight transition-colors group/addr cursor-pointer"
                 >
                   <MapPin size={11} className="shrink-0" />
-                  <span className="text-[11px] truncate group-hover/addr:underline">
+                  <span className="text-xs truncate group-hover/addr:underline">
                     {event.address}
                   </span>
                 </button>
               )}
 
               {provaSocial && (
-                <p className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-accent">
+                <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-accent">
                   <Flame size={11} className="shrink-0" /> {provaSocial}
                 </p>
               )}
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Só quando o toque tem para onde ir: evento com venda e um WhatsApp de contato. */}
-              {event.hasTickets && event.whatsappContacts?.[0] && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); openWhatsApp(); }}
-                  className="w-9 h-9 rounded-xl bg-success/10 text-success border border-success/20 flex items-center justify-center hover:bg-success hover:text-textDark transition-all duration-200 neo-click cursor-pointer"
-                  title="Comprar ingresso"
-                >
-                  <Ticket size={16} />
-                </button>
-              )}
+          </div>
+
+          {/* Ações com texto e alvo de 44px: só ícone com `title` não diz nada no toque. */}
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={(e) => { e.stopPropagation(); openMaps(); }}
+              className="flex-1 h-11 rounded-xl bg-background border border-glassBorder text-textLight text-sm font-semibold flex items-center justify-center gap-2 hover:bg-surfaceHover transition-colors duration-200 neo-click cursor-pointer"
+            >
+              <Navigation size={16} className="text-accent" /> Como chegar
+            </button>
+            {/* Só quando o toque tem para onde ir: evento com venda e um WhatsApp de contato. */}
+            {event.hasTickets && event.whatsappContacts?.[0] && (
               <button
-                onClick={(e) => { e.stopPropagation(); openMaps(); }}
-                className="w-9 h-9 rounded-xl bg-accent/10 text-accent border border-accent/20 flex items-center justify-center hover:bg-accent hover:text-textDark transition-all duration-200 neo-click cursor-pointer"
-                title="Como chegar"
+                onClick={(e) => { e.stopPropagation(); openWhatsApp(); }}
+                className="flex-1 h-11 rounded-xl bg-primary text-textDark text-sm font-semibold flex items-center justify-center gap-2 hover:bg-primaryHover transition-colors duration-200 neo-click cursor-pointer"
               >
-                <Navigation size={16} />
+                <Ticket size={16} /> Comprar ingresso
               </button>
-              <button
-                onClick={() => navigate(`/event/${event.id}`)}
-                className="w-9 h-9 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center hover:bg-primary hover:text-textDark transition-all duration-200 neo-click cursor-pointer"
-                title="Ver detalhes"
-              >
-                <ArrowRight size={16} />
-              </button>
-            </div>
+            )}
           </div>
         </div>
       </div>

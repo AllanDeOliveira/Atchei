@@ -84,7 +84,7 @@ export const InstallAppCard = () => {
           {precisaGuia ? (
             <>
               Abra o Atchei como um app no seu celular! Toque em{' '}
-              <Share size={12} className="inline -mt-0.5 text-primary" aria-label="Compartilhar" /> e selecione{' '}
+              <Share size={12} className="inline -mt-0.5 text-accent" aria-label="Compartilhar" /> e selecione{' '}
               <strong className="text-textLight">"Adicionar à Tela de Início"</strong>.
             </>
           ) : (

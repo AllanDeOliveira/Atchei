@@ -12,7 +12,7 @@ export const InstallGuideModal = ({ open, onClose }: { open: boolean; onClose: (
   >
     <div className="flex items-center justify-between pb-3 border-b border-glassBorder">
       <h2 id="install-guide-title" className="text-base font-display font-bold text-textLight flex items-center gap-2">
-        <HelpCircle size={18} className="text-primary" /> Como instalar o Atchei
+        <HelpCircle size={18} className="text-accent" /> Como instalar o Atchei
       </h2>
       <button
         onClick={onClose}
@@ -32,7 +32,7 @@ export const InstallGuideModal = ({ open, onClose }: { open: boolean; onClose: (
 
       <div className="p-3 rounded-xl bg-surface/50 border border-glassBorder">
         <p className="font-semibold text-textLight mb-1">No Safari / iPhone (iOS):</p>
-        <p>1. Toque no botão de <strong>Compartilhar <Share size={12} className="inline text-primary" /></strong>.</p>
+        <p>1. Toque no botão de <strong>Compartilhar <Share size={12} className="inline text-accent" /></strong>.</p>
         <p>2. Role e toque em <strong>"Adicionar à Tela de Início"</strong>.</p>
         <p>3. Abra o app instalado e ative as notificações no seu perfil. No iPhone, só o app instalado recebe lembretes.</p>
       </div>

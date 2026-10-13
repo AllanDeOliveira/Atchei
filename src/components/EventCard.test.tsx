@@ -108,13 +108,13 @@ describe('EventCard component', () => {
         <EventCard event={mockEvent} />
       </MemoryRouter>
     );
-    expect(screen.queryByTitle('Comprar ingresso')).toBeNull();
+    expect(screen.queryByRole('button', { name: /comprar ingresso/i })).toBeNull();
 
     rerender(
       <MemoryRouter>
         <EventCard event={{ ...mockEvent, hasTickets: true, whatsappContacts: [{ name: 'Ana', phone: '65999991234' }] }} />
       </MemoryRouter>
     );
-    expect(screen.getByTitle('Comprar ingresso')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /comprar ingresso/i })).toBeInTheDocument();
   });
 });

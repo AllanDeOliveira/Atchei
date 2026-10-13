@@ -40,7 +40,7 @@ export const ImageCropModal = ({ imageSrc, uploading, onConfirm, onUsarInteira, 
         <button
           type="button"
           onClick={onClose}
-          className="bg-primary/10 p-2 rounded-full text-primary"
+          className="bg-primary/10 p-2 rounded-full text-accent"
           title="Cancelar"
           aria-label="Cancelar e fechar o recorte da imagem"
         >

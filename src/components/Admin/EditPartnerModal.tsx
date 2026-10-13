@@ -27,7 +27,7 @@ export const EditPartnerModal = ({ partner, setPartner, onClose, onSubmit, isSav
 
     <form onSubmit={onSubmit} className="space-y-4 mt-2">
       <div className="text-center mb-6 mt-4">
-        <div className="w-14 h-14 bg-primary/20 border border-primary/20 rounded-2xl flex items-center justify-center text-primary mx-auto mb-3">
+        <div className="w-14 h-14 bg-primary/20 border border-primary/20 rounded-2xl flex items-center justify-center text-accent mx-auto mb-3">
           <Settings size={24} />
         </div>
         <h3 id="admin-edit-partner-title" className="font-display text-2xl font-semibold text-textLight leading-tight">Editar parceiro</h3>

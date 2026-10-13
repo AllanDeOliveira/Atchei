@@ -88,7 +88,7 @@ export const CookieBanner = () => {
             Utilizamos cookies essenciais para o funcionamento do Atchei. Gostaríamos de usar outros cookies para melhorar e
             personalizar a sua experiência e analisar o desempenho do nosso site, mas somente se você permitir. Para saber mais
             sobre suas opções, consulte a nossa{' '}
-            <Link to="/privacidade" className="text-primary hover:underline font-medium underline-offset-2">
+            <Link to="/privacidade" className="text-accent hover:underline font-medium underline-offset-2">
               Política de Privacidade
             </Link>.
           </p>
@@ -154,7 +154,7 @@ export const CookieBanner = () => {
 
               {/* Cookies Analíticos (Google Analytics) */}
               <div className="p-3.5 rounded-xl bg-surface/50 border border-glassBorder flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5">
+                <div className="p-2 rounded-lg bg-primary/10 text-accent mt-0.5">
                   <BarChart3 size={18} />
                 </div>
                 <div className="flex-1 min-w-0">

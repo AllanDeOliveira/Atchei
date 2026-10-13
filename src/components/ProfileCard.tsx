@@ -22,7 +22,7 @@ export const ProfileCard = ({ profile }: { profile: AppProfile }) => {
 
       <div className="flex-1 min-w-0">
         <h3 className="font-display font-semibold text-base text-textLight truncate">{profile.name}</h3>
-        <span className="text-[11px] text-accent bg-accent/10 px-2.5 py-0.5 border border-accent/20 font-medium rounded-full inline-block mt-1">
+        <span className="text-xs text-accent bg-accent/10 px-2.5 py-0.5 border border-accent/20 font-medium rounded-full inline-block mt-1">
           Profissional
         </span>
         {profile.description && (

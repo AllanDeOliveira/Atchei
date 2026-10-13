@@ -82,11 +82,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         {field}
         {hasError ? (
-          <p id={`${inputId}-error`} className="text-[10px] md:text-xs text-danger font-semibold ml-1 leading-snug">
+          <p id={`${inputId}-error`} className="text-xs text-danger font-semibold ml-1 leading-snug">
             {error}
           </p>
         ) : hint ? (
-          <p id={`${inputId}-hint`} className="text-[10px] md:text-xs text-textMuted ml-1 leading-snug">
+          <p id={`${inputId}-hint`} className="text-xs text-textMuted ml-1 leading-snug">
             {hint}
           </p>
         ) : null}

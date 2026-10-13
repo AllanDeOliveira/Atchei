@@ -389,7 +389,7 @@ export const AdminDashboard = () => {
             onChange={(e) => setQuery(e.target.value)}
             className="pl-12 md:pl-12"
           />
-          <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-primary" size={18} />
+          <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-accent" size={18} />
         </div>
 
         {activeTab === 'desafios' ? (
@@ -507,8 +507,8 @@ export const AdminDashboard = () => {
                         <p className="text-xs text-textMuted mt-1 truncate">Criado por {event.creatorName || nomeDe(event.creatorId)}</p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <Users size={12} className="text-primary" />
-                        <span className="font-mono text-xs font-bold text-primary">{eventRegs}</span>
+                        <Users size={12} className="text-accent" />
+                        <span className="font-mono text-xs font-bold text-accent">{eventRegs}</span>
                       </div>
                     </div>
 
@@ -562,7 +562,7 @@ export const AdminDashboard = () => {
                     <p className="text-xs text-accent font-medium mt-1">{profile.type}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
-                    <div className="flex items-center gap-1.5 text-[11px] text-primary font-mono">
+                    <div className="flex items-center gap-1.5 text-xs text-accent font-mono">
                       <Mail size={10} />
                       {profile.email || 'N/A'}
                     </div>

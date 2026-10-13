@@ -30,7 +30,7 @@ export const ConfirmModal = ({ state, onClose }: Props) => (
     <div className="flex flex-col items-center">
       <div className={cn(
         "w-16 h-16 rounded-2xl border flex items-center justify-center mb-6",
-        state.type === 'danger' ? "bg-danger/10 border-danger/20 text-danger" : "bg-primary/10 border-primary/20 text-primary"
+        state.type === 'danger' ? "bg-danger/10 border-danger/20 text-danger" : "bg-primary/10 border-primary/20 text-accent"
       )}>
         <Trash2 size={26} />
       </div>

@@ -55,14 +55,14 @@ export const Sidebar = () => {
                 cn(
                   "flex items-center gap-4 px-5 py-3 rounded-xl font-sans font-medium text-sm transition-all duration-200 neo-click border",
                   isActive
-                    ? "text-primary bg-primary/10 border-primary/20"
-                    : "text-textMuted border-transparent hover:text-primary hover:bg-surfaceHover"
+                    ? "text-accent bg-primary/10 border-primary/20"
+                    : "text-textMuted border-transparent hover:text-accent hover:bg-surfaceHover"
                 )
               }
             >
               {({ isActive }) => (
                 <>
-                  <item.icon size={18} strokeWidth={isActive ? 2.2 : 1.8} className={isActive ? "text-primary" : "text-textMuted"} />
+                  <item.icon size={18} strokeWidth={isActive ? 2.2 : 1.8} className={isActive ? "text-accent" : "text-textMuted"} />
                   <span>{item.label}</span>
                 </>
               )}
@@ -90,7 +90,7 @@ export const Sidebar = () => {
               </button>
               <div className="min-w-0 flex flex-col text-left">
                 <span className="font-sans font-semibold text-sm text-textLight truncate">{user.name}</span>
-                <span className="text-[11px] font-sans font-medium text-accent mt-0.5">{user.role === 'admin' ? 'Admin' : user.role === 'partner' ? 'Profissional' : 'Pessoal'}</span>
+                <span className="text-xs font-sans font-medium text-accent mt-0.5">{user.role === 'admin' ? 'Admin' : user.role === 'partner' ? 'Profissional' : 'Pessoal'}</span>
               </div>
             </div>
 

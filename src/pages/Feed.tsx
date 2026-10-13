@@ -38,6 +38,7 @@ export const Feed = () => {
   const [selectedCategory, setSelectedCategory] = useState<'Todas' | EventCategory>('Todas');
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  const primeiroNome = user?.name?.trim().split(' ')[0];
   
   // Estados para Paginação de Eventos
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
@@ -217,7 +218,7 @@ export const Feed = () => {
               className="w-4 h-4 border-2 border-primary/40 border-t-primary rounded-full transition-transform duration-75"
             />
           )}
-          <span className="text-xs font-medium text-primary">
+          <span className="text-xs font-medium text-accent">
             {isRefreshing ? 'Atualizando...' : (pullDistance >= 60 ? 'Solte para atualizar' : 'Puxe para atualizar')}
           </span>
         </div>
@@ -255,36 +256,23 @@ export const Feed = () => {
           </div>
         </div>
 
-        {/* Saudação */}
-        <div className="surface rounded-2xl p-7 relative overflow-hidden">
-          <div className="flex justify-between items-center gap-6 relative z-10">
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-xs text-textMuted mb-3 flex items-center gap-2 font-medium first-letter:uppercase">
-                <Calendar size={13} className="text-accent" />
-                {formatDate()}
-              </p>
-              <div className="text-textLight">
-                <span className="font-display italic text-2xl block text-accent leading-tight">
-                  {getGreeting()},
-                </span>
-                {user?.name && (
-                  <span className="text-primary font-display font-semibold text-4xl block leading-tight mt-1 truncate">
-                    {user.name.trim().split(' ')[0]}
-                  </span>
-                )}
-              </div>
-              <p className="font-sans text-sm text-textMuted mt-4 leading-relaxed max-w-[240px]">
-                Descubra os melhores encontros e eventos selecionados para hoje.
-              </p>
-            </div>
-
-            {/* Métrica de eventos ativos na cena */}
-            <div className="shrink-0 flex flex-col items-center justify-center bg-primary text-textDark rounded-2xl w-24 h-24">
-              <span className="text-[10px] font-medium text-textDark/80 leading-none">Acontecendo</span>
-              <span className="text-4xl font-display font-semibold text-textDark mt-1.5 leading-none">{events.length}</span>
-              <span className="text-[10px] font-medium text-textDark/85 mt-1.5">eventos</span>
-            </div>
-          </div>
+        {/* Saudação: uma cor só, sem vírgula sobrando para visitante. O contador diz o que
+            de fato conta (eventos vigentes carregados), não "acontecendo agora". */}
+        <div className="text-left">
+          <p className="text-sm text-textMuted mb-2 font-medium first-letter:uppercase">
+            {formatDate()}
+          </p>
+          <p className="font-display font-bold text-3xl md:text-4xl text-textLight leading-tight">
+            {getGreeting()}
+            {primeiroNome && <>, <span className="text-accent">{primeiroNome}</span></>}
+          </p>
+          {!isLoading && (
+            <p className="text-sm md:text-base text-textMuted mt-2">
+              {events.length > 0 ? (
+                <><strong className="font-semibold text-textLight">{events.length} {events.length !== 1 ? 'eventos' : 'evento'}</strong> nos próximos dias em Cáceres</>
+              ) : 'Nenhum evento marcado nos próximos dias'}
+            </p>
+          )}
         </div>
       </div>
 
@@ -296,7 +284,7 @@ export const Feed = () => {
               Em destaque
             </h2>
             <span className="text-xs text-textMuted mt-1.5 flex items-center gap-1.5">
-              <Flame size={12} className="text-primary" /> Eventos mais quentes da semana
+              <Flame size={12} className="text-accent" /> Eventos mais quentes da semana
             </span>
           </div>
         </div>
@@ -315,48 +303,49 @@ export const Feed = () => {
             </>
           ) : (
             <div className="min-w-[260px] h-[180px] rounded-2xl surface-cream flex flex-col items-center justify-center shrink-0 w-full">
-              <Flame size={24} className="text-primary/30 mb-2" />
+              <Flame size={24} className="text-accent/40 mb-2" />
               <p className="font-sans text-sm text-textMuted">Nenhum evento em destaque</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Filter Pills (Tempo & Popularidade) */}
-      <div className="flex justify-center gap-2.5 px-5 mb-3 overflow-x-auto scrollbar-hide pb-1 relative z-10">
+      {/* Filtros numa linha só: tempo/popularidade, separador, categorias */}
+      <div className="flex items-center gap-2 px-5 mb-6 overflow-x-auto scrollbar-hide pb-1.5 relative z-10">
         {[
-          { key: 'emAlta' as FilterType, label: 'Em alta', icon: Flame },
           { key: 'hoje' as FilterType, label: 'Hoje', icon: Calendar },
           { key: 'semana' as FilterType, label: 'Esta semana', icon: null },
+          { key: 'emAlta' as FilterType, label: 'Em alta', icon: Flame },
         ].map(f => (
           <button
             key={f.key}
             // Sem a pill "Todos": clicar no filtro ativo desliga e volta ao feed completo.
             onClick={() => setFilter(filter === f.key ? 'todos' : f.key)}
+            aria-pressed={filter === f.key}
             className={cn(
-              "filter-pill flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-sans font-medium text-xs md:text-sm whitespace-nowrap transition-all duration-200 border neo-click cursor-pointer",
+              "filter-pill shrink-0 h-10 flex items-center gap-1.5 px-4 rounded-full font-sans font-medium text-sm whitespace-nowrap transition-all duration-200 border neo-click cursor-pointer",
               filter === f.key
                 ? 'bg-primary text-textDark border-primary font-semibold shadow-sm'
-                : 'bg-surface border-glassBorder text-textMuted hover:text-textLight hover:bg-surfaceHover'
+                : 'bg-surface border-glassBorder text-textLight hover:bg-surfaceHover'
             )}
           >
-            {f.icon && <f.icon size={14} className={filter === f.key ? "text-textDark" : "text-primary/70"} />}
+            {f.icon && <f.icon size={14} className={filter === f.key ? "text-textDark" : "text-accent"} />}
             {f.label}
           </button>
         ))}
-      </div>
 
-      {/* Category Pills (Festa, Universitário, Show, etc.) */}
-      <div className="flex gap-2 px-5 mb-6 overflow-x-auto scrollbar-hide pb-1.5 relative z-10">
+        <span aria-hidden="true" className="shrink-0 w-px h-6 bg-glassBorder mx-1" />
+
         {(['Todas', ...EVENT_CATEGORIES] as ('Todas' | EventCategory)[]).map(cat => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
+            aria-pressed={selectedCategory === cat}
             className={cn(
-              "px-3 py-1.5 rounded-full font-sans font-medium text-xs whitespace-nowrap transition-all duration-200 border neo-click cursor-pointer",
+              "shrink-0 h-10 px-4 rounded-full font-sans font-medium text-sm whitespace-nowrap transition-all duration-200 border neo-click cursor-pointer",
               selectedCategory === cat
                 ? 'bg-textLight text-surface border-textLight font-semibold shadow-sm'
-                : 'bg-surface/80 border-glassBorder text-textMuted hover:text-textLight hover:bg-surface'
+                : 'bg-surface border-glassBorder text-textLight hover:bg-surfaceHover'
             )}
           >
             {cat}
@@ -368,7 +357,7 @@ export const Feed = () => {
       <div className="flex items-center justify-between px-5 mb-5 relative z-10">
         <div className="flex flex-col text-left">
           <h2 className="font-display font-semibold text-2xl text-textLight leading-tight">
-            Próximos eventos<span className="text-primary">.</span>
+            Próximos eventos
           </h2>
           <span className="text-xs text-textMuted mt-1.5">
             Selecionados para você

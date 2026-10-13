@@ -73,12 +73,12 @@ const PlaceAutocomplete = ({ onPlaceSelect }: { onPlaceSelect: (p: google.maps.p
           onChange={(e) => { setInputValue(e.target.value); buscar(e.target.value); }}
           className="w-full h-12 bg-white/90 backdrop-blur-md border border-glassBorder rounded-xl px-12 text-sm shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all text-textLight"
         />
-        <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={18} />
+        <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-accent/40" size={18} />
         {inputValue && (
           <button
             type="button"
             onClick={() => { setInputValue(''); setPredictions([]); }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/20 hover:text-primary transition-colors"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-accent/20 hover:text-accent transition-colors"
             title="Limpar Pesquisa"
             aria-label="Limpar Pesquisa"
           >
@@ -175,7 +175,7 @@ export const LocationPickerModal = ({ open, endereco, onPick, onClose }: Props) 
           <button
             type="button"
             onClick={onClose}
-            className="bg-primary/10 p-2.5 rounded-full text-primary hover:bg-primary/20 hover:scale-110 active:scale-95 transition-all cursor-pointer"
+            className="bg-primary/10 p-2.5 rounded-full text-accent hover:bg-primary/20 hover:scale-110 active:scale-95 transition-all cursor-pointer"
             title="Fechar Mapa"
             aria-label="Fechar Mapa"
           >
@@ -218,7 +218,7 @@ export const LocationPickerModal = ({ open, endereco, onPick, onClose }: Props) 
         </div>
 
         {buscando && (
-          <div className="flex items-center justify-center gap-2 mt-4 text-primary">
+          <div className="flex items-center justify-center gap-2 mt-4 text-accent">
             <Loader2 size={14} className="animate-spin" />
             <span className="text-xs font-medium">Buscando endereço...</span>
           </div>
@@ -226,7 +226,7 @@ export const LocationPickerModal = ({ open, endereco, onPick, onClose }: Props) 
 
         {endereco && (
           <div className="mt-4 p-3.5 bg-surface border border-glassBorder rounded-2xl flex items-start gap-2.5 text-left">
-            <MapPin className="text-primary shrink-0 mt-0.5" size={16} />
+            <MapPin className="text-accent shrink-0 mt-0.5" size={16} />
             <div className="min-w-0">
               <span className="text-xs font-medium text-textMuted block">Endereço selecionado</span>
               <p className="font-sans font-semibold text-xs text-textLight truncate leading-snug">{endereco}</p>

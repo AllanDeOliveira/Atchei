@@ -32,8 +32,8 @@ export const BottomNav = () => {
               cn(
                 "relative flex items-center justify-center p-3 rounded-xl transition-all duration-200 neo-click z-10",
                 isActive
-                  ? "text-primary bg-primary/10 border border-primary/20"
-                  : "text-textMuted hover:text-primary hover:bg-surfaceHover"
+                  ? "text-accent bg-primary/10 border border-primary/20"
+                  : "text-textMuted hover:text-accent hover:bg-surfaceHover"
               )
             }
           >

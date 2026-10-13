@@ -149,23 +149,23 @@ export const Desafio = () => {
           // Fechado não adianta logar: as rules recusam o início. Logado, só cai aqui via
           // `estado` — quem já ganhou (liberado/entregue) mantém o comprovante mesmo encerrado.
           <div className="surface rounded-2xl p-6 space-y-3">
-            <Clock className="mx-auto text-primary" size={36} />
+            <Clock className="mx-auto text-accent" size={36} />
             <p className="text-sm text-textLight leading-relaxed">
               O desafio <strong>não está rolando agora</strong>.
             </p>
-            <p className="text-[11px] text-textMuted">Guarde o QR Code da mesa — quando abrir, é só escanear de novo.</p>
+            <p className="text-xs text-textMuted">Guarde o QR Code da mesa — quando abrir, é só escanear de novo.</p>
           </div>
         ) : !user ? (
           !isLoading && (
             <div className="surface rounded-2xl p-6 space-y-4">
-              <Flame className="mx-auto text-primary" size={36} />
+              <Flame className="mx-auto text-accent" size={36} />
               <p className="text-sm text-textLight leading-relaxed">
                 Junte <strong>5 amigos</strong> da mesa em <strong>3 minutos</strong>, todos com conta no Atchei, e ganhem um refrigerante de 1 L.
               </p>
               <Button variant="primary" fullWidth onClick={irParaLogin} className="py-4 text-sm">
                 Entrar para participar
               </Button>
-              <p className="text-[11px] text-textMuted">Cria a conta em menos de 1 minuto e volta pra cá sozinho.</p>
+              <p className="text-xs text-textMuted">Cria a conta em menos de 1 minuto e volta pra cá sozinho.</p>
             </div>
           )
         ) : estado === null || ganhador === undefined ? (
@@ -180,20 +180,20 @@ export const Desafio = () => {
           </div>
         ) : estado === 'livre' ? (
           <div className="surface rounded-2xl p-6 space-y-4">
-            <Flame className="mx-auto text-primary" size={36} />
+            <Flame className="mx-auto text-accent" size={36} />
             <p className="text-sm text-textLight leading-relaxed">
               Você começa o relógio: <strong>3 minutos</strong> pra 4 amigos abrirem o seu link e entrarem no grupo.
             </p>
             <Button variant="primary" fullWidth onClick={comecar} loading={busy} className="py-4 text-sm">
               {d ? 'Começar de novo' : 'Começar desafio'}
             </Button>
-            <p className="text-[11px] text-textMuted leading-snug">
+            <p className="text-xs text-textMuted leading-snug">
               Pra retirar, <strong>os 5 mostram a tela verde pessoalmente</strong> pra tia da Kombi.
             </p>
           </div>
         ) : estado === 'aberto' && d ? (
           <div className="surface rounded-2xl p-6">
-            <div className="font-display font-semibold text-6xl text-primary tabular-nums leading-none">
+            <div className="font-display font-semibold text-6xl text-accent tabular-nums leading-none">
               {fmt(msRestantes(d.iniciadoEmMs, agora))}
             </div>
             <p className="text-xs text-textMuted mt-2">pra fechar a mesa</p>
@@ -207,7 +207,7 @@ export const Desafio = () => {
             <Button variant="primary" fullWidth onClick={chamarAmigos} className="py-4 text-sm mt-6">
               <Share2 size={16} /> Chamar os amigos
             </Button>
-            <p className="text-[11px] text-textMuted mt-3 leading-snug">
+            <p className="text-xs text-textMuted mt-3 leading-snug">
               Cada amigo abre o link, cria a conta e já entra no grupo sozinho. O contador sobe aqui na hora.
             </p>
           </div>
@@ -247,12 +247,12 @@ export const Desafio = () => {
 
         {(estado === 'liberado' || estado === 'entregue' || estado === 'expirado') && podeInstalar && (
           <div className="surface rounded-2xl p-5 mt-5 text-left flex items-start gap-3">
-            <Download size={20} className="text-primary shrink-0 mt-0.5" />
+            <Download size={20} className="text-accent shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-textLight leading-snug">
                 Adicione o Atchei à tela inicial e não perca nenhum evento
               </p>
-              <p className="text-[11px] text-textMuted mt-1 leading-snug">
+              <p className="text-xs text-textMuted mt-1 leading-snug">
                 Você recebe aviso dos rolês da região direto no celular.
               </p>
               <Button variant="primary" fullWidth onClick={instalarApp} className="py-3 text-xs mt-3">
