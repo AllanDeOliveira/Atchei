@@ -54,7 +54,7 @@ export const ChangePassword = () => {
     <div ref={containerRef} className="min-h-screen bg-background flex flex-col items-center justify-center p-6 relative overflow-hidden">
       <div className="w-full max-w-sm flex flex-col items-center relative z-10">
         {/* Icon */}
-        <div className="stagger-el mb-6 w-20 h-20 border border-primary/20 rounded-2xl flex items-center justify-center bg-primary/10 text-primary">
+        <div className="stagger-el mb-6 w-20 h-20 border border-primary/20 rounded-2xl flex items-center justify-center bg-primary/10 text-accent">
           <ShieldCheck size={36} />
         </div>
 
@@ -67,7 +67,7 @@ export const ChangePassword = () => {
         <form onSubmit={handleSubmit} className="w-full space-y-5">
           <div className="stagger-el space-y-1.5 text-left">
             <label className="text-xs font-medium text-textMuted ml-1.5 flex items-center gap-2">
-              <Lock size={14} className="text-primary" />
+              <Lock size={14} className="text-accent" />
               Nova senha
             </label>
             <div className="relative">
@@ -83,7 +83,7 @@ export const ChangePassword = () => {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-primary hover:text-accent transition-colors duration-300"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-accent hover:text-accent transition-colors duration-300"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -92,7 +92,7 @@ export const ChangePassword = () => {
 
           <div className="stagger-el space-y-1.5 text-left">
             <label className="text-xs font-medium text-textMuted ml-1.5 flex items-center gap-2">
-              <Lock size={14} className="text-primary" />
+              <Lock size={14} className="text-accent" />
               Confirmar senha
             </label>
             <Input

@@ -67,7 +67,7 @@ export const MainLayout = () => (
             </a>
           </div>
         </div>
-        <p className="text-[11px] text-white/60 mt-8 pt-6 border-t border-white/10">
+        <p className="text-xs text-white/60 mt-8 pt-6 border-t border-white/10">
           © {new Date().getFullYear()} Atchei — Cáceres, MT
         </p>
       </div>

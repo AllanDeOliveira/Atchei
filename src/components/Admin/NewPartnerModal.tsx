@@ -44,7 +44,7 @@ export const NewPartnerModal = ({ open, onClose, form, setForm, onSubmit, isSavi
       {!lastGenerated ? (
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="text-center mb-6 mt-4">
-            <div className="w-14 h-14 bg-primary/20 border border-primary/20 rounded-2xl flex items-center justify-center text-primary mx-auto mb-3">
+            <div className="w-14 h-14 bg-primary/20 border border-primary/20 rounded-2xl flex items-center justify-center text-accent mx-auto mb-3">
               <UserPlus size={24} />
             </div>
             <h3 id="admin-new-partner-title" className="font-display text-2xl font-semibold text-textLight leading-tight">Cadastrar parceiro</h3>
@@ -94,7 +94,7 @@ export const NewPartnerModal = ({ open, onClose, form, setForm, onSubmit, isSavi
                   <button
                     type="button"
                     onClick={() => setForm(prev => ({ ...prev, imageUrl: '' }))}
-                    className="absolute inset-0 bg-danger/80 opacity-0 group-hover:opacity-100 flex items-center justify-center text-textDark transition-opacity duration-200 text-[11px] font-semibold cursor-pointer"
+                    className="absolute inset-0 bg-danger/80 opacity-0 group-hover:opacity-100 flex items-center justify-center text-textDark transition-opacity duration-200 text-xs font-semibold cursor-pointer"
                   >
                     Remover
                   </button>
@@ -105,14 +105,14 @@ export const NewPartnerModal = ({ open, onClose, form, setForm, onSubmit, isSavi
                     <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <>
-                      <Upload size={16} className="text-primary" />
-                      <span className="text-[11px] font-medium mt-1">Upload</span>
+                      <Upload size={16} className="text-accent" />
+                      <span className="text-xs font-medium mt-1">Upload</span>
                     </>
                   )}
                   <input type="file" className="hidden" accept="image/*" disabled={isUploading} onChange={onImageUpload} />
                 </label>
               )}
-              <div className="text-[11px] text-textMuted leading-relaxed">
+              <div className="text-xs text-textMuted leading-relaxed">
                 {form.imageUrl ? "Foto pronta para salvar!" : "Selecione uma imagem JPG/PNG de até 5MB."}
               </div>
             </div>
@@ -137,7 +137,7 @@ export const NewPartnerModal = ({ open, onClose, form, setForm, onSubmit, isSavi
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
               }}
-              className="absolute top-4 right-4 p-2 bg-surface/50 hover:bg-surfaceHover text-primary border border-glassBorder hover:border-primary/40 rounded-xl cursor-pointer transition-colors duration-200"
+              className="absolute top-4 right-4 p-2 bg-surface/50 hover:bg-surfaceHover text-accent border border-glassBorder hover:border-primary/40 rounded-xl cursor-pointer transition-colors duration-200"
               title="Copiar dados"
             >
               {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
@@ -146,7 +146,7 @@ export const NewPartnerModal = ({ open, onClose, form, setForm, onSubmit, isSavi
             <div>
               <p className="text-xs font-medium text-textMuted mb-1">E-mail de acesso</p>
               <p className="font-mono text-sm font-bold text-textLight flex items-center gap-2">
-                <Mail size={14} className="text-primary" />
+                <Mail size={14} className="text-accent" />
                 {lastGenerated.email}
               </p>
             </div>

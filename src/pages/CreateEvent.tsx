@@ -303,8 +303,8 @@ const CreateEventContent = () => {
                       <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <>
-                        <Upload size={20} className="text-primary" />
-                        <span className="text-[11px] font-medium mt-1">Enviar</span>
+                        <Upload size={20} className="text-accent" />
+                        <span className="text-xs font-medium mt-1">Enviar</span>
                       </>
                     )}
                     <input type="file" className="hidden" accept="image/*" disabled={isUploading} onChange={handleFileChange} />
@@ -421,7 +421,7 @@ const CreateEventContent = () => {
               <button
                 type="button"
                 onClick={() => setShowMapModal(true)}
-                className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-all border border-primary/20 shadow-sm cursor-pointer"
+                className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary/10 text-accent flex items-center justify-center hover:bg-primary/20 transition-all border border-primary/20 shadow-sm cursor-pointer"
                 title="Escolher no Mapa"
               >
                 <MapPin size={18} />
@@ -482,7 +482,7 @@ const CreateEventContent = () => {
                 onChange={e => set('maxParticipants', e.target.value)}
                 className="w-full h-11 bg-surfaceHover/50 border border-glassBorder rounded-xl px-4 text-sm font-sans text-textLight focus:outline-none focus:border-primary/40 focus:shadow-glow-primary placeholder:text-textMuted/50 transition-all duration-300"
               />
-              <p className="text-[11px] text-textMuted leading-relaxed">
+              <p className="text-xs text-textMuted leading-relaxed">
                 Teto total do evento (presenças + ingressos). Ao atingir, novas confirmações são bloqueadas.
               </p>
             </div>
@@ -557,7 +557,7 @@ const CreateEventContent = () => {
                       <button
                         type="button"
                         onClick={() => set('whatsappContacts', [...whatsappContacts, { name: '', phone: '' }])}
-                        className="w-full py-3 rounded-xl border border-dashed border-primary/45 text-primary font-sans font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-primary/10 transition-colors cursor-pointer duration-300"
+                        className="w-full py-3 rounded-xl border border-dashed border-primary/45 text-accent font-sans font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-primary/10 transition-colors cursor-pointer duration-300"
                       >
                         <Plus size={14} />
                         Adicionar promoter
@@ -593,7 +593,7 @@ const CreateEventContent = () => {
           </form>
         ) : (
           <div className="flex items-center justify-center h-40">
-            <Loader2 className="animate-spin text-primary" size={32} />
+            <Loader2 className="animate-spin text-accent" size={32} />
           </div>
         )}
       </div>

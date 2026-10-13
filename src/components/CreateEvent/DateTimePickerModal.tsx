@@ -114,7 +114,7 @@ const Conteudo = ({ date, time, onConfirm, onClose }: Omit<Props, 'open'>) => {
           <button
             type="button"
             onClick={onClose}
-            className="bg-primary/10 p-2.5 rounded-full text-primary hover:bg-primary/20 active:scale-95 transition-all cursor-pointer"
+            className="bg-primary/10 p-2.5 rounded-full text-accent hover:bg-primary/20 active:scale-95 transition-all cursor-pointer"
             title="Fechar"
             aria-label="Fechar seletor de data"
           >
@@ -148,7 +148,7 @@ const Conteudo = ({ date, time, onConfirm, onClose }: Omit<Props, 'open'>) => {
 
         <div className="grid grid-cols-7 gap-1 mb-1">
           {SEMANA.map((d, i) => (
-            <span key={i} className="text-[10px] font-semibold text-textMuted text-center py-1">{d}</span>
+            <span key={i} className="text-xs font-semibold text-textMuted text-center py-1">{d}</span>
           ))}
         </div>
 
@@ -175,7 +175,7 @@ const Conteudo = ({ date, time, onConfirm, onClose }: Omit<Props, 'open'>) => {
         </div>
 
         <div className="flex items-center justify-center gap-3 mb-6 surface rounded-2xl py-4">
-          <Clock size={15} className="text-primary mr-1" />
+          <Clock size={15} className="text-accent mr-1" />
           {(['h', 'm'] as const).map((campo, idx) => (
             <div key={campo} className="flex items-center gap-3">
               {idx === 1 && <span className="font-display font-bold text-xl text-textLight">:</span>}
@@ -183,7 +183,7 @@ const Conteudo = ({ date, time, onConfirm, onClose }: Omit<Props, 'open'>) => {
                 <button
                   type="button"
                   onClick={() => ajustarHora(campo, campo === 'h' ? 1 : 5)}
-                  className="text-textMuted hover:text-primary transition-colors cursor-pointer"
+                  className="text-textMuted hover:text-accent transition-colors cursor-pointer"
                   title={campo === 'h' ? 'Aumentar hora' : 'Aumentar minuto'}
                   aria-label={campo === 'h' ? 'Aumentar hora' : 'Aumentar minuto'}
                 >
@@ -201,7 +201,7 @@ const Conteudo = ({ date, time, onConfirm, onClose }: Omit<Props, 'open'>) => {
                 <button
                   type="button"
                   onClick={() => ajustarHora(campo, campo === 'h' ? -1 : -5)}
-                  className="text-textMuted hover:text-primary transition-colors cursor-pointer"
+                  className="text-textMuted hover:text-accent transition-colors cursor-pointer"
                   title={campo === 'h' ? 'Diminuir hora' : 'Diminuir minuto'}
                   aria-label={campo === 'h' ? 'Diminuir hora' : 'Diminuir minuto'}
                 >

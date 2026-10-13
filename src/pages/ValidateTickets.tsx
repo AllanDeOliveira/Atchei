@@ -432,11 +432,11 @@ export const ValidateTickets = () => {
           <ArrowLeft size={18} />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] text-white/50 font-medium">Validar ingressos</p>
+          <p className="text-xs text-white/50 font-medium">Validar ingressos</p>
           <h1 className="font-display font-bold text-base truncate leading-tight">{event?.title}</h1>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-[11px] text-white/50 font-medium">Validados</p>
+          <p className="text-xs text-white/50 font-medium">Validados</p>
           <p className="font-display font-bold text-base tabular-nums leading-tight">
             {checkedInCount}<span className="text-white/40 text-sm">/{totalCount}</span>
           </p>
@@ -557,25 +557,25 @@ export const ValidateTickets = () => {
             {result.registration && (
               <div className="surface-cream rounded-2xl p-4 text-left space-y-3 mb-5">
                 <div className="flex items-center gap-2.5">
-                  <User size={16} className="text-primary shrink-0" />
+                  <User size={16} className="text-accent shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[11px] text-textMuted">Portador</p>
+                    <p className="text-xs text-textMuted">Portador</p>
                     <p className="font-sans font-semibold text-sm truncate">{result.registration.userName || '—'}</p>
                   </div>
                 </div>
                 {result.registration.userCpf && (
                   <div className="flex items-center gap-2.5">
-                    <Ticket size={16} className="text-primary shrink-0" />
+                    <Ticket size={16} className="text-accent shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-[11px] text-textMuted">CPF</p>
+                      <p className="text-xs text-textMuted">CPF</p>
                       <p className="font-sans font-medium text-sm tabular-nums">{result.registration.userCpf ? maskCPF(result.registration.userCpf) : '-'}</p>
                     </div>
                   </div>
                 )}
                 <div className="flex items-center gap-2.5">
-                  <CalendarCheck size={16} className="text-primary shrink-0" />
+                  <CalendarCheck size={16} className="text-accent shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[11px] text-textMuted">Ingresso</p>
+                    <p className="text-xs text-textMuted">Ingresso</p>
                     <p className="font-sans font-medium text-sm truncate">
                       {result.registration.ticketTypeName || 'Ingresso'}
                       {result.registration.paymentStatus ? ` · ${result.registration.paymentStatus}` : ''}

@@ -55,7 +55,7 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
           <div className="flex flex-col">
             <span className="text-xs font-medium text-accent mb-1">Ingresso</span>
             <span
-              className="text-2xl font-display font-semibold text-primary leading-none truncate max-w-[140px]"
+              className="text-2xl font-display font-semibold text-accent leading-none truncate max-w-[140px]"
               title={formatPriceDisplay()}
             >
               {formatPriceDisplay()}
@@ -65,7 +65,7 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
 
         {/* Prova social: contador de confirmados alimenta o "Em alta" e convence quem chega */}
         {provaSocial && (
-          <div className="flex items-center gap-1.5 text-primary font-sans font-semibold text-xs z-10">
+          <div className="flex items-center gap-1.5 text-accent font-sans font-semibold text-xs z-10">
             <Flame size={14} />
             <span>{provaSocial}</span>
           </div>
@@ -75,7 +75,7 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
         <div className="flex flex-col gap-2.5 z-10">
           {aguardandoVendedor ? (
             <>
-              <div className="w-full rounded-xl py-4 bg-primary/10 border border-primary/20 text-primary flex items-center justify-center gap-2 font-sans font-semibold text-sm select-none">
+              <div className="w-full rounded-xl py-4 bg-primary/10 border border-primary/20 text-accent flex items-center justify-center gap-2 font-sans font-semibold text-sm select-none">
                 <Clock size={16} />
                 <span>Aguardando confirmação do vendedor</span>
               </div>
@@ -133,7 +133,7 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
                   <Ticket size={18} />
                   <div className="flex flex-col items-start leading-none text-left">
                     <span>Comprar ingresso</span>
-                    <span className="text-[10px] opacity-80 mt-1">via WhatsApp</span>
+                    <span className="text-xs opacity-80 mt-1">via WhatsApp</span>
                   </div>
                 </button>
               ) : null}
@@ -146,7 +146,7 @@ export const EventTicketSection: React.FC<EventTicketSectionProps> = ({
           <button
             onClick={onGerarIngressoTeste}
             disabled={loadingTestTicket}
-            className="w-full rounded-xl py-3 border border-dashed border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 font-sans font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60 z-10"
+            className="w-full rounded-xl py-3 border border-dashed border-primary/40 bg-primary/5 text-accent hover:bg-primary/10 font-sans font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60 z-10"
           >
             {loadingTestTicket ? (
               <Loader2 size={15} className="animate-spin" />

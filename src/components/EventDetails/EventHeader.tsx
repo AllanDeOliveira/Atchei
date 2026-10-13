@@ -146,7 +146,7 @@ export const EventHeader: React.FC<EventHeaderProps> = ({
               ))}
             </div>
 
-            <div className="absolute bottom-6 right-6 bg-surface/60 rounded-xl px-2.5 py-1 text-[10px] font-mono font-bold text-textLight z-20 pointer-events-none backdrop-blur-md">
+            <div className="absolute bottom-6 right-6 bg-surface/60 rounded-xl px-2.5 py-1 text-xs font-mono font-bold text-textLight z-20 pointer-events-none backdrop-blur-md">
               {currentMediaIndex + 1} / {mediaList.length}
             </div>
           </>

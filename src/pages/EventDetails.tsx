@@ -148,7 +148,7 @@ export const EventDetails = () => {
   if (!event) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background flex-col gap-4">
-        <p className="text-primary font-sans font-medium">Evento não encontrado.</p>
+        <p className="text-accent font-sans font-medium">Evento não encontrado.</p>
         <Button onClick={() => navigate('/')}>Voltar ao início</Button>
       </div>
     );
@@ -348,9 +348,9 @@ export const EventDetails = () => {
               {/* Grid de Data e Horário */}
               <div className="grid grid-cols-2 gap-4 pb-4">
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-2 text-primary">
+                  <div className="flex items-center gap-2 text-accent">
                     <Calendar size={13} />
-                    <span className="text-[11px] font-medium">Data</span>
+                    <span className="text-xs font-medium">Data</span>
                   </div>
                   <p className="text-sm font-sans font-semibold text-textLight leading-tight">{formatDateExtenso(event.date)}</p>
                 </div>
@@ -358,7 +358,7 @@ export const EventDetails = () => {
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center gap-2 text-accent">
                     <Clock size={13} />
-                    <span className="text-[11px] font-medium">Horário</span>
+                    <span className="text-xs font-medium">Horário</span>
                   </div>
                   <p className="text-sm font-sans font-semibold text-textLight leading-tight">{event.time}h</p>
                 </div>
@@ -376,7 +376,7 @@ export const EventDetails = () => {
                 <div className="flex items-center justify-between gap-3 pb-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="relative shrink-0">
-                      <div className="w-10 h-10 rounded-xl bg-surface/85 overflow-hidden flex items-center justify-center text-primary">
+                      <div className="w-10 h-10 rounded-xl bg-surface/85 overflow-hidden flex items-center justify-center text-accent">
                         {organizer.imageUrl ? (
                           <img src={organizer.imageUrl} className="w-full h-full object-cover" alt={organizer.name} />
                         ) : (
@@ -388,7 +388,7 @@ export const EventDetails = () => {
                       </div>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[11px] font-medium text-accent">Organizado por</p>
+                      <p className="text-xs font-medium text-accent">Organizado por</p>
                       <p className="font-sans font-semibold text-sm text-textLight mt-0.5 leading-tight">{organizer.name}</p>
                     </div>
                   </div>
@@ -500,10 +500,10 @@ export const EventDetails = () => {
                     className="w-full surface hover:border-primary/30 rounded-xl p-4 flex items-center justify-between group hover:bg-surfaceHover transition-all duration-200 neo-click cursor-pointer"
                   >
                     <div className="flex flex-col items-start text-left">
-                      <span className="font-sans font-semibold text-sm md:text-base text-textLight group-hover:text-primary transition-colors">{contact.name || 'Promoter'}</span>
+                      <span className="font-sans font-semibold text-sm md:text-base text-textLight group-hover:text-accent transition-colors">{contact.name || 'Promoter'}</span>
                       <span className="text-xs md:text-sm text-textMuted font-mono mt-0.5">{contact.phone}</span>
                     </div>
-                    <Ticket className="text-primary/70 group-hover:text-primary transition-colors" size={18} />
+                    <Ticket className="text-accent/70 group-hover:text-accent transition-colors" size={18} />
                   </button>
                 ))}
             </div>

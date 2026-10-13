@@ -146,7 +146,7 @@ export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModa
             {/* Cabeçalho de marca */}
             <div className="relative bg-primary px-6 pt-6 pb-8 text-center overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
-              <p id="ticket-modal-title" className="relative text-white/60 text-[10px] font-bold tracking-[0.4em] uppercase mb-1">
+              <p id="ticket-modal-title" className="relative text-white/60 text-xs font-bold tracking-[0.4em] uppercase mb-1">
                 Ingresso oficial
               </p>
               <p className="relative text-white font-display font-extrabold text-2xl tracking-[0.25em] uppercase">
@@ -156,7 +156,7 @@ export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModa
 
             {/* Faixa de status sobre a borda */}
             <div className="relative -mt-4 flex justify-center">
-              <span className="inline-flex items-center gap-1.5 bg-success text-white text-[11px] font-bold px-4 py-1.5 rounded-full shadow-glow-success">
+              <span className="inline-flex items-center gap-1.5 bg-success text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-glow-success">
                 <CheckCircle2 size={13} />
                 {registration.paymentStatus || 'Confirmado'}
               </span>
@@ -164,7 +164,7 @@ export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModa
 
             {/* Corpo */}
             <div className="px-6 pt-5 pb-2 text-center">
-              <span className="bg-accent/10 border border-accent/20 text-accent text-[10px] font-bold px-3 py-1 rounded-full inline-block mb-3 uppercase tracking-wider">
+              <span className="bg-accent/10 border border-accent/20 text-accent text-xs font-bold px-3 py-1 rounded-full inline-block mb-3 uppercase tracking-wider">
                 {registration.ticketTypeName || 'Ingresso comum'}
               </span>
               <h3 className="font-display font-extrabold text-2xl text-textLight leading-tight mb-5">
@@ -173,29 +173,29 @@ export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModa
 
               <div className="space-y-3 text-left max-w-[280px] mx-auto">
                 <div className="flex items-center gap-3 text-textLight">
-                  <Calendar size={16} className="text-primary shrink-0" />
+                  <Calendar size={16} className="text-accent shrink-0" />
                   <span className="text-sm font-medium">{formatDateExtenso(event.date)}</span>
                 </div>
                 <div className="flex items-center gap-3 text-textLight">
-                  <Clock size={16} className="text-primary shrink-0" />
+                  <Clock size={16} className="text-accent shrink-0" />
                   <span className="text-sm font-medium">{event.time}h</span>
                 </div>
                 <div className="flex items-start gap-3 text-textLight">
                   <MapPin size={16} className="text-accent shrink-0 mt-0.5" />
                   <div className="min-w-0">
                     <p className="text-sm font-medium leading-tight">{event.location}</p>
-                    {event.address && <p className="text-[11px] text-textMuted leading-snug mt-0.5">{event.address}</p>}
+                    {event.address && <p className="text-xs text-textMuted leading-snug mt-0.5">{event.address}</p>}
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mt-5 pt-4 border-t border-glassBorder text-left max-w-[280px] mx-auto">
                 <div>
-                  <span className="text-[10px] font-semibold text-textMuted uppercase tracking-wider block">Portador</span>
+                  <span className="text-xs font-semibold text-textMuted uppercase tracking-wider block">Portador</span>
                   <span className="text-sm font-semibold text-textLight truncate block">{registration.userName || '-'}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] font-semibold text-textMuted uppercase tracking-wider block">CPF</span>
+                  <span className="text-xs font-semibold text-textMuted uppercase tracking-wider block">CPF</span>
                   <span className="text-sm font-semibold text-textLight tabular-nums truncate block">
                     {formatCpf(registration.userCpf)}
                   </span>
@@ -225,7 +225,7 @@ export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModa
                   </div>
                 )}
               </div>
-              <p className="text-[11px] text-textMuted mt-3">Apresente este código na entrada</p>
+              <p className="text-xs text-textMuted mt-3">Apresente este código na entrada</p>
               <p className="font-mono font-bold tracking-[0.3em] text-textLight text-lg mt-1">{shortCode}</p>
             </div>
           </div>

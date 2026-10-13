@@ -19,7 +19,7 @@ export const EmptyState = ({ icon, title, description, action, className }: Empt
       )}
     >
       {icon && (
-        <div className="w-16 h-16 rounded-2xl bg-primary/8 text-primary/70 flex items-center justify-center mb-5">
+        <div className="w-16 h-16 rounded-2xl bg-primary/8 text-accent/70 flex items-center justify-center mb-5">
           {icon}
         </div>
       )}

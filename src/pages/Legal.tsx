@@ -192,7 +192,7 @@ export const QuemSomos = () => (
     <p>
       Tem um evento para divulgar ou uma dúvida? Fale com a gente:{' '}
       <strong>contato.atchei@gmail.com</strong> ou{' '}
-      <a href="https://instagram.com/atchei.app" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-2">@atchei.app</a>.
+      <a href="https://instagram.com/atchei.app" target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2">@atchei.app</a>.
     </p>
   </LegalLayout>
 );

@@ -74,7 +74,7 @@ export const ManualTicketModal = ({ open, onClose, event, onGenerate }: Props) =
       </button>
 
       <div className="text-center mb-6">
-        <div className="w-12 h-12 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center text-primary mx-auto mb-3">
+        <div className="w-12 h-12 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center text-accent mx-auto mb-3">
           <Ticket size={24} />
         </div>
         <h3 id="profile-manual-title" className="font-display text-xl font-semibold text-textLight">Gerar ingresso manual</h3>

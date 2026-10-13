@@ -91,9 +91,9 @@ export const Login = () => {
       </button>
       <div className="w-full max-w-sm flex flex-col items-center relative z-10">
 
-        <div className="flex flex-col items-center gap-3 stagger-el mb-8">
-          <img src={`${import.meta.env.BASE_URL}placeholder-logo.png`} alt="Atchei" className="w-24 h-24 object-contain brightness-110 drop-shadow-[0_4px_20px_rgba(255,179,77,0.35)]" />
-          <h2 className="font-display font-semibold text-2xl text-accent mt-2">Login</h2>
+        <div className="flex flex-col items-center gap-2 stagger-el mb-6">
+          <img src={`${import.meta.env.BASE_URL}placeholder-logo.png`} alt="Atchei" className="w-16 h-16 object-contain brightness-110 drop-shadow-[0_4px_20px_rgba(255,179,77,0.35)]" />
+          <h2 className="font-display font-semibold text-2xl text-accent mt-2">Entrar</h2>
         </div>
 
         <form onSubmit={handleLogin} className="w-full surface rounded-2xl p-6 space-y-5">
@@ -101,7 +101,7 @@ export const Login = () => {
             <GoogleButton next={next} />
             <div className="flex items-center gap-3 mt-5">
               <span className="h-px flex-1 bg-glassBorder" />
-              <span className="text-[11px] text-textMuted">ou com e-mail</span>
+              <span className="text-xs text-textMuted">ou com e-mail</span>
               <span className="h-px flex-1 bg-glassBorder" />
             </div>
           </div>
@@ -129,7 +129,7 @@ export const Login = () => {
             <button
               type="button"
               onClick={handleForgotPassword}
-              className="block ml-auto text-xs text-primary font-medium hover:underline cursor-pointer pt-1"
+              className="block ml-auto text-xs text-accent font-medium hover:underline cursor-pointer pt-1"
             >
               Esqueci minha senha
             </button>
@@ -150,7 +150,7 @@ export const Login = () => {
 
           <p className="stagger-el text-center text-xs text-textMuted">
             Ainda não tem conta?{' '}
-            <Link to={`/register${window.location.search}`} className="text-primary font-medium hover:underline">
+            <Link to={`/register${window.location.search}`} className="text-accent font-medium hover:underline">
               Criar conta
             </Link>
           </p>

@@ -465,7 +465,7 @@ export const Profile = () => {
           {user && (
             <button
               onClick={handleLogout}
-              className="w-12 h-12 bg-surface border border-glassBorder text-primary rounded-xl flex items-center justify-center shadow-sm hover:border-danger/40 hover:text-danger hover:-translate-y-0.5 transition-all duration-200 neo-click cursor-pointer"
+              className="w-12 h-12 bg-surface border border-glassBorder text-accent rounded-xl flex items-center justify-center shadow-sm hover:border-danger/40 hover:text-danger hover:-translate-y-0.5 transition-all duration-200 neo-click cursor-pointer"
               title="Sair"
             >
               <LogOut size={20} />
@@ -477,7 +477,7 @@ export const Profile = () => {
       {/* Aviso de e-mail não verificado */}
       {user && emailNaoVerificado && (
         <div className="profile-el mx-5 mb-4 relative z-10 surface rounded-2xl p-4 border border-primary/30 flex items-start gap-3 text-left">
-          <Mail size={18} className="text-primary shrink-0 mt-0.5" />
+          <Mail size={18} className="text-accent shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-textLight">Confirme seu e-mail</p>
             <p className="text-xs text-textMuted mt-0.5 leading-snug">
@@ -487,7 +487,7 @@ export const Profile = () => {
             {!verificacaoReenviada && (
               <button
                 onClick={reenviarVerificacao}
-                className="mt-2 text-xs font-semibold text-primary underline underline-offset-2 cursor-pointer"
+                className="mt-2 text-xs font-semibold text-accent underline underline-offset-2 cursor-pointer"
               >
                 Reenviar e-mail de verificação
               </button>
@@ -528,7 +528,7 @@ export const Profile = () => {
               <div className="flex-1 min-w-0 text-left">
                 <h2 className="font-display font-semibold text-2xl text-textLight">{user.name}</h2>
                 <p className="flex items-center gap-1.5 font-mono text-xs text-textMuted mt-0.5 truncate">
-                  <Mail size={12} className="text-primary shrink-0" />
+                  <Mail size={12} className="text-accent shrink-0" />
                   {user.username}
                 </p>
                 {editData.description && (
@@ -544,7 +544,7 @@ export const Profile = () => {
                     className="flex items-center gap-1.5 font-mono text-xs text-textMuted mt-2.5 truncate hover:text-textLight transition-colors"
                     title="Instagram"
                   >
-                    <InstagramIcon size={12} className="text-primary shrink-0" />
+                    <InstagramIcon size={12} className="text-accent shrink-0" />
                     @{editData.instagram.replace('@', '')}
                   </a>
                 )}
@@ -573,7 +573,7 @@ export const Profile = () => {
         ) : (
           <div className="surface rounded-2xl p-8 text-center flex flex-col items-center">
             <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 mb-6">
-              <User className="text-primary" size={36} />
+              <User className="text-accent" size={36} />
             </div>
             <h2 className="font-display font-semibold text-xl text-accent mb-2">Área do parceiro</h2>
             <p className="font-sans text-sm text-textMuted mb-6 max-w-xs leading-relaxed">
@@ -687,15 +687,15 @@ export const Profile = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         {event.isTestEvent ? (
-                          <span className="bg-accent/10 border border-accent/25 text-accent text-[11px] px-2.5 py-0.5 rounded-full font-medium">
+                          <span className="bg-accent/10 border border-accent/25 text-accent text-xs px-2.5 py-0.5 rounded-full font-medium">
                             Evento de teste (Admin)
                           </span>
                         ) : eventoAberto(event) ? (
-                          <span className="text-[#2E8B57] text-[11px] font-medium">
+                          <span className="text-[#2E8B57] text-xs font-medium">
                             Aberto
                           </span>
                         ) : (
-                          <span className="text-textMuted text-[11px] font-medium">
+                          <span className="text-textMuted text-xs font-medium">
                             Encerrado
                           </span>
                         )}
@@ -706,8 +706,8 @@ export const Profile = () => {
 
                   <div className="flex items-center gap-4 mt-3 text-textMuted">
                     <div className="flex items-center gap-1.5">
-                      <Clock size={13} className="text-primary" />
-                      <span className="font-mono text-xs font-bold text-primary">{event.time}</span>
+                      <Clock size={13} className="text-accent" />
+                      <span className="font-mono text-xs font-bold text-accent">{event.time}</span>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); openMaps(event); }} className="flex items-center gap-1.5 text-accent hover:text-accentHover transition-colors cursor-pointer">
                       <MapPin size={13} className="text-accent" />
@@ -718,7 +718,7 @@ export const Profile = () => {
                   {event.address && (
                     <button onClick={(e) => { e.stopPropagation(); openMaps(event); }} className="mt-1.5 flex items-center gap-1 text-textMuted hover:text-textLight transition-colors cursor-pointer">
                       <MapPin size={11} className="shrink-0" />
-                      <span className="text-[11px] truncate">{event.address}</span>
+                      <span className="text-xs truncate">{event.address}</span>
                     </button>
                   )}
 
@@ -733,7 +733,7 @@ export const Profile = () => {
                     <>
                       <button
                         onClick={() => handleOpenParticipants(event)}
-                        className="flex-1 flex flex-col items-center justify-center gap-1 py-3.5 text-accent font-sans font-medium text-[11px] hover:bg-surface/50 transition-colors cursor-pointer"
+                        className="flex-1 flex flex-col items-center justify-center gap-1 py-3.5 text-accent font-sans font-medium text-xs hover:bg-surface/50 transition-colors cursor-pointer"
                       >
                         <Users size={14} />
                         Inscritos
@@ -741,7 +741,7 @@ export const Profile = () => {
                       <div className="w-[1px] bg-glassBorder" />
                       <button
                         onClick={() => navigate(`/edit/${event.id}`)}
-                        className="flex-1 flex flex-col items-center justify-center gap-1 py-3.5 text-textLight font-sans font-medium text-[11px] hover:bg-surface/50 transition-colors cursor-pointer"
+                        className="flex-1 flex flex-col items-center justify-center gap-1 py-3.5 text-textLight font-sans font-medium text-xs hover:bg-surface/50 transition-colors cursor-pointer"
                       >
                         <Edit2 size={14} />
                         Editar
@@ -749,7 +749,7 @@ export const Profile = () => {
                       <div className="w-[1px] bg-glassBorder" />
                       <button
                         onClick={() => setDeleteConfirm(event.id)}
-                        className="flex-1 flex flex-col items-center justify-center gap-1 py-3.5 text-danger font-sans font-medium text-[11px] hover:bg-danger/10 transition-colors cursor-pointer"
+                        className="flex-1 flex flex-col items-center justify-center gap-1 py-3.5 text-danger font-sans font-medium text-xs hover:bg-danger/10 transition-colors cursor-pointer"
                       >
                         <Trash2 size={14} />
                         Excluir
@@ -782,7 +782,7 @@ export const Profile = () => {
                       <div className="w-[1px] bg-glassBorder" />
                       <button
                         onClick={() => openMaps(event)}
-                        className="flex-1 flex items-center justify-center gap-2 py-3.5 text-primary font-sans font-semibold text-xs hover:bg-primary/10 transition-colors cursor-pointer"
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 text-accent font-sans font-semibold text-xs hover:bg-primary/10 transition-colors cursor-pointer"
                       >
                         <Navigation size={14} />
                         Como chegar
@@ -795,7 +795,7 @@ export const Profile = () => {
             {!isLoadingEvents && filteredEvents.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-center px-4 col-span-full">
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-                  <Calendar size={24} className="text-primary/40" />
+                  <Calendar size={24} className="text-accent/40" />
                 </div>
                 <p className="font-sans text-textMuted text-sm mb-4">
                   {userRole === 'admin'
@@ -810,7 +810,7 @@ export const Profile = () => {
                 {userRole !== 'admin' && (
                   <button
                     onClick={() => navigate(userTab === 'meus' ? '/create' : '/')}
-                    className="px-6 py-2.5 bg-surface hover:bg-primary text-primary hover:text-textDark border border-glassBorder rounded-full font-sans text-sm font-medium transition-all active:scale-95 cursor-pointer"
+                    className="px-6 py-2.5 bg-surface hover:bg-primary text-accent hover:text-textDark border border-glassBorder rounded-full font-sans text-sm font-medium transition-all active:scale-95 cursor-pointer"
                   >
                     {userTab === 'meus' ? 'Criar evento' : 'Explorar eventos'}
                   </button>

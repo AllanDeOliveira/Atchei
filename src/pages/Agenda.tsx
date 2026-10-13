@@ -94,12 +94,12 @@ export const Agenda = () => {
           {profile.imageUrl ? (
             <img src={profile.imageUrl} className="w-full h-full object-cover" alt={profile.name} />
           ) : (
-             <Building2 className="text-primary" size={36} />
+             <Building2 className="text-accent" size={36} />
           )}
         </div>
         
         <h1 className="font-display font-semibold text-2xl mb-2 text-textLight z-10 leading-tight">{profile.name}</h1>
-        <span className="text-[11px] font-medium capitalize text-accent mb-4 inline-block z-10">
+        <span className="text-xs font-medium capitalize text-accent mb-4 inline-block z-10">
           Profissional
         </span>
         
@@ -115,7 +115,7 @@ export const Agenda = () => {
                 href={`https://instagram.com/${profile.instagram.replace('@', '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-10 h-10 rounded-xl bg-surface border border-glassBorder hover:border-primary/40 hover:text-primary flex items-center justify-center shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all duration-300 neo-click cursor-pointer"
+                className="w-10 h-10 rounded-xl bg-surface border border-glassBorder hover:border-primary/40 hover:text-accent flex items-center justify-center shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all duration-300 neo-click cursor-pointer"
                 title="Instagram"
               >
                 <InstagramIcon size={16} />
@@ -124,7 +124,7 @@ export const Agenda = () => {
             {profile.email && (
               <a
                 href={`mailto:${profile.email}`}
-                className="w-10 h-10 rounded-xl bg-surface border border-glassBorder hover:border-primary/40 hover:text-primary flex items-center justify-center shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all duration-300 neo-click cursor-pointer"
+                className="w-10 h-10 rounded-xl bg-surface border border-glassBorder hover:border-primary/40 hover:text-accent flex items-center justify-center shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all duration-300 neo-click cursor-pointer"
                 title="E-mail"
               >
                 <Mail size={16} />

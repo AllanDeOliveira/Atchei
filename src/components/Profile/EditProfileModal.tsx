@@ -41,7 +41,7 @@ export const EditProfileModal = ({ open, onClose, editData, setEditData, onSubmi
       </button>
 
       <div className="text-center mb-5">
-        <div className="w-12 h-12 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center text-primary mx-auto mb-2.5">
+        <div className="w-12 h-12 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center text-accent mx-auto mb-2.5">
           <Edit2 size={20} />
         </div>
         <h3 id="profile-edit-title" className="font-display text-xl font-semibold text-accent">Editar perfil</h3>
@@ -59,7 +59,7 @@ export const EditProfileModal = ({ open, onClose, editData, setEditData, onSubmi
                 <User size={30} className="text-textMuted" />
               )}
               {isUploadingPhoto && (
-                <div className="absolute inset-0 bg-background/65 flex items-center justify-center text-primary">
+                <div className="absolute inset-0 bg-background/65 flex items-center justify-center text-accent">
                   <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
@@ -79,7 +79,7 @@ export const EditProfileModal = ({ open, onClose, editData, setEditData, onSubmi
               <input id="profile-photo-upload" title="Mudar Foto" aria-label="Mudar Foto" type="file" className="hidden" accept="image/*" disabled={isUploadingPhoto} onChange={onPhotoChange} />
             </label>
           </div>
-          <span className="text-[9px] font-sans font-medium text-accent">Clique no ícone para alterar</span>
+          <span className="text-xs font-sans font-medium text-accent">Clique no ícone para alterar</span>
         </div>
 
         {/* Informações Gerais */}
@@ -113,7 +113,7 @@ export const EditProfileModal = ({ open, onClose, editData, setEditData, onSubmi
 
           <div className="grid grid-cols-1 gap-2">
             <div className="flex items-center bg-surfaceHover/50 border border-glassBorder rounded-xl px-3 focus-within:border-primary/40 focus-within:shadow-glow-primary transition-all duration-300">
-              <InstagramIcon size={14} className="text-primary mr-2 shrink-0" />
+              <InstagramIcon size={14} className="text-accent mr-2 shrink-0" />
               <input
                 type="text"
                 placeholder="Instagram (Ex: @seu.perfil)"
