@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ValidateTickets } from './ValidateTickets';
 import { storage } from '../lib/storage';
@@ -23,9 +23,11 @@ vi.mock('../contexts/AuthContext', () => ({
 
 // Mock storage
 vi.mock('../lib/storage', () => ({
+  STATUS_AGUARDANDO: 'Aguardando pagamento',
   storage: {
     getEventById: vi.fn(),
     getRegistrationsForEvent: vi.fn(),
+    checkInRegistration: vi.fn(),
   },
 }));
 
@@ -88,5 +90,28 @@ describe('ValidateTickets Page', () => {
 
     const videoElement = gpuContainer?.querySelector('video');
     expect(videoElement).toHaveClass('gpu-video');
+  });
+
+  it('recusa inscrição sem paymentStatus (presença forjada não é ingresso)', async () => {
+    vi.mocked(storage.getRegistrationsForEvent).mockResolvedValue([
+      { id: 'event-1_uid-x', eventId: 'event-1', userId: 'uid-x', userName: 'X', timestamp: '2026-08-01T00:00:00Z' },
+    ]);
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <ValidateTickets />
+        </MemoryRouter>
+      );
+    });
+
+    fireEvent.click(screen.getByText('Digitar código manualmente'));
+    const input = screen.getByPlaceholderText('Cole ou digite o código do ingresso');
+    await act(async () => {
+      fireEvent.change(input, { target: { value: 'event-1_uid-x' } });
+      fireEvent.submit(input.closest('form')!);
+    });
+
+    expect(await screen.findByText('Confirmação de presença')).toBeInTheDocument();
+    expect(storage.checkInRegistration).not.toHaveBeenCalled();
   });
 });
