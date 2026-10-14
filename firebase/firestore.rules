@@ -166,7 +166,8 @@ service cloud.firestore {
       //    'guest-*' foi descontinuada — docs antigos permanecem legíveis):
       //    1. O evento precisa aceitar presença gratuita — impede forjar um ingresso
       //       "Gratuito" para um evento exclusivamente pago e passá-lo na portaria.
-      //    2. paymentStatus só pode ser 'Gratuito'/nulo — nunca 'Pago' pelo cliente.
+      //    2. paymentStatus é obrigatoriamente 'Gratuito' e sem lote — nunca 'Pago'
+      //       nem ausente pelo cliente.
       //    3. A inscrição não pode nascer já validada (check-in é ação de portaria).
       //    4. Só em nome PRÓPRIO (userId == uid) — impede inscrição forjada em nome
       //       de outra pessoa.
@@ -185,11 +186,11 @@ service cloud.firestore {
         (
           eventAllowsPresence(request.resource.data.eventId) &&
           eventHasCapacity(request.resource.data.eventId) &&
-          (
-            !('paymentStatus' in request.resource.data) ||
-            request.resource.data.paymentStatus == 'Gratuito' ||
-            request.resource.data.paymentStatus == null
-          ) &&
+          // Status explícito: sem ele, a portaria tratava o doc como ingresso
+          // (QR = id previsível) e o ticketTypeId inflava soldByTicket.
+          request.resource.data.paymentStatus == 'Gratuito' &&
+          !('ticketTypeId' in request.resource.data) &&
+          !('ticketTypeName' in request.resource.data) &&
           (
             !('checkedIn' in request.resource.data) ||
             request.resource.data.checkedIn == false

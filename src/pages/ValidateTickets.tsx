@@ -214,7 +214,10 @@ export const ValidateTickets = () => {
             title: 'Pagamento não confirmado',
             detail: 'Este participante está aguardando a confirmação do pagamento. Confirme no painel de inscritos antes de liberar a entrada.',
           });
-        } else if (reg.paymentStatus === 'Gratuito') {
+        } else if (!reg.paymentStatus || reg.paymentStatus === 'Gratuito') {
+          // Status ausente também é presença: ingresso de verdade sempre tem
+          // status (venda manual, WhatsApp, teste); docs forjados antes da
+          // correção das rules nasceram sem ele.
           // Confirmação de presença é RSVP social, não ingresso — não emite QR
           // e não passa na portaria (o participante consta na lista de inscritos).
           setResult({
