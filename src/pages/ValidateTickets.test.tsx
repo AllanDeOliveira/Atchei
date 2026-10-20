@@ -104,7 +104,8 @@ describe('ValidateTickets Page', () => {
       );
     });
 
-    fireEvent.click(screen.getByText('Digitar código manualmente'));
+    // findBy: o botão só aparece depois que o evento carrega (instável sob carga com getBy).
+    fireEvent.click(await screen.findByText('Digitar código manualmente'));
     const input = screen.getByPlaceholderText('Cole ou digite o código do ingresso');
     await act(async () => {
       fireEvent.change(input, { target: { value: 'event-1_uid-x' } });
