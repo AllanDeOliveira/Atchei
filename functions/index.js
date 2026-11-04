@@ -85,7 +85,7 @@ exports.adminResetPassword = onCall({ cors: true, enforceAppCheck: true }, async
         throw new HttpsError('permission-denied', 'Apenas administradores podem redefinir senhas de parceiros.');
     }
     
-    if (!uid || !newPassword) {
+    if (typeof uid !== 'string' || !uid || typeof newPassword !== 'string' || !newPassword) {
         throw new HttpsError('invalid-argument', 'UID e nova senha são obrigatórios.');
     }
 

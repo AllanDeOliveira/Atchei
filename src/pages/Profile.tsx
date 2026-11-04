@@ -19,7 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { compressImage } from '../lib/imageUtils';
 import toast from 'react-hot-toast';
 
-import { formatCPF, formatPhone, mapsDirUrl, waMeUrl } from '../lib/formatters';
+import { celulaCsv, formatCPF, formatPhone, mapsDirUrl, waMeUrl } from '../lib/formatters';
 
 export const Profile = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -396,11 +396,12 @@ export const Profile = () => {
         const status = p.paymentStatus || 'Gratuito';
         const date = new Date(p.timestamp).toLocaleString('pt-BR');
         
-        // Formata os campos e envolve com ="..." para forçar o Excel a tratá-los como texto de forma segura
+        // Telefone e CPF (só dígitos e pontuação nossa) vão como ="..." para o Excel
+        // tratá-los como texto; o que vem do participante passa por celulaCsv.
         const formattedPhone = phone ? `="${formatPhone(phone)}"` : '""';
         const formattedCpf = cpf ? `="${formatCPF(cpf)}"` : '""';
-        
-        return `${name};${email};${formattedPhone};${formattedCpf};${status};${date}`;
+
+        return [celulaCsv(name), celulaCsv(email), formattedPhone, formattedCpf, celulaCsv(status), celulaCsv(date)].join(';');
       });
       const csvContent = '\uFEFF' + headers.concat(rows).join('\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
