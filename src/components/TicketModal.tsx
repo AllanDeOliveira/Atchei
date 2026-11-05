@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { X, Calendar, Clock, MapPin, Download, CheckCircle2, Loader2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
+import { toDataURL } from 'qrcode';
 import toast from 'react-hot-toast';
 import type { EventItem, Registration } from '../lib/storage';
 import { makeTicketCode } from '../lib/ticketCode';
@@ -27,45 +28,28 @@ const slugify = (s: string): string =>
 
 export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModalProps) => {
   const ticketRef = useRef<HTMLDivElement>(null);
-  // Guardado junto com a URL de origem: trocar de ingresso "zera" o QR por derivação,
+  // Guardado junto com o id de origem: trocar de ingresso "zera" o QR por derivação,
   // sem setState síncrono no effect (regra react-hooks/set-state-in-effect).
   const [qr, setQr] = useState<{ de: string; dataUrl: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
-
   const shortCode = makeTicketCode(registration.id);
 
-  // URL externa do QR (mantida) — alto contraste para leitura confiável na portaria.
-  const qrRemoteUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=0&data=${encodeURIComponent(
-    registration.id
-  )}&color=1c1917&bgcolor=ffffff`;
-  const qrDataUrl = qr?.de === qrRemoteUrl ? qr.dataUrl : null;
+  // QR gerado no aparelho (biblioteca `qrcode`): o id da inscrição é a credencial que
+  // libera a entrada e não sai para serviço de terceiro; funciona offline e já nasce
+  // como data URL, que o html-to-image embute sem CORS na exportação do PNG.
+  const qrDataUrl = qr?.de === registration.id ? qr.dataUrl : null;
 
-  // Busca o QR e converte para data URL. Isso (1) deixa a imagem same-origin para
-  // o html-to-image conseguir embuti-la sem esbarrar em CORS na hora de gerar o
-  // PNG, e (2) garante que o QR já está em memória antes da exportação.
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
-    (async () => {
-      try {
-        const res = await fetch(qrRemoteUrl, { mode: 'cors' });
-        const blob = await res.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (active && typeof reader.result === 'string') setQr({ de: qrRemoteUrl, dataUrl: reader.result });
-        };
-        reader.readAsDataURL(blob);
-      } catch {
-        // Sem rede / CORS bloqueado: usa a URL direta (o preview funciona; só a
-        // exportação do QR pode falhar nesse cenário extremo).
-        if (active) setQr({ de: qrRemoteUrl, dataUrl: qrRemoteUrl });
-      }
-    })();
+    toDataURL(registration.id, { width: 320, margin: 0, color: { dark: '#1c1917', light: '#ffffff' } })
+      .then((dataUrl) => { if (active) setQr({ de: registration.id, dataUrl }); })
+      .catch((e) => console.error('Erro ao gerar o QR do ingresso:', e));
     return () => {
       active = false;
     };
-  }, [isOpen, qrRemoteUrl]);
+  }, [isOpen, registration.id]);
 
   const handleDownload = useCallback(async () => {
     const node = ticketRef.current;

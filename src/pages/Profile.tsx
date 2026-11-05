@@ -19,7 +19,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { compressImage } from '../lib/imageUtils';
 import toast from 'react-hot-toast';
 
-import { formatCPF, formatPhone, mapsDirUrl, waMeUrl } from '../lib/formatters';
+import { celulaCsv, formatCPF, formatPhone, mapsDirUrl, waMeUrl } from '../lib/formatters';
 
 export const Profile = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -396,11 +396,12 @@ export const Profile = () => {
         const status = p.paymentStatus || 'Gratuito';
         const date = new Date(p.timestamp).toLocaleString('pt-BR');
         
-        // Formata os campos e envolve com ="..." para forçar o Excel a tratá-los como texto de forma segura
+        // Telefone e CPF (só dígitos e pontuação nossa) vão como ="..." para o Excel
+        // tratá-los como texto; o que vem do participante passa por celulaCsv.
         const formattedPhone = phone ? `="${formatPhone(phone)}"` : '""';
         const formattedCpf = cpf ? `="${formatCPF(cpf)}"` : '""';
-        
-        return `${name};${email};${formattedPhone};${formattedCpf};${status};${date}`;
+
+        return [celulaCsv(name), celulaCsv(email), formattedPhone, formattedCpf, celulaCsv(status), celulaCsv(date)].join(';');
       });
       const csvContent = '\uFEFF' + headers.concat(rows).join('\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -704,19 +705,21 @@ export const Profile = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 mt-3 text-textMuted">
-                    <div className="flex items-center gap-1.5">
+                  {/* Botão tem largura de conteúdo por padrão: sem max-w-full o endereço
+                      comprido vazava do cartão em vez de truncar. */}
+                  <div className="flex items-center gap-4 mt-3 text-textMuted min-w-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <Clock size={13} className="text-accent" />
                       <span className="font-mono text-xs font-bold text-accent">{event.time}</span>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); openMaps(event); }} className="flex items-center gap-1.5 text-accent hover:text-accentHover transition-colors cursor-pointer">
-                      <MapPin size={13} className="text-accent" />
-                      <span className="font-mono text-xs hover:underline">{event.location}</span>
+                    <button onClick={(e) => { e.stopPropagation(); openMaps(event); }} className="flex items-center gap-1.5 min-w-0 max-w-full text-left text-accent hover:text-accentHover transition-colors cursor-pointer">
+                      <MapPin size={13} className="text-accent shrink-0" />
+                      <span className="font-mono text-xs hover:underline truncate">{event.location}</span>
                     </button>
                   </div>
 
                   {event.address && (
-                    <button onClick={(e) => { e.stopPropagation(); openMaps(event); }} className="mt-1.5 flex items-center gap-1 text-textMuted hover:text-textLight transition-colors cursor-pointer">
+                    <button onClick={(e) => { e.stopPropagation(); openMaps(event); }} className="mt-1.5 flex items-center gap-1 min-w-0 max-w-full text-left text-textMuted hover:text-textLight transition-colors cursor-pointer" title={event.address}>
                       <MapPin size={11} className="shrink-0" />
                       <span className="text-xs truncate">{event.address}</span>
                     </button>

@@ -1,7 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { formatPhone, formatCPF } from './formatters';
+import { formatPhone, formatCPF, celulaCsv } from './formatters';
 
 describe('formatters', () => {
+  describe('celulaCsv', () => {
+    it('protege separador, aspas e quebra de linha, e neutraliza fórmula do Excel', () => {
+      expect(celulaCsv('Silva; "Ju"')).toBe('"Silva; ""Ju"""');
+      expect(celulaCsv('linha1\nlinha2')).toBe('"linha1\nlinha2"');
+      expect(celulaCsv('=1+1')).toBe('"\'=1+1"');
+      expect(celulaCsv('')).toBe('""');
+    });
+  });
+
   describe('formatPhone', () => {
     it('deve formatar telefone com 11 dígitos corretamente', () => {
       expect(formatPhone('11987654321')).toBe('(11) 98765-4321');

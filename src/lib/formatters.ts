@@ -90,3 +90,11 @@ export const mapsQuery = (location?: string, address?: string): string => {
 /** URL de rota no Google Maps — único builder; usado por card, perfil e página do evento. */
 export const mapsDirUrl = (location?: string, address?: string): string =>
   `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(mapsQuery(location, address))}`;
+
+/** Célula de CSV: aspas em volta (dobradas por dentro, cobrindo `;` e quebra de linha)
+ *  e apóstrofo na frente de = + - @ e tabulação, que o Excel executaria como fórmula
+ *  (injeção pelo nome do participante). */
+export const celulaCsv = (valor: string): string => {
+  const v = /^[=+\-@\t\r]/.test(valor) ? `'${valor}` : valor;
+  return `"${v.replace(/"/g, '""')}"`;
+};

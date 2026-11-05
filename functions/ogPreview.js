@@ -36,6 +36,9 @@ function generateOgHtml({ event, eventId, appBaseUrl }) {
         : `${appBaseUrl}/apple-touch-icon.png`;
     
     const appUrl = `${appBaseUrl}/event/${eventId}`;
+    // Dentro do <script> o contexto é JavaScript, não HTML: string JSON, com "<"
+    // escapado para não conseguir fechar a tag.
+    const appUrlJs = JSON.stringify(appUrl).replace(/</g, '\\u003c');
 
     return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -62,7 +65,7 @@ function generateOgHtml({ event, eventId, appBaseUrl }) {
     <!-- Redirecionamento instantâneo para navegadores humanos -->
     <meta http-equiv="refresh" content="0; url=${escapeHtml(appUrl)}">
     <script>
-        window.location.replace("${escapeHtml(appUrl)}");
+        window.location.replace(${appUrlJs});
     </script>
 </head>
 <body style="font-family: sans-serif; background: #FFFCF8; color: #1C1917; padding: 2rem; text-align: center;">

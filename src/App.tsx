@@ -1,4 +1,5 @@
 import React, { Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from './pages/Login';
 import { Feed } from './pages/Feed';
@@ -7,6 +8,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import { MainLayout } from './components/MainLayout';
 import { Toaster } from 'react-hot-toast';
+import { useDialogoDoTopo } from './lib/dialogos';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CookieBanner } from './components/CookieBanner';
 import { InstallAppCard } from './components/InstallAppCard';
@@ -34,25 +36,40 @@ const LoadingSpinner = () => (
   </div>
 );
 
+/**
+ * Os diálogos (`components/ui/Modal`) abrem com showModal() na camada superior do
+ * navegador, acima de qualquer z-index: um toast fora deles ficaria atrás do fundo
+ * escuro (confirmar pagamento, remover da lista). Então o Toaster é renderizado dentro
+ * do diálogo aberto por último, via portal, e no lugar normal quando não há nenhum.
+ * Todo diálogo ocupa a tela inteira, por isso o contêiner fixo dos toasts fica no
+ * mesmo lugar dentro ou fora.
+ */
+const ToasterNoTopo = () => {
+  const dialogo = useDialogoDoTopo();
+  const toaster = (
+    <Toaster
+      position="top-center"
+      containerStyle={{ top: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
+      toastOptions={{
+        duration: 4000,
+        style: {
+          borderRadius: '16px',
+          background: '#FFFFFF',
+          color: '#1C1917',
+          border: '1px solid rgba(28,25,23,0.08)',
+          boxShadow: '0 12px 40px -10px rgba(28,25,23,0.12)'
+        }
+      }}
+    />
+  );
+  return dialogo ? createPortal(toaster, dialogo) : toaster;
+};
+
 function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        {/* Notificações Toaster customizadas com visual premium */}
-        <Toaster
-          position="top-center"
-          containerStyle={{ top: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
-          toastOptions={{
-            duration: 4000,
-            style: {
-              borderRadius: '16px',
-              background: '#FFFFFF',
-              color: '#1C1917',
-              border: '1px solid rgba(28,25,23,0.08)',
-              boxShadow: '0 12px 40px -10px rgba(28,25,23,0.12)'
-            }
-          }}
-        />
+        <ToasterNoTopo />
         <Router>
           {/* Nesta ordem: o convite de instalação aparece primeiro e o aviso de
               cookies só entra quando ele sai — os dois ocupam a mesma posição. */}
