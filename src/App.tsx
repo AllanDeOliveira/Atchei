@@ -1,4 +1,5 @@
-import React, { Suspense, useLayoutEffect, useRef } from 'react';
+import React, { Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from './pages/Login';
 import { Feed } from './pages/Feed';
@@ -6,7 +7,8 @@ import { Search } from './pages/Search';
 import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import { MainLayout } from './components/MainLayout';
-import { Toaster, useToasterStore } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
+import { useDialogoDoTopo } from './lib/dialogos';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CookieBanner } from './components/CookieBanner';
 import { InstallAppCard } from './components/InstallAppCard';
@@ -36,45 +38,31 @@ const LoadingSpinner = () => (
 
 /**
  * Os diálogos (`components/ui/Modal`) abrem com showModal() na camada superior do
- * navegador, acima de qualquer z-index. O Toaster mora num popover reaberto a cada
- * toast novo: a camada superior empilha por ordem de entrada, então o toast fica por
- * cima do diálogo aberto (confirmar pagamento, remover da lista). Navegador sem a
- * Popover API, e o jsdom, ignoram o atributo e seguem com o z-index de sempre.
+ * navegador, acima de qualquer z-index: um toast fora deles ficaria atrás do fundo
+ * escuro (confirmar pagamento, remover da lista). Então o Toaster é renderizado dentro
+ * do diálogo aberto por último, via portal, e no lugar normal quando não há nenhum.
+ * Todo diálogo ocupa a tela inteira, por isso o contêiner fixo dos toasts fica no
+ * mesmo lugar dentro ou fora.
  */
 const ToasterNoTopo = () => {
-  const ref = useRef<HTMLDivElement>(null);
-  const { toasts } = useToasterStore();
-  const ultimo = toasts.find((t) => t.visible)?.id;
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el || typeof el.showPopover !== 'function') return;
-    try {
-      if (el.matches(':popover-open')) el.hidePopover();
-      el.showPopover();
-    } catch {
-      /* estado inesperado do popover: fica onde está */
-    }
-  }, [ultimo]);
-
-  return (
-    <div ref={ref} popover="manual" className="fixed inset-0 m-0 p-0 border-0 w-auto h-auto overflow-visible bg-transparent pointer-events-none">
-      <Toaster
-        position="top-center"
-        containerStyle={{ top: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
-        toastOptions={{
-          duration: 4000,
-          style: {
-            borderRadius: '16px',
-            background: '#FFFFFF',
-            color: '#1C1917',
-            border: '1px solid rgba(28,25,23,0.08)',
-            boxShadow: '0 12px 40px -10px rgba(28,25,23,0.12)'
-          }
-        }}
-      />
-    </div>
+  const dialogo = useDialogoDoTopo();
+  const toaster = (
+    <Toaster
+      position="top-center"
+      containerStyle={{ top: 'calc(env(safe-area-inset-top, 0px) + 24px)' }}
+      toastOptions={{
+        duration: 4000,
+        style: {
+          borderRadius: '16px',
+          background: '#FFFFFF',
+          color: '#1C1917',
+          border: '1px solid rgba(28,25,23,0.08)',
+          boxShadow: '0 12px 40px -10px rgba(28,25,23,0.12)'
+        }
+      }}
+    />
   );
+  return dialogo ? createPortal(toaster, dialogo) : toaster;
 };
 
 function App() {

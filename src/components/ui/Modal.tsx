@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import { cn } from '../../lib/utils';
+import { registrarDialogo } from '../../lib/dialogos';
 
 interface ModalProps {
   open: boolean;
@@ -47,10 +48,13 @@ const Aberto = ({
 
   // Antes da pintura: fechado, o <dialog> é display:none, mas as classes de layout do
   // backdrop (flex) o mostrariam solto por um quadro. Desmontar o elemento já o tira
-  // da camada superior, então a limpeza não precisa de close().
+  // da camada superior, então a limpeza não precisa de close(). O registro deixa o
+  // Toaster saber em qual diálogo se pendurar (ver lib/dialogos).
   useLayoutEffect(() => {
     const el = ref.current;
-    if (el && !el.open) el.showModal();
+    if (!el) return;
+    if (!el.open) el.showModal();
+    return registrarDialogo(el);
   }, []);
 
   return (
