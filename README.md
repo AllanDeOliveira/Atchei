@@ -6,6 +6,51 @@ Produção: **https://atchei.app.br** · PWA instalável · Documentação compl
 
 ---
 
+## Destaques de engenharia
+
+- **Sem servidor próprio.** O cliente fala direto com o Firestore; as security rules (344 linhas) são a camada de autorização. Cloud Functions só entram onde há privilégio, segredo, reação a escrita ou cron.
+- **Contadores são do backend.** Totais de inscrições e de ingressos são escritos apenas por triggers; as rules bloqueiam a escrita pelo cliente.
+- **Testes como rotina.** 138 casos em 27 arquivos (Vitest e Testing Library no frontend, Vitest nas functions), sem nunca tocar o Firebase real.
+- **Três pipelines no GitHub Actions.** CI em todo pull request, deploy a cada merge e auditoria diária com build, testes, `npm audit`, higiene de segurança e smoke de produção.
+- **Segurança em camadas.** Admin por custom claim, App Check com reCAPTCHA v3, rate limiter que falha fechado nas rotas de e-mail, HSTS, CSV protegido contra injeção de fórmula.
+- **Performance medida.** Fonte local, autenticação sem iframe, Analytics após o `load`, capas em WebP com `fetchpriority` na primeira e lazy nas demais.
+- **Desenvolvimento com agentes de IA, supervisionado.** O `CLAUDE.md` do repositório dá o contexto do projeto aos agentes; planejamento, implementação, revisão e testes passam por revisão humana em pull request.
+
+### Arquitetura
+
+```mermaid
+flowchart LR
+  U[Navegador / PWA<br/>React 19 + TypeScript] --> H[Firebase Hosting<br/>atchei.app.br]
+  U --> A[Firebase Auth<br/>custom claim admin]
+  U --> F[(Firestore<br/>rules + App Check)]
+  U --> S[Cloud Storage<br/>imagens]
+  U --> C[Cloud Functions gen2]
+  F -- triggers --> C
+  C --> R[Resend<br/>e-mail]
+  C --> M[FCM<br/>push]
+  H -- "/e/:id" --> C
+  U --> G[Google Maps Platform]
+```
+
+### Decisões e trade-offs
+
+| Decisão | Por quê |
+|---|---|
+| Pagamento Pix in-app removido; venda por WhatsApp | Reduzir escopo e risco antes do lançamento. Se voltar, será implementação nova. |
+| Permanecer no Firebase em vez de migrar para Postgres | Uso real medido e projeção de custo mostraram Firebase mais barato nas escalas realistas. Gatilhos de revisão estão documentados. |
+| QR do ingresso gerado no aparelho | O serviço externo recebia o id da inscrição, que é a credencial da portaria, e era ponto de falha offline. |
+| Modal sobre o `<dialog>` nativo | Foco preso, fundo inerte e Escape resolvidos pelo navegador, com menos código próprio. |
+| Saída de zod e react-hook-form | Auditoria de over-engineering: validação nativa e `useState` bastavam para o formulário. |
+| App Check ligado mesmo custando nota no PageSpeed | Proteção contra bot pesa mais que os pontos perdidos; decisão registrada com a medição. |
+
+O histórico completo, com datas, está em [docs/DOCUMENTACAO.md](docs/DOCUMENTACAO.md#13-decisões-e-histórico).
+
+### Próximos passos
+
+- **Backup semanal criptografado fora do Google.** O workflow (`backup-semanal.yml`) já existe e foi validado, mas está desligado desde que este repositório ficou público: os artefatos passariam a ser visíveis. Volta a rodar quando o destino for um repositório privado.
+
+---
+
 ## ✨ Funcionalidades
 
 **Para o público**
