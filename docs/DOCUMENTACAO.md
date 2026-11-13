@@ -347,6 +347,8 @@ Mesmos testes e build, grava `functions/.env` (só `APP_BASE_URL=https://atchei.
 
 Cópia de tudo que vive só no Google: `firebase auth:export` (usuários com hash de senha), `functions/scripts/backup-firestore.js` (todas as coleções de raiz em JSON, datas em ISO) e `gcloud storage rsync` do bucket. Empacota, criptografa com `gpg` simétrico (secret `BACKUP_PASSPHRASE`) e publica como artefato do GitHub por 90 dias. Motivo: o backup gerenciado do Firestore fica dentro do mesmo projeto e não vale nada se o projeto for suspenso; este sai do Google. Preparação e restauração em §11.
 
+**Desligado desde 10/11/2026**, quando o repositório ficou público: os artefatos (mesmo criptografados) ficariam visíveis. Religar só depois de apontar a publicação para um repositório privado.
+
 ### Limitações conhecidas
 
 - A service account do CI **não consegue criar function nova** (falha em "Could not get operation details" / IAM). Primeiro deploy de uma function nova é manual — ver §11.
