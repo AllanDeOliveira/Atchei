@@ -38,6 +38,12 @@ const ticketCodeCore = (id: string): string => {
   return core;
 };
 
+// O que vai no QR e de onde sai o código curto: o ticketSecret quando o doc tem um
+// (ingresso WhatsApp, cujo id eventId_uid é derivável de dados públicos), senão o id
+// (aleatório nos ingressos manuais). Com segredo, o id sozinho não abre a portaria.
+export const ticketCredential = (reg: { id: string; ticketSecret?: string }): string =>
+  reg.ticketSecret || reg.id;
+
 // Código formatado para exibição no ingresso: ATX-XXXX-XXXX
 export const makeTicketCode = (id: string): string => {
   const core = ticketCodeCore(id);

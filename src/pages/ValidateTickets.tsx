@@ -6,7 +6,7 @@ import { BrowserQRCodeReader } from '@zxing/browser';
 import type { IScannerControls } from '@zxing/browser';
 import { storage, STATUS_AGUARDANDO } from '../lib/storage';
 import type { EventItem, Registration } from '../lib/storage';
-import { matchesTicketCode } from '../lib/ticketCode';
+import { matchesTicketCode, ticketCredential } from '../lib/ticketCode';
 import { maskCPF } from '../lib/formatters';
 import { useAuth } from '../contexts/AuthContext';
 import { useEscapeToClose } from '../hooks/useEscapeToClose';
@@ -127,13 +127,13 @@ export const ValidateTickets = () => {
   const resolveRegistration = useCallback(
     async (text: string): Promise<Registration | 'ambiguous' | null> => {
       const matchIn = (list: Registration[]): Registration | 'ambiguous' | null => {
-        // 1) id completo do documento (QR padrão) — exato, imune a colisão.
-        const exact = list.find((r) => r.id === text);
+        // 1) credencial completa (QR padrão) — exato, imune a colisão.
+        const exact = list.find((r) => ticketCredential(r) === text);
         if (exact) return exact;
         // 2) código curto derivado do id (digitação manual). O código é um hash
         //    de 40 bits: a colisão dentro de um evento é raríssima, mas se houver
         //    mais de um casamento NÃO validamos (evita liberar a pessoa errada).
-        const shortMatches = list.filter((r) => matchesTicketCode(text, r.id));
+        const shortMatches = list.filter((r) => matchesTicketCode(text, ticketCredential(r)));
         if (shortMatches.length === 1) return shortMatches[0];
         if (shortMatches.length > 1) return 'ambiguous';
         return null;
@@ -154,8 +154,10 @@ export const ValidateTickets = () => {
       }
       if (reg === null) {
         // Último recurso: id de documento que não está na lista (ex.: outro
-        // evento) — permite detectar "ingresso de outro evento".
-        reg = await storage.getRegistrationById(text);
+        // evento) — permite detectar "ingresso de outro evento". Doc com segredo
+        // não é encontrável pelo id: o id dele é previsível.
+        const porId = await storage.getRegistrationById(text);
+        reg = porId?.ticketSecret ? null : porId;
       }
       return reg;
     },

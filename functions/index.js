@@ -128,7 +128,7 @@ async function deleteDocsWhere(coll, field, value) {
 }
 
 // Exclui a CONTA COMPLETA de um parceiro: login no Firebase Auth, perfil no Firestore,
-// os EVENTOS que ele criou (com todas as inscrições desses eventos), as inscrições
+// os EVENTOS que ele criou (as inscrições deles saem pela onEventDeleted), as inscrições
 // dele em eventos de terceiros e seus tokens de push.
 // Contas legadas têm perfil com id != uid — o vínculo é o e-mail do perfil, e os
 // eventos podem ter creatorId igual ao uid OU ao id do perfil legado.
@@ -162,13 +162,12 @@ exports.adminDeleteAccount = onCall({ cors: true, enforceAppCheck: true }, async
             throw new HttpsError('failed-precondition', 'Um administrador não pode excluir a própria conta por aqui.');
         }
 
-        // Eventos criados pela conta (uid ou id de perfil legado) e as inscrições deles.
+        // Eventos criados pela conta (uid ou id de perfil legado).
         let eventosExcluidos = 0;
         const creatorIds = [...new Set([profileId, uid].filter(Boolean))];
         for (const cid of creatorIds) {
             const evs = await db.collection('events').where('creatorId', '==', cid).get();
             for (const ev of evs.docs) {
-                await deleteDocsWhere('registrations', 'eventId', ev.id);
                 await ev.ref.delete();
                 eventosExcluidos++;
             }
@@ -356,8 +355,21 @@ exports.onRegistrationDeleted = onDocumentDeleted("registrations/{registrationId
         await db.collection("events").doc(data.eventId).update(updates);
         logger.info(`Decremented registration count for event ${data.eventId}`);
     } catch (error) {
-        logger.error(`Error decrementing registration count for event ${data.eventId}:`, error);
+        // NOT_FOUND (5): o evento foi apagado e a onEventDeleted está levando as inscrições junto.
+        if (error.code !== 5) logger.error(`Error decrementing registration count for event ${data.eventId}:`, error);
     }
+});
+
+// Evento apagado (pelo dono, admin ou adminDeleteAccount): grava a lápide que as rules
+// consultam no create de evento e apaga as inscrições. Sem isso, quem recriasse o mesmo
+// id viraria "dono" das inscrições antigas (PII, check-in, push D-1).
+// ponytail: a lápide sai ~1 s depois do delete; recriar o id nessa janela ainda é possível,
+// mas as inscrições somem logo em seguida. Fechar de vez = delete do evento via callable.
+exports.onEventDeleted = onDocumentDeleted("events/{eventId}", async (event) => {
+    const eventId = event.params.eventId;
+    await db.collection('deletedEvents').doc(eventId).set({ deletedAt: FieldValue.serverTimestamp() });
+    const n = await deleteDocsWhere('registrations', 'eventId', eventId);
+    logger.info(`Evento ${eventId} apagado: ${n} inscrição(ões) removida(s).`);
 });
 
 // Vendedor confirmou o pagamento de uma intenção WhatsApp ('Aguardando pagamento' →

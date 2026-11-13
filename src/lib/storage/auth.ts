@@ -22,6 +22,7 @@ import { httpsCallable } from 'firebase/functions';
 import { getFunctionsInstance } from '../firebase';
 import type { AppProfile, User } from './types';
 import { profileStore } from './profiles';
+import { disableNotifications } from '../notifications';
 
 export const authStore = {
   // E-mail de verificação com template e página nossos (o Google bloqueia personalizar
@@ -155,6 +156,9 @@ export const authStore = {
   },
 
   logout: async () => {
+    // Antes do signOut (a rule de delete do token exige login): sem isso, quem usar o
+    // navegador depois continua recebendo os pushes desta conta.
+    await disableNotifications();
     await signOut(auth);
     localStorage.removeItem(USER_KEY);
   },

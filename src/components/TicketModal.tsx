@@ -4,7 +4,7 @@ import { toPng } from 'html-to-image';
 import { toDataURL } from 'qrcode';
 import toast from 'react-hot-toast';
 import type { EventItem, Registration } from '../lib/storage';
-import { makeTicketCode } from '../lib/ticketCode';
+import { makeTicketCode, ticketCredential } from '../lib/ticketCode';
 import { formatCPF } from '../lib/cpf';
 import { formatDateExtenso } from '../lib/formatters';
 import { Modal } from './ui/Modal';
@@ -33,23 +33,24 @@ export const TicketModal = ({ isOpen, onClose, event, registration }: TicketModa
   const [qr, setQr] = useState<{ de: string; dataUrl: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const shortCode = makeTicketCode(registration.id);
+  const credencial = ticketCredential(registration);
+  const shortCode = makeTicketCode(credencial);
 
   // QR gerado no aparelho (biblioteca `qrcode`): o id da inscrição é a credencial que
   // libera a entrada e não sai para serviço de terceiro; funciona offline e já nasce
   // como data URL, que o html-to-image embute sem CORS na exportação do PNG.
-  const qrDataUrl = qr?.de === registration.id ? qr.dataUrl : null;
+  const qrDataUrl = qr?.de === credencial ? qr.dataUrl : null;
 
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
-    toDataURL(registration.id, { width: 320, margin: 0, color: { dark: '#1c1917', light: '#ffffff' } })
-      .then((dataUrl) => { if (active) setQr({ de: registration.id, dataUrl }); })
+    toDataURL(credencial, { width: 320, margin: 0, color: { dark: '#1c1917', light: '#ffffff' } })
+      .then((dataUrl) => { if (active) setQr({ de: credencial, dataUrl }); })
       .catch((e) => console.error('Erro ao gerar o QR do ingresso:', e));
     return () => {
       active = false;
     };
-  }, [isOpen, registration.id]);
+  }, [isOpen, credencial]);
 
   const handleDownload = useCallback(async () => {
     const node = ticketRef.current;

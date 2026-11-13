@@ -99,11 +99,15 @@ service cloud.firestore {
 
       // Permitir criação se o próprio usuário estiver criando seu perfil com tipo
       // 'user' (pessoal) ou 'profissional' — exigindo 18+ (não só na tela) —, ou se
-      // o solicitante for um administrador.
+      // o solicitante for um administrador. O e-mail tem de ser o do token: as rules
+      // (isCreator, update) e o adminDeleteAccount tratam profiles.email como vínculo
+      // de posse; e-mail alheio aqui daria a posse de eventos de outra pessoa.
       allow create: if isAuthed() && (
         (request.auth.uid == profileId
           && request.resource.data.type in ['user', 'profissional']
-          && isAdult(request.resource.data.birthDate)) ||
+          && isAdult(request.resource.data.birthDate)
+          && 'email' in request.auth.token
+          && request.resource.data.email.lower() == request.auth.token.email.lower()) ||
         isAdmin()
       );
       
@@ -126,8 +130,16 @@ service cloud.firestore {
       // Eventos são públicos para visualização
       allow read: if true;
       // Criação: o creatorId precisa ser o próprio usuário (uid ou seu perfil
-      // legado); admin pode criar em nome de um parceiro.
-      allow create: if isCreator(request.resource.data.creatorId) || isAdmin();
+      // legado); admin pode criar em nome de um parceiro. Contadores nascem só pelo
+      // backend (como no update). Id de evento apagado não volta: as inscrições
+      // antigas apontam para ele, e quem o recriasse viraria "dono" delas
+      // (deletedEvents é gravado pela function onEventDeleted).
+      allow create: if !exists(/databases/$(database)/documents/deletedEvents/$(eventId)) && (
+        isAdmin() || (
+          isCreator(request.resource.data.creatorId) &&
+          !request.resource.data.keys().hasAny(['registrationCount', 'soldByTicket'])
+        )
+      );
       // Somente o criador do evento ou o administrador podem editar/excluir.
       // O criador NÃO pode transferir a posse (creatorId) nem forjar contadores
       // geridos pelo backend (registrationCount e soldByTicket — escritos pelas
@@ -180,17 +192,34 @@ service cloud.firestore {
       //    este status, e só o dono do evento pode promovê-lo a 'Pago (WhatsApp)'.
       //    Sem ticketTypeId (não mexe em estoque de lote), sempre em nome próprio,
       //    e com o mesmo id determinístico da regra 5 acima.
+      //
+      // B e C aceitam só as chaves que a tela grava: sem lote (ticketTypeId/Name,
+      // que mexem em estoque e no rótulo da portaria) e sem isTeste (que as triggers
+      // não contam, furando o maxParticipants).
+      function selfRegKeysOk() {
+        return request.resource.data.keys().hasOnly(['eventId', 'userId', 'userName',
+          'userEmail', 'userPhone', 'paymentStatus', 'timestamp', 'checkedIn']);
+      }
       allow create: if
         isAdmin() ||
-        isEventOwner(request.resource.data.eventId) ||
         (
+          // A) userId é o do próprio dono ou um convidado manual: em nome de outra
+          //    conta, a inscrição apareceria no perfil dela e dispararia push com o
+          //    título escolhido pelo dono. Id sem '_' (addDoc): impede ocupar o id
+          //    determinístico eventId_uid de outra pessoa em outro evento.
+          isEventOwner(request.resource.data.eventId) &&
+          !registrationId.matches('.*_.*') &&
+          request.resource.data.userId is string &&
+          (request.resource.data.userId == request.auth.uid ||
+           request.resource.data.userId.matches('guest-manual-[0-9]+'))
+        ) ||
+        (
+          selfRegKeysOk() &&
           eventAllowsPresence(request.resource.data.eventId) &&
           eventHasCapacity(request.resource.data.eventId) &&
           // Status explícito: sem ele, a portaria tratava o doc como ingresso
           // (QR = id previsível) e o ticketTypeId inflava soldByTicket.
           request.resource.data.paymentStatus == 'Gratuito' &&
-          !('ticketTypeId' in request.resource.data) &&
-          !('ticketTypeName' in request.resource.data) &&
           (
             !('checkedIn' in request.resource.data) ||
             request.resource.data.checkedIn == false
@@ -199,10 +228,10 @@ service cloud.firestore {
           registrationId == request.resource.data.eventId + '_' + request.auth.uid
         ) ||
         (
+          selfRegKeysOk() &&
           eventSellsTickets(request.resource.data.eventId) &&
           eventHasCapacity(request.resource.data.eventId) &&
           request.resource.data.paymentStatus == 'Aguardando pagamento' &&
-          !('ticketTypeId' in request.resource.data) &&
           (
             !('checkedIn' in request.resource.data) ||
             request.resource.data.checkedIn == false
@@ -215,7 +244,9 @@ service cloud.firestore {
       // o check-in na portaria — restrito aos campos de validação e sem permitir
       // reverter um check-in (impede reabrir reentrada / apagar a trilha de auditoria).
       // ... ou o dono do evento confirmando o pagamento de uma intenção WhatsApp —
-      // só a transição 'Aguardando pagamento' → 'Pago (WhatsApp)', nada mais.
+      // só a transição 'Aguardando pagamento' → 'Pago (WhatsApp)', gravando junto o
+      // ticketSecret aleatório que vira o QR: o id (eventId_uid) é derivável de dados
+      // públicos e deixaria um terceiro passar na portaria antes do comprador.
       allow update: if isAdmin() || (
         isEventOwner(resource.data.eventId) &&
         request.resource.data.diff(resource.data).affectedKeys()
@@ -225,8 +256,10 @@ service cloud.firestore {
         isEventOwner(resource.data.eventId) &&
         resource.data.paymentStatus == 'Aguardando pagamento' &&
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['paymentStatus']) &&
-        request.resource.data.paymentStatus == 'Pago (WhatsApp)'
+          .hasOnly(['paymentStatus', 'ticketSecret']) &&
+        request.resource.data.paymentStatus == 'Pago (WhatsApp)' &&
+        request.resource.data.ticketSecret is string &&
+        request.resource.data.ticketSecret.size() >= 32
       );
 
       // Deletar: admin, ou o PRÓPRIO usuário cancelando uma presença gratuita ou
@@ -263,6 +296,11 @@ service cloud.firestore {
     // Coleção interna de rate limiting — acesso bloqueado para clientes
     // Somente Cloud Functions (Admin SDK) podem ler/escrever
     match /_rateLimits/{docId} {
+      allow read, write: if false;
+    }
+
+    // Lápides de eventos apagados (function onEventDeleted); só as rules consultam.
+    match /deletedEvents/{eventId} {
       allow read, write: if false;
     }
 
