@@ -48,6 +48,7 @@ O histórico completo, com datas, está em [docs/DOCUMENTACAO.md](docs/DOCUMENTA
 ### Próximos passos
 
 - **Backup semanal criptografado fora do Google.** O workflow (`backup-semanal.yml`) já existe e foi validado, mas está desligado desde que este repositório ficou público: os artefatos passariam a ser visíveis. Volta a rodar quando o destino for um repositório privado.
+- **Flyer vira rascunho do evento (IA generativa).** O organizador sobe o flyer e o formulário chega preenchido com título, data, hora, local e preço, como sugestão editável; nada é salvo sem revisão. Desenho previsto: callable com App Check e a chave do modelo só no servidor (secret), rate limit pelo limitador que já existe, texto do flyer tratado como dado (saída só em campos estruturados e validados), formulário funcionando normalmente se o modelo falhar, testes com o modelo simulado e um conjunto de 15 a 20 flyers reais com gabarito para medir o acerto por campo. Depende de aviso na página legal, já que o flyer passa a ir para um serviço externo.
 
 ---
 
