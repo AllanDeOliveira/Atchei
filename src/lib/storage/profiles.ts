@@ -3,20 +3,25 @@ import {
   collection,
   getDocs,
   getDoc,
-  setDoc,
   doc,
   query,
   where,
   updateDoc,
-  limit
+  limit,
+  writeBatch
 } from 'firebase/firestore';
 import type { AppProfile } from './types';
 
 export const profileStore = {
+  /** Painel admin (as rules só deixam admin listar tudo): perfis com o e-mail de
+   *  login, que mora em profilesPrivate. */
   getProfiles: async (limitCount: number = 50): Promise<AppProfile[]> => {
-    const q = query(collection(db, 'profiles'), limit(limitCount));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppProfile));
+    const [perfis, privados] = await Promise.all([
+      getDocs(query(collection(db, 'profiles'), limit(limitCount))),
+      getDocs(collection(db, 'profilesPrivate')),
+    ]);
+    const emails = new Map(privados.docs.map(d => [d.id, d.get('email') as string | undefined]));
+    return perfis.docs.map(d => ({ id: d.id, ...d.data(), email: emails.get(d.id) } as AppProfile));
   },
 
   // Diretório público (busca de visitante): só perfis profissionais — as rules negam
@@ -39,15 +44,19 @@ export const profileStore = {
     return undefined;
   },
 
-  saveProfile: async (profile: AppProfile) => {
-    await setDoc(doc(db, 'profiles', profile.id), {
+  /** Cria o perfil (id = uid). E-mail e nascimento vão para profilesPrivate no mesmo
+   *  batch: o perfil profissional é público, e as rules do create exigem os dois juntos. */
+  saveProfile: async (profile: AppProfile, privado: { email: string; birthDate?: string }) => {
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'profiles', profile.id), {
       name: profile.name,
       type: profile.type,
-      description: profile.description,
+      description: profile.description || '',
       imageUrl: profile.imageUrl || '',
-      email: profile.email || '',
       mustChangePassword: profile.mustChangePassword ?? false
     });
+    batch.set(doc(db, 'profilesPrivate', profile.id), privado);
+    await batch.commit();
   },
 
   updateProfile: async (id: string, data: Partial<AppProfile>) => {
