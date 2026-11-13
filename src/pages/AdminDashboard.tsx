@@ -235,11 +235,10 @@ export const AdminDashboard = () => {
       const profile: AppProfile = {
         id: uid,
         ...newPartner,
-        email,
         mustChangePassword: true
       };
 
-      await storage.saveProfile(profile);
+      await storage.saveProfile(profile, { email });
       const allProfiles = await storage.getProfiles();
       setProfiles(allProfiles);
       setLastGenerated({ email, pass: password }); // A senha fica só na tela, nunca no banco
