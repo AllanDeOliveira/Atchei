@@ -104,4 +104,5 @@ export type Registration = {
   checkedInAt?: string;    // Quando foi validado (ISO)
   checkedInBy?: string;    // Quem validou (nome do operador)
   isTeste?: boolean;       // Ingresso de teste (gerado por admin, fora do faturamento real)
+  ticketSecret?: string;   // Credencial do QR quando o id é previsível (Pago (WhatsApp) = eventId_uid)
 };

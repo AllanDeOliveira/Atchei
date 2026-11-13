@@ -145,10 +145,11 @@ export async function syncNotificationToken(userId: string): Promise<void> {
   }
 }
 
-// Remove o token deste dispositivo do Firestore (ex.: ao desativar notificações).
+// Remove o token deste dispositivo do Firestore (ao desativar notificações ou sair).
 export async function disableNotifications(): Promise<void> {
   const messaging = await getMessagingSafe();
-  if (!messaging || !VAPID_KEY) return;
+  // Sem permissão não há token salvo, e o getToken abriria o pedido de permissão (no logout).
+  if (!messaging || !VAPID_KEY || Notification.permission !== 'granted') return;
   try {
     const swReg = await registerFcmServiceWorker();
     const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });

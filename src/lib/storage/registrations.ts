@@ -121,8 +121,13 @@ export const registrationStore = {
   },
 
   /** Vendedor confirma o pagamento de uma intenção de compra via WhatsApp.
-   *  As rules só aceitam esta transição (Aguardando → Pago) pelo dono do evento. */
+   *  As rules só aceitam esta transição (Aguardando → Pago) pelo dono do evento, e
+   *  exigem o ticketSecret: o id da intenção (eventId_uid) sai de dados públicos e
+   *  não pode ser a credencial da portaria. */
   confirmRegistrationPayment: async (id: string): Promise<void> => {
-    await updateDoc(doc(db, 'registrations', id), { paymentStatus: STATUS_PAGO_WHATSAPP });
+    await updateDoc(doc(db, 'registrations', id), {
+      paymentStatus: STATUS_PAGO_WHATSAPP,
+      ticketSecret: crypto.randomUUID(),
+    });
   },
 };
