@@ -146,9 +146,9 @@ export const Profile = () => {
   // Sincronizar dados em tempo real do Firestore
   useEffect(() => {
     const syncProfile = async () => {
-      if (user && user.username) {
+      if (user) {
         try {
-          const remoteProfile = await storage.getProfileByEmail(user.username);
+          const remoteProfile = await storage.getProfileById(user.id);
           if (remoteProfile) {
             setImageUrl(remoteProfile.imageUrl || '');
             setEditData({
@@ -199,10 +199,10 @@ export const Profile = () => {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !user.username) return;
+    if (!user) return;
     setIsSaving(true);
     try {
-      const updated = await storage.updatePartnerProfile(user.username, {
+      const updated = await storage.updatePartnerProfile(user.id, {
         name: editData.name,
         description: editData.description,
         instagram: editData.instagram,
