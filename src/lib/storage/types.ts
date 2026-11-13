@@ -4,12 +4,11 @@ export interface AppProfile {
   type: 'user' | 'profissional' | 'admin';
   description: string;
   imageUrl?: string;
+  /** E-mail de login: mora em profilesPrivate e só vem preenchido no painel admin. */
   email?: string;
   password?: string;
   mustChangePassword?: boolean;
   instagram?: string;
-  /** Data de nascimento (YYYY-MM-DD). Cadastros exigem 18+; docs antigos não têm o campo. */
-  birthDate?: string;
 };
 
 export type User = {

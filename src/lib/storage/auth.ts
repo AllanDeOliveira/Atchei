@@ -1,14 +1,6 @@
 import { auth, db } from '../firebase';
 import { USER_KEY } from '../storageKeys';
-import {
-  collection,
-  getDocs,
-  setDoc,
-  doc,
-  query,
-  where,
-  updateDoc
-} from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import {
   signInWithEmailAndPassword,
   signOut,
@@ -41,8 +33,7 @@ export const authStore = {
     const fbUser = cred.user;
     const email = (fbUser.email || '').toLowerCase();
 
-    let profile: AppProfile | null = (await profileStore.getProfileById(fbUser.uid)) ?? null;
-    if (!profile && email) profile = await authStore.getProfileByEmail(email);
+    const profile = await profileStore.getProfileById(fbUser.uid);
     if (!profile) return { precisaCompletar: true, name: fbUser.displayName || '', email };
 
     const user: User = {
@@ -63,14 +54,10 @@ export const authStore = {
     const fbUser = auth.currentUser;
     if (!fbUser) throw new Error('Sessão do Google não encontrada.');
     const email = (fbUser.email || '').toLowerCase();
-    await setDoc(doc(db, 'profiles', fbUser.uid), {
-      name,
-      email,
-      type: 'user',
-      mustChangePassword: false,
-      birthDate,
-      imageUrl: fbUser.photoURL || '',
-    });
+    await profileStore.saveProfile(
+      { id: fbUser.uid, name, type: 'user', description: '', imageUrl: fbUser.photoURL || '', mustChangePassword: false },
+      { email, birthDate },
+    );
     const user: User = { id: fbUser.uid, name, username: email, role: 'user', mustChangePassword: false, imageUrl: fbUser.photoURL || '' };
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     return user;
@@ -104,13 +91,10 @@ export const authStore = {
         mustChangePassword: false,
       };
 
-      await setDoc(doc(db, 'profiles', fbUser.uid), {
-        name,
-        email,
-        type,
-        mustChangePassword: false,
-        ...(birthDate ? { birthDate } : {})
-      });
+      await profileStore.saveProfile(
+        { id: fbUser.uid, name, type, description: '', mustChangePassword: false },
+        { email, ...(birthDate ? { birthDate } : {}) },
+      );
 
       localStorage.setItem(USER_KEY, JSON.stringify(user));
       return user;
@@ -126,16 +110,8 @@ export const authStore = {
       const userCredential = await signInWithEmailAndPassword(auth, email, password || '');
       const fbUser = userCredential.user;
 
-      // Buscar perfil no Firestore para saber a role
-      // Tenta buscar por ID ou por Email
-      let profile = await profileStore.getProfileById(fbUser.uid);
-      if (!profile) {
-        const q = query(collection(db, 'profiles'), where('email', '==', email));
-        const qs = await getDocs(q);
-        if (!qs.empty) {
-          profile = { id: qs.docs[0].id, ...qs.docs[0].data() } as AppProfile;
-        }
-      }
+      // Perfil no Firestore (id = uid) para saber a role
+      const profile = await profileStore.getProfileById(fbUser.uid);
 
       const user: User = {
         id: fbUser.uid,
@@ -164,23 +140,8 @@ export const authStore = {
   },
 
   updatePartnerPassword: async (partnerId: string, newPassword: string) => {
-    // O partnerId aqui é o UID do Firebase Auth, mas o doc no Firestore
-    // foi criado com um ID diferente (p12345...). Buscar pelo email.
     const currentUser = authStore.getCurrentUser();
-    const email = currentUser?.username;
-
-    if (email) {
-      // Buscar o documento do perfil pelo email
-      const q = query(collection(db, 'profiles'), where('email', '==', email));
-      const qs = await getDocs(q);
-
-      if (!qs.empty) {
-        const profileDocRef = qs.docs[0].ref;
-        await updateDoc(profileDocRef, {
-          mustChangePassword: false
-        });
-      }
-    }
+    await updateDoc(doc(db, 'profiles', partnerId), { mustChangePassword: false });
 
     // Atualizar a senha no Firebase Auth também
     if (auth.currentUser) {
@@ -194,44 +155,22 @@ export const authStore = {
     }
   },
 
-  updatePartnerProfile: async (email: string, updates: Partial<AppProfile>): Promise<AppProfile | null> => {
+  updatePartnerProfile: async (id: string, updates: Partial<AppProfile>): Promise<boolean> => {
     try {
-      const q = query(collection(db, 'profiles'), where('email', '==', email));
-      const qs = await getDocs(q);
-      if (!qs.empty) {
-        const docRef = qs.docs[0].ref;
-        await updateDoc(docRef, updates);
-
-        const currentUser = authStore.getCurrentUser();
-        if (currentUser && currentUser.username === email) {
-          const updatedUser = {
-            ...currentUser,
-            name: updates.name || currentUser.name,
-            imageUrl: updates.imageUrl !== undefined ? updates.imageUrl : currentUser.imageUrl
-          };
-          localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
-        }
-
-        return { id: qs.docs[0].id, ...qs.docs[0].data(), ...updates } as AppProfile;
+      await updateDoc(doc(db, 'profiles', id), updates);
+      const currentUser = authStore.getCurrentUser();
+      if (currentUser && currentUser.id === id) {
+        const updatedUser = {
+          ...currentUser,
+          name: updates.name || currentUser.name,
+          imageUrl: updates.imageUrl !== undefined ? updates.imageUrl : currentUser.imageUrl
+        };
+        localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
       }
-      return null;
+      return true;
     } catch (error) {
       console.error("Erro ao atualizar o perfil do parceiro:", error);
-      return null;
-    }
-  },
-
-  getProfileByEmail: async (email: string): Promise<AppProfile | null> => {
-    try {
-      const q = query(collection(db, 'profiles'), where('email', '==', email));
-      const qs = await getDocs(q);
-      if (!qs.empty) {
-        return { id: qs.docs[0].id, ...qs.docs[0].data() } as AppProfile;
-      }
-      return null;
-    } catch (e) {
-      console.error("Erro ao buscar perfil por email:", e);
-      return null;
+      return false;
     }
   },
 };

@@ -127,11 +127,10 @@ async function deleteDocsWhere(coll, field, value) {
     return refs.length;
 }
 
-// Exclui a CONTA COMPLETA de um parceiro: login no Firebase Auth, perfil no Firestore,
-// os EVENTOS que ele criou (as inscrições deles saem pela onEventDeleted), as inscrições
-// dele em eventos de terceiros e seus tokens de push.
-// Contas legadas têm perfil com id != uid — o vínculo é o e-mail do perfil, e os
-// eventos podem ter creatorId igual ao uid OU ao id do perfil legado.
+// Exclui a CONTA COMPLETA de um parceiro: login no Firebase Auth, perfil (público e
+// privado) no Firestore, os EVENTOS que ele criou (as inscrições deles saem pela
+// onEventDeleted), as inscrições dele em eventos de terceiros e seus tokens de push.
+// O id do perfil é o uid (contas legadas com id != uid acabaram no reset de 13/11).
 exports.adminDeleteAccount = onCall({ cors: true, enforceAppCheck: true }, async (request) => {
     if (!request.auth) {
         throw new HttpsError('unauthenticated', 'Apenas usuários autenticados podem excluir contas.');
@@ -145,33 +144,16 @@ exports.adminDeleteAccount = onCall({ cors: true, enforceAppCheck: true }, async
     }
 
     try {
-        const snap = await db.collection('profiles').doc(profileId).get();
-        const email = snap.exists ? (snap.data().email || null) : null;
-
-        // Resolve o usuário do Auth: pelo uid (padrão) ou pelo e-mail (conta legada).
-        let uid = null;
-        try {
-            uid = (await getAuth().getUser(profileId)).uid;
-        } catch (e) {
-            if (email) {
-                try { uid = (await getAuth().getUserByEmail(email)).uid; } catch (e2) { /* sem login no Auth */ }
-            }
-        }
-
-        if (profileId === request.auth.uid || uid === request.auth.uid) {
+        if (profileId === request.auth.uid) {
             throw new HttpsError('failed-precondition', 'Um administrador não pode excluir a própria conta por aqui.');
         }
 
-        // Eventos criados pela conta (uid ou id de perfil legado).
-        let eventosExcluidos = 0;
-        const creatorIds = [...new Set([profileId, uid].filter(Boolean))];
-        for (const cid of creatorIds) {
-            const evs = await db.collection('events').where('creatorId', '==', cid).get();
-            for (const ev of evs.docs) {
-                await ev.ref.delete();
-                eventosExcluidos++;
-            }
-        }
+        let uid = null;
+        try { uid = (await getAuth().getUser(profileId)).uid; } catch (e) { /* perfil sem login no Auth */ }
+
+        const evs = await db.collection('events').where('creatorId', '==', profileId).get();
+        for (const ev of evs.docs) await ev.ref.delete();
+        const eventosExcluidos = evs.size;
 
         if (uid) {
             // Inscrições da própria pessoa em eventos de terceiros e tokens de push.
@@ -180,6 +162,7 @@ exports.adminDeleteAccount = onCall({ cors: true, enforceAppCheck: true }, async
             await getAuth().deleteUser(uid);
         }
         await db.collection('profiles').doc(profileId).delete();
+        await db.collection('profilesPrivate').doc(profileId).delete();
 
         logger.info(`Conta ${profileId} (auth uid: ${uid || 'inexistente'}) excluída pelo admin ${request.auth.token.email || request.auth.uid}: ${eventosExcluidos} evento(s) removido(s) junto.`);
         return { success: true, authDeleted: !!uid, eventosExcluidos };
