@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, setDoc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc, updateDoc, arrayUnion, runTransaction, serverTimestamp } from 'firebase/firestore';
 import type { DocumentData, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { TAMANHO_GRUPO } from '../desafio';
@@ -18,11 +18,22 @@ const ms = (t: unknown) => (t as Timestamp | null)?.toMillis?.() ?? null;
 export const iniciarDesafio = (mesa: string, uid: string) =>
   setDoc(ref(mesa), { mesa, liderId: uid, membros: [uid], iniciadoEm: serverTimestamp() });
 
-/** Entra no grupo; quem completa o 5º carimba liberadoEm (as rules exigem a hora do servidor). */
-export const entrarNoDesafio = (mesa: string, uid: string, membrosAtuais: number) =>
-  updateDoc(ref(mesa), {
-    membros: arrayUnion(uid),
-    ...(membrosAtuais + 1 >= TAMANHO_GRUPO ? { liberadoEm: serverTimestamp() } : {}),
+/**
+ * Entra no grupo; quem completa o 5º carimba liberadoEm (as rules exigem a hora do servidor).
+ * Transação porque a contagem precisa ser a do servidor: com a do snapshot da tela, quem
+ * entrava junto via o mesmo número, ninguém carimbava e as rules recusavam o 5º (a mesa
+ * travava em 4 no teste de concorrência de 13/11). arrayUnion, e não a lista montada aqui:
+ * uma lista velha é recusada pelas rules com permission-denied, que a transação não repete;
+ * com arrayUnion a leitura velha vira erro de concorrência e a transação tenta de novo.
+ */
+export const entrarNoDesafio = (mesa: string, uid: string) =>
+  runTransaction(db, async (tx) => {
+    const membros: string[] = (await tx.get(ref(mesa))).data()?.membros ?? [];
+    if (membros.includes(uid)) return;
+    tx.update(ref(mesa), {
+      membros: arrayUnion(uid),
+      ...(membros.length + 1 >= TAMANHO_GRUPO ? { liberadoEm: serverTimestamp() } : {}),
+    });
   });
 
 /**

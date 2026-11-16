@@ -73,7 +73,7 @@ export const Desafio = () => {
     // Quem já ganhou não entra (as rules recusariam de qualquer jeito).
     if (!user || !d || estado !== 'aberto' || souMembro || ganhador || tentouEntrar.current) return;
     tentouEntrar.current = true;
-    entrarNoDesafio(mesa, user.id, d.membros.length).catch((e) => {
+    entrarNoDesafio(mesa, user.id).catch((e) => {
       console.warn('Não entrou no grupo:', e);
       toast.error('Não deu pra entrar — a mesa fechou ou o tempo acabou.');
     });
