@@ -26,18 +26,10 @@ service cloud.firestore {
       );
     }
 
-    // Dono efetivo de um creatorId: bate com o uid, ou o creatorId é o doc de
-    // perfil do PRÓPRIO usuário (contas legadas têm perfil com id != uid; o
-    // vínculo é o e-mail autenticado, mesmo critério do update de profiles).
+    // Dono de um creatorId: o próprio uid. (Contas legadas com perfil de id != uid,
+    // vinculadas por e-mail, deixaram de existir no reset de 13/11.)
     function isCreator(creatorId) {
-      return isAuthed() && (
-        creatorId == request.auth.uid ||
-        (
-          'email' in request.auth.token &&
-          exists(/databases/$(database)/documents/profiles/$(creatorId)) &&
-          get(/databases/$(database)/documents/profiles/$(creatorId)).data.email.lower() == request.auth.token.email.lower()
-        )
-      );
+      return isAuthed() && creatorId == request.auth.uid;
     }
 
     // Verifica se o usuário autenticado é o criador (dono) de um evento.
@@ -76,54 +68,55 @@ service cloud.firestore {
     }
 
     match /profiles/{profileId} {
-      // Leitura de UM perfil: pública só para perfil profissional (página do organizador,
-      // agenda). Conta pessoal guarda e-mail e data de nascimento, e o uid dela NÃO é
-      // segredo (events.creatorId é público; desafios/*.membros é legível por logado):
-      // só o dono (por uid ou e-mail legado) e admin leem. A página do evento mostra o
-      // organizador pessoal pelo creatorName gravado no evento. Doc inexistente
-      // (resource == null) é negado, exceto para o próprio uid.
+      // Doc PÚBLICO do perfil (id = uid): nome, tipo, descrição, foto, Instagram.
+      // E-mail e data de nascimento ficam em profilesPrivate/{uid}: o perfil
+      // profissional é legível e listável sem login, e o Firestore devolve o doc inteiro.
+      // Conta pessoal segue legível só pelo dono e admin: o uid dela não é segredo
+      // (events.creatorId é público; desafios/*.membros é legível por logado), e a
+      // página do evento mostra o organizador pelo creatorName gravado no evento.
       allow get: if
         isAdmin() ||
         (isAuthed() && request.auth.uid == profileId) ||
-        (resource != null && resource.data.type == 'profissional') ||
-        (isAuthed() && resource != null && 'email' in request.auth.token && 'email' in resource.data &&
-         resource.data.email.lower() == request.auth.token.email.lower());
-      // Listagem: diretório profissional (público), o próprio perfil (fallback de
-      // login por e-mail) ou admin. Logado comum NÃO lista a base inteira — isso
-      // vazaria nome + e-mail de contas pessoais (type 'user').
-      allow list: if
-        isAdmin() ||
-        resource.data.type == 'profissional' ||
-        (isAuthed() && 'email' in request.auth.token && 'email' in resource.data &&
-         resource.data.email.lower() == request.auth.token.email.lower());
+        (resource != null && resource.data.type == 'profissional');
+      allow list: if isAdmin() || resource.data.type == 'profissional';
 
-      // Permitir criação se o próprio usuário estiver criando seu perfil com tipo
-      // 'user' (pessoal) ou 'profissional' — exigindo 18+ (não só na tela) —, ou se
-      // o solicitante for um administrador. O e-mail tem de ser o do token: as rules
-      // (isCreator, update) e o adminDeleteAccount tratam profiles.email como vínculo
-      // de posse; e-mail alheio aqui daria a posse de eventos de outra pessoa.
+      // O próprio usuário cria o seu, tipo 'user' ou 'profissional', no MESMO batch
+      // do profilesPrivate (que é onde o 18+ e o e-mail são validados); admin cria
+      // qualquer um.
       allow create: if isAuthed() && (
         (request.auth.uid == profileId
           && request.resource.data.type in ['user', 'profissional']
-          && isAdult(request.resource.data.birthDate)
-          && 'email' in request.auth.token
-          && request.resource.data.email.lower() == request.auth.token.email.lower()) ||
+          && !request.resource.data.keys().hasAny(['email', 'birthDate'])
+          && existsAfter(/databases/$(database)/documents/profilesPrivate/$(profileId))) ||
         isAdmin()
       );
-      
-      // Permitir atualização ao dono (do seu próprio perfil, identificado por email autenticado)
-      // se não alterar tipo ou e-mail, ou se for um administrador
+
+      // O dono atualiza o seu sem mudar o tipo nem trazer de volta os campos privados.
       allow update: if isAuthed() && (
         (
-          request.auth.token.email.lower() == resource.data.email.lower() &&
+          request.auth.uid == profileId &&
           request.resource.data.type == resource.data.type &&
-          request.resource.data.email == resource.data.email
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['email', 'birthDate'])
         ) ||
         isAdmin()
       );
 
-      // Apenas admins podem deletar perfis
       allow delete: if isAdmin();
+    }
+
+    // Parte privada do perfil: e-mail de login e data de nascimento. Só o dono e admin.
+    // Nasce junto com o perfil (batch); 18+ validado aqui, não só na tela.
+    match /profilesPrivate/{uid} {
+      allow get: if isAdmin() || (isAuthed() && request.auth.uid == uid);
+      allow list: if isAdmin();
+      allow create: if isAdmin() || (
+        isAuthed() && request.auth.uid == uid &&
+        request.resource.data.keys().hasOnly(['email', 'birthDate']) &&
+        'email' in request.auth.token &&
+        request.resource.data.email.lower() == request.auth.token.email.lower() &&
+        isAdult(request.resource.data.birthDate)
+      );
+      allow update, delete: if isAdmin();
     }
 
     match /events/{eventId} {

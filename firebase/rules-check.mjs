@@ -26,10 +26,14 @@ const val = (v) => {
 };
 const fields = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, val(v)]));
 
+// 'owner' = bypass de rules; 'anon' = sem login; 'admin' = claim admin; resto = uid comum.
+const headers = (uid) => ({
+  'Content-Type': 'application/json',
+  ...(uid === 'anon' ? {} : { Authorization: `Bearer ${uid === 'owner' ? 'owner' : token(uid, uid === 'admin' ? { admin: true } : {})}` }),
+});
 async function call(method, path, uid, body, query = '') {
-  const auth = uid === 'owner' ? 'owner' : token(uid, uid === 'admin' ? { admin: true } : {});
   const r = await fetch(`${BASE}/${path}${query}`, {
-    method, headers: { Authorization: `Bearer ${auth}`, 'Content-Type': 'application/json' },
+    method, headers: headers(uid),
     body: body ? JSON.stringify({ fields: fields(body) }) : undefined,
   });
   if (![200, 403, 500].includes(r.status)) console.log('   corpo:', (await r.text()).slice(0, 400));
@@ -42,6 +46,20 @@ const create = (coll, id, uid, data) =>
 const update = (path, uid, data) =>
   call('PATCH', path, uid, data, '?' + Object.keys(data).map(k => `updateMask.fieldPaths=${k}`).join('&') + '&currentDocument.exists=true');
 const get = (path, uid) => call('GET', path, uid);
+// Vários creates num batch atômico (como o writeBatch do cliente): [[coleção, id, dados], ...].
+const DOCS = 'projects/demo-atchei/databases/(default)/documents';
+async function commit(uid, writes) {
+  const r = await fetch(`${BASE}:commit`, { method: 'POST', headers: headers(uid), body: JSON.stringify({
+    writes: writes.map(([c, id, data]) => ({ update: { name: `${DOCS}/${c}/${id}`, fields: fields(data) }, currentDocument: { exists: false } })) }) });
+  return r.status;
+}
+// Query de coleção, com um filtro de igualdade opcional [campo, valor].
+async function listar(coll, uid, filtro) {
+  const where = filtro && { fieldFilter: { field: { fieldPath: filtro[0] }, op: 'EQUAL', value: val(filtro[1]) } };
+  const r = await fetch(`${BASE}:runQuery`, { method: 'POST', headers: headers(uid), body: JSON.stringify({
+    structuredQuery: { from: [{ collectionId: coll }], ...(where ? { where } : {}) } }) });
+  return r.status;
+}
 
 let falhas = 0;
 async function espera(nome, esperado, p) {
@@ -96,12 +114,28 @@ await espera('A3 comprador lê o próprio ingresso', 'allow', get('registrations
 await espera('A3 terceiro não lê o ingresso', 'deny', get('registrations/ev1_comprador', 'atacante'));
 await espera('check-in pelo dono segue valendo', 'allow', update('registrations/ev1_comprador', 'dono', { checkedIn: true, checkedInAt: 't', checkedInBy: 'D' }));
 
-// Lead 1 (perfil com e-mail alheio)
-const perfil = { name: 'A', type: 'user', birthDate: '1990-01-01' };
-await espera('perfil com e-mail alheio', 'deny', create('profiles', 'atk', 'atk', { ...perfil, email: 'vitima@example.invalid' }));
-await espera('perfil sem e-mail', 'erro', create('profiles', 'semEmail', 'semEmail', perfil));
-await espera('perfil com o próprio e-mail (caixa diferente)', 'allow', create('profiles', 'atk', 'atk', { ...perfil, email: 'ATK@example.invalid' }));
-await espera('perfil menor de idade', 'deny', create('profiles', 'menor', 'menor', { ...perfil, birthDate: '2015-01-01', email: 'menor@example.invalid' }));
+// Perfil (A5 + lead 1): público sem e-mail/nascimento; profilesPrivate nasce no mesmo batch.
+const perfil = (type = 'profissional') => ({ name: 'A', type, description: '', mustChangePassword: false });
+const cadastro = (uid, privado, publico = perfil()) => commit(uid, [['profilesPrivate', uid, privado], ['profiles', uid, publico]]);
+await espera('perfil sem o doc privado', 'deny', create('profiles', 'solo', 'solo', perfil()));
+await espera('perfil público com e-mail', 'deny', cadastro('pub', { email: 'pub@example.invalid', birthDate: '1990-01-01' }, { ...perfil(), email: 'pub@example.invalid' }));
+await espera('privado com e-mail alheio', 'deny', cadastro('atk', { email: 'vitima@example.invalid', birthDate: '1990-01-01' }));
+await espera('privado menor de idade', 'deny', cadastro('menor', { email: 'menor@example.invalid', birthDate: '2015-01-01' }));
+await espera('privado com campo extra', 'deny', cadastro('extra', { email: 'extra@example.invalid', birthDate: '1990-01-01', cpf: '1' }));
+await espera('cadastro válido (e-mail em outra caixa)', 'allow', cadastro('org', { email: 'ORG@example.invalid', birthDate: '1990-01-01' }));
+await espera('anônimo lê perfil profissional', 'allow', get('profiles/org', 'anon'));
+await espera('anônimo lista profissionais', 'allow', listar('profiles', 'anon', ['type', 'profissional']));
+await espera('anônimo lê o privado', 'deny', get('profilesPrivate/org', 'anon'));
+await espera('outra conta lê o privado', 'deny', get('profilesPrivate/org', 'atacante'));
+await espera('outra conta lista privados', 'deny', listar('profilesPrivate', 'atacante'));
+await espera('dono lê o privado', 'allow', get('profilesPrivate/org', 'org'));
+await espera('admin lista privados', 'allow', listar('profilesPrivate', 'admin'));
+await espera('dono edita nome', 'allow', update('profiles/org', 'org', { name: 'Novo' }));
+await espera('dono põe e-mail no público', 'deny', update('profiles/org', 'org', { email: 'org@example.invalid' }));
+await espera('dono troca o tipo', 'deny', update('profiles/org', 'org', { type: 'admin' }));
+await espera('dono altera o privado', 'deny', update('profilesPrivate/org', 'org', { birthDate: '2000-01-01' }));
+await espera('outra conta edita o perfil', 'deny', update('profiles/org', 'atacante', { name: 'X' }));
+await espera('evento com creatorId de outra conta', 'deny', create('events', 'novo5', 'atacante', { ...ev, creatorId: 'org' }));
 
 // lápide é invisível ao cliente
 await espera('deletedEvents não é legível', 'deny', get('deletedEvents/apagado', 'atacante'));

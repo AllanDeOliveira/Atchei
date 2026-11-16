@@ -62,8 +62,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 name: firebaseUser.displayName || 'Administrador',
                 type: 'admin',
                 description: 'Administrador do Sistema',
-                email: email
-              });
+              }, { email });
             }
           }
 

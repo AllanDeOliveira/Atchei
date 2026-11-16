@@ -5,7 +5,7 @@ import { storage } from '../lib/storage';
 import type { EventItem, AppProfile } from '../lib/storage';
 import { EventCard } from '../components/EventCard';
 import { EventCardSkeleton, Skeleton } from '../components/ui/Skeleton';
-import { ArrowLeft, Building2, Mail } from 'lucide-react';
+import { ArrowLeft, Building2 } from 'lucide-react';
 import { InstagramIcon } from '../components/InstagramIcon';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -108,7 +108,7 @@ export const Agenda = () => {
         )}
 
         {/* Redes Sociais */}
-        {(profile.instagram || profile.email) && (
+        {profile.instagram && (
           <div className="flex justify-center gap-3.5 z-10">
             {profile.instagram && (
               <a
@@ -119,15 +119,6 @@ export const Agenda = () => {
                 title="Instagram"
               >
                 <InstagramIcon size={16} />
-              </a>
-            )}
-            {profile.email && (
-              <a
-                href={`mailto:${profile.email}`}
-                className="w-10 h-10 rounded-xl bg-surface border border-glassBorder hover:border-primary/40 hover:text-accent flex items-center justify-center shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all duration-300 neo-click cursor-pointer"
-                title="E-mail"
-              >
-                <Mail size={16} />
               </a>
             )}
           </div>
