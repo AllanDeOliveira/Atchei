@@ -1,3 +1,4 @@
+const { setGlobalOptions } = require("firebase-functions/v2");
 const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
@@ -13,6 +14,11 @@ const { isCallerAdmin } = require("./adminEmails");
 const { handleOgPreview } = require("./ogPreview");
 const { getTomorrowDateString, processarLembretesD1 } = require("./reminders");
 const { enviarEmailResetSenha, enviarEmailVerificacao } = require("./email");
+
+// Teto de instâncias por function, no código: o 3 já valia em produção mas não estava
+// escrito em lugar nenhum (function nova herdava sem garantia). Limita a conta de um
+// pico ou abuso; o tráfego real cabe folgado em 1 instância.
+setGlobalOptions({ maxInstances: 3 });
 
 initializeApp();
 const db = getFirestore();
@@ -447,6 +453,15 @@ exports.solicitarResetSenha = onCall({ cors: true, enforceAppCheck: true, secret
     const rl = await checkRateLimit(email, 'solicitarResetSenha', LIMITS.RESET_SENHA.max, LIMITS.RESET_SENHA.windowSec, { failClosed: true });
     if (!rl.allowed) {
         logger.warn(`Rate limit de reset de senha atingido para ${email}.`);
+        return { ok: true };
+    }
+
+    // Teto global: o limite por e-mail não segura um script que varre e-mails diferentes,
+    // e cada pedido válido gasta cota do Resend. Estourar também responde neutro.
+    // ponytail: um doc só para o contador global; contenção de escrita só com dezenas/s.
+    const rlGlobal = await checkRateLimit('global', 'solicitarResetSenha', LIMITS.RESET_SENHA_GLOBAL.max, LIMITS.RESET_SENHA_GLOBAL.windowSec, { failClosed: true });
+    if (!rlGlobal.allowed) {
+        logger.warn('Teto global de reset de senha atingido.');
         return { ok: true };
     }
 

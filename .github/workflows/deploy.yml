@@ -49,10 +49,12 @@ jobs:
         run: npm run build
 
       # --force confirma sozinho a exclusão de functions removidas do código.
+      # Versão fixa do firebase-tools: sem ela cada deploy baixava a última publicada,
+      # e uma mudança do CLI entrava em produção sem passar por PR. Atualizar à mão.
       - name: Deploy (hosting + rules + functions)
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
-          npx firebase-tools deploy --only hosting,firestore:rules,storage,functions --force --project atchei
+          npx firebase-tools@15.36.0 deploy --only hosting,firestore:rules,storage,functions --force --project atchei

@@ -10,24 +10,28 @@ service firebase.storage {
       return request.auth != null && 'admin' in request.auth.token && request.auth.token.admin == true;
     }
 
+    // 2 MB e sem gif: o app comprime tudo antes de subir (perfil 400 px, capa 1200 px,
+    // WebP/JPEG), então só um cliente fora do app chega perto do teto; gif animado
+    // seria egress pago a cada abertura do feed.
+
     // Regra para fotos de perfil
     match /profiles/{userId}/{fileName} {
       allow read: if true;
-      // Apenas o próprio usuário ou administradores podem subir/alterar fotos (somente imagens até 15MB)
+      // Apenas o próprio usuário ou administradores podem subir/alterar fotos (somente imagens até 2 MB)
       allow write: if request.auth != null && 
                       (request.auth.uid == userId || isAdmin()) && 
-                      request.resource.size < 15 * 1024 * 1024 &&
-                      request.resource.contentType.matches('image/(jpeg|png|webp|gif|avif)');
+                      request.resource.size < 2 * 1024 * 1024 &&
+                      request.resource.contentType.matches('image/(jpeg|png|webp|avif)');
     }
 
     // Regra para fotos/mídias de eventos
     match /events/{userId}/{fileName} {
       allow read: if true;
-      // Apenas o próprio criador do evento ou administradores podem subir/alterar fotos (somente imagens até 15MB)
+      // Apenas o próprio criador do evento ou administradores podem subir/alterar fotos (somente imagens até 2 MB)
       allow write: if request.auth != null && 
                       (request.auth.uid == userId || isAdmin()) && 
-                      request.resource.size < 15 * 1024 * 1024 &&
-                      request.resource.contentType.matches('image/(jpeg|png|webp|gif|avif)');
+                      request.resource.size < 2 * 1024 * 1024 &&
+                      request.resource.contentType.matches('image/(jpeg|png|webp|avif)');
     }
   }
 }

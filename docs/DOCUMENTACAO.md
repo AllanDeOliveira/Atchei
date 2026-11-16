@@ -97,7 +97,7 @@ Dependências auditadas em 2026-09-09: 0 vulnerabilidades no front e nas functio
         │              │              │                 │
    Firebase Auth   Firestore     Cloud Storage    Cloud Functions gen2
    (e-mail/senha,  (rules +      (rules: só       ├─ callables (App Check + Auth)
-    custom claim    App Check     imagem ≤15MB)    ├─ triggers em registrations
+    custom claim    App Check     imagem ≤2 MB)    ├─ triggers em registrations
     admin)          aplicado)                      ├─ cron 09:00 lembrete D-1
         │                                          ├─ HTTP /e/:id (Open Graph)
         └──── FCM (push) ◄─────────────────────────┘        │
@@ -215,7 +215,7 @@ Todas em `functions/index.js`, região `us-central1`, Node 22, gen2. Callables u
 | `adminResetPassword` | admin (painel, editar parceiro) | redefine a senha de um uid e marca `mustChangePassword` | auth + claim admin + rate limit 3/5min por admin |
 | `adminDeleteAccount` | admin (painel, excluir parceiro) | apaga **tudo** da conta: eventos criados (as inscrições deles saem pela `onEventDeleted`), inscrições próprias, `fcmTokens`, usuário do Auth, `profiles` e `profilesPrivate`. Recusa apagar a conta do próprio chamador | auth + claim admin |
 | `criarIngressoTeste` | admin (página do evento) | gera ingresso de teste validável (`isTeste: true`, `pedidoId` determinístico `TESTE-<evento>-<admin>`), sem mexer em contagens | auth + claim admin |
-| `solicitarResetSenha` | tela de login | gera o link de redefinição via Admin SDK e envia por **Resend** com template próprio (o Google recusa personalizar os templates deste projeto) | rate limit 3/15min por e-mail; segredos `RESEND_API_KEY`, `EMAIL_FROM` |
+| `solicitarResetSenha` | tela de login | gera o link de redefinição via Admin SDK e envia por **Resend** com template próprio (o Google recusa personalizar os templates deste projeto) | rate limit 3/15min por e-mail e 50/h no total; segredos `RESEND_API_KEY`, `EMAIL_FROM` |
 
 ### 5.2 Triggers do Firestore
 
@@ -285,7 +285,7 @@ Invariantes importantes:
 
 ### 7.3 Storage rules
 
-`profiles/{uid}/*` e `events/{uid}/*`: leitura pública; escrita só do dono ou admin, **apenas imagens** (`jpeg|png|webp|gif|avif`) **até 15 MB**.
+`profiles/{uid}/*` e `events/{uid}/*`: leitura pública; escrita só do dono ou admin, **apenas imagens** (`jpeg|png|webp|avif`) **até 2 MB** (o app comprime antes de subir).
 
 ### 7.4 App Check
 
@@ -449,6 +449,7 @@ O *create* feito pelo owner configura sozinho o invoker público (`allUsers` →
 | 2026-09-21 | Performance da home (PageSpeed 60 no celular, medido com o feed vazio porque o robô não passa no reCAPTCHA do App Check): fonte Plus Jakarta Sans servida de `public/fonts` (sem CSS externo bloqueando a renderização); `initializeAuth` sem resolvedor de popup (o `getAuth` baixava `/__/auth/iframe.js` e a gapi em toda visita); Analytics depois do `load`; `Cache-Control immutable` em `/assets/**` e `/fonts/**`; contraste e nomes acessíveis corrigidos. Em seguida, capas: primeira capa da tela com `fetchpriority=high`, demais `loading=lazy`; upload em WebP (JPEG onde o navegador não codifica; o LCP real era um flyer JPEG de 380 KB). O que resta do tempo de bloqueio é o reCAPTCHA do App Check, decisão fechada; a nota do PageSpeed não passa da faixa de 70 com ele ligado. |
 | 2026-11-04 | Revisão "código à mão × biblioteca consolidada". Trocados: QR do ingresso gerado no aparelho (`qrcode`) em vez do api.qrserver.com, que recebia o id da inscrição (a credencial da portaria) e era ponto de falha e de offline; `components/ui/Modal` sobre o `<dialog>` nativo com `showModal()` (foco preso, fundo inerte, Escape e camada superior pelo navegador; o Toaster é renderizado por portal dentro do diálogo aberto por último, `lib/dialogos.ts`, porque a camada superior cobriria os toasts; reabrir um popover não subia acima do diálogo no app, medido com Chrome controlado); exportação CSV com células entre aspas e apóstrofo antes de `= + - @` (injeção de fórmula pelo nome do participante); URL no `<script>` do Open Graph embutida como JSON. Avaliados e mantidos de propósito: validação em código (zod saiu no PR #57), datas via `Intl` e parse manual, e-mail via `fetch` no Resend, rate limiter em transação no Firestore, FNV-1a do código curto, leitor `@zxing/browser` (em manutenção; se quebrar, o caminho é a API `BarcodeDetector` com o polyfill `barcode-detector`). Pendente de configuração no projeto: política de TTL em `_rateLimits.expiresAt` (`gcloud firestore fields ttls update expiresAt --collection-group=_rateLimits --enable-ttl`). |
 | 2026-11-13 | Auditoria de segurança (perfil quick) fechada em um PR: evento apagado leva as inscrições e deixa lápide (`onEventDeleted` + `deletedEvents`); organizador não cria inscrição em nome de outra conta nem ocupa o id `eventId_uid` de terceiros; ingresso WhatsApp ganha `ticketSecret` no QR (o id era previsível); create de evento sem contadores; inscrição própria com allowlist de chaves (sem `isTeste`/lote); perfil nasce com o e-mail do token; logout apaga o token de push do aparelho. Em seguida, no mesmo dia: banco de produção zerado (eventos, inscrições, pedidos, desafios, tokens e imagens de evento; ficaram contas, perfis e `config`) e A5 fechado: e-mail e nascimento saem do perfil público para `profilesPrivate` (página do organizador perde o botão de e-mail), e a posse por e-mail (perfil com id ≠ uid) sai das rules, do app e do `adminDeleteAccount`. Migração dos perfis existentes: `functions/scripts/mover-dados-privados.js`, depois do deploy. Rules testadas no emulador com contas fictícias (28 casos, os de ataque passam na versão anterior). |
+| 2026-11-16 | Fila de segurança de outubro fechada: Storage aceita só imagem até 2 MB (sem gif); `firebase-tools` com versão fixa no deploy e no backup; `maxInstances: 3` escrito no código via `setGlobalOptions` (já valia em produção sem estar declarado); teto global de 50 pedidos/h no reset de senha. A inscrição em nome de outra conta já tinha sido fechada na auditoria de 13/11 |
 
 ### Custo e plataforma (2026-09-14)
 
