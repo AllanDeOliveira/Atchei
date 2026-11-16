@@ -8,6 +8,7 @@ const logger = require("firebase-functions/logger");
 const LIMITS = {
   ADMIN_RESET: { max: 3, windowSec: 300 },           // 3 por 5 minutos
   RESET_SENHA: { max: 3, windowSec: 900 },           // 3 pedidos por 15 min por e-mail
+  RESET_SENHA_GLOBAL: { max: 50, windowSec: 3600 },  // 50 por hora somando todos os e-mails
   VERIFICACAO_EMAIL: { max: 3, windowSec: 900 },     // 3 reenvios por 15 min por usuário
 };
 

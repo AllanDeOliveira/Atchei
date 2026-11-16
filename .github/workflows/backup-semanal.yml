@@ -60,7 +60,7 @@ jobs:
           mkdir -p "$DESTINO"
 
       - name: Auth (usuários com hash de senha)
-        run: npx firebase-tools auth:export "$DESTINO/auth.json" --format=json --project atchei
+        run: npx firebase-tools@15.36.0 auth:export "$DESTINO/auth.json" --format=json --project atchei
 
       - name: Firestore (JSON por coleção)
         working-directory: functions
